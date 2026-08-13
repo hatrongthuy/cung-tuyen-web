@@ -3,6 +3,7 @@ import AppHeader from "@/components/AppHeader";
 import StatCard from "@/components/StatCard";
 import AlertBadge from "@/components/AlertBadge";
 import EmployeeBarChart from "@/components/EmployeeBarChart";
+import EmployeeScoreTable from "@/components/EmployeeScoreTable";
 import {
   getCanhBaoChuaViengTham,
   getCanhBaoKhachChet,
@@ -100,34 +101,10 @@ export default async function QuanLyPage() {
           <h2 className="text-sm font-semibold text-slate-900">
             Bảng điểm cung tuyến tuần chi tiết
           </h2>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="py-2 pr-3 font-medium">Nhân viên</th>
-                  <th className="py-2 pr-3 font-medium">Số gợi ý</th>
-                  <th className="py-2 pr-3 font-medium">Đã đồng ý</th>
-                  <th className="py-2 pr-3 font-medium">Tỷ lệ hoàn thành</th>
-                  <th className="py-2 pr-3 font-medium">Điểm cung tuyến</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summaries.map((s) => (
-                  <tr key={s.maNhanVien} className="border-b border-slate-100">
-                    <td className="py-2 pr-3 font-medium text-slate-800">{s.hoTen}</td>
-                    <td className="py-2 pr-3 text-slate-600">{s.soGoiY}</td>
-                    <td className="py-2 pr-3 text-slate-600">{s.soDongY}</td>
-                    <td className="py-2 pr-3 text-slate-600">
-                      {Math.round(s.tyLeHoanThanh * 100)}%
-                    </td>
-                    <td className="py-2 pr-3 font-semibold text-slate-900">
-                      {s.diemCungTuyen ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <p className="mt-0.5 text-xs text-slate-400">
+            Bấm vào một dòng để xem danh sách khách hàng cụ thể được gợi ý cho nhân viên đó.
+          </p>
+          <EmployeeScoreTable summaries={summaries} />
         </section>
 
         <section className="mt-6 grid gap-4 lg:grid-cols-3">
