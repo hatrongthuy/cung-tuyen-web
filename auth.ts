@@ -14,7 +14,7 @@ declare module "next-auth" {
     };
   }
 }
-
+console.log("DEBUG_CLIENT_ID:", process.env.GOOGLE_OAUTH_CLIENT_ID);
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
