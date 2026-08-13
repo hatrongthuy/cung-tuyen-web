@@ -21,7 +21,7 @@ export const COMPANY_DOMAIN = "cpc1hn.com.vn";
 
 export const ALLOWLIST: AllowlistEntry[] = [
   {
-    email: "booha061294@gmail.com",
+   email: "booha061294@gmail.com",
     hoTen: "Hà Trọng Thủy",
     role: "manager",
   },
