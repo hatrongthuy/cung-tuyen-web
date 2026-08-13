@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import { COMPANY_DOMAIN, findAllowlistEntry, type Role } from "@/lib/allowlist";
+import { findAllowlistEntry, type Role } from "@/lib/allowlist";
 
 declare module "next-auth" {
   interface Session {
@@ -14,7 +14,7 @@ declare module "next-auth" {
     };
   }
 }
-console.log("DEBUG_CLIENT_ID:", process.env.GOOGLE_OAUTH_CLIENT_ID);
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
@@ -23,8 +23,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
       authorization: {
         params: {
-          // Giới hạn theo domain công ty ngay tại màn hình chọn tài khoản Google.
-          hd: COMPANY_DOMAIN,
           prompt: "select_account",
         },
       },
@@ -34,12 +32,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/dang-nhap",
   },
   callbacks: {
-    async signIn({ user }) {
-      const email = user.email?.toLowerCase() ?? "";
-      // Chặn ngay cả khi cùng domain nhưng không có trong allowlist cụ thể.
-      if (!email.endsWith(`@${COMPANY_DOMAIN}`)) return false;
-      // Không chặn ở đây để còn đưa được người dùng tới trang "không có quyền truy cập"
-      // với thông tin rõ ràng thay vì bị NextAuth từ chối âm thầm.
+    async signIn() {
+      // Không chặn ở đây — để còn đưa được người dùng tới trang "không có quyền truy cập"
+      // với thông tin rõ ràng thay vì bị Google/NextAuth từ chối âm thầm.
       return true;
     },
     async jwt({ token }) {
