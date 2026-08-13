@@ -17,8 +17,10 @@ declare module "next-auth" {
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
-    Google({
-      authorization: {
+  Google({
+         clientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
+         clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+         authorization: {
         params: {
           // Giới hạn theo domain công ty ngay tại màn hình chọn tài khoản Google.
           hd: COMPANY_DOMAIN,
