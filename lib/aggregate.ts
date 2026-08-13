@@ -6,6 +6,19 @@ import type {
   XacNhanGoiYRow,
 } from "./sheets-schema";
 
+export interface KhachGoiY {
+  maKH: string;
+  tenKH: string;
+  diaChi: string;
+  tinh: string;
+  nhomKH: string;
+  hang: string;
+  thuTuUuTien: string;
+  mucTieu: string;
+  /** "Đồng ý" | "Không đồng ý" | undefined (chưa phản hồi) */
+  trangThai?: string;
+}
+
 export interface EmployeeWeekSummary {
   maNhanVien: string;
   hoTen: string;
@@ -14,6 +27,7 @@ export interface EmployeeWeekSummary {
   soDongY: number; // đã gặp / đồng ý
   tyLeHoanThanh: number; // soDongY / soGoiY, 0..1
   diemCungTuyen: number | null; // Tổng điểm cung tuyến tuần hiện tại (nếu có)
+  khachGoiY: KhachGoiY[]; // danh sách khách hàng cụ thể được gợi ý cho nhân viên này tuần này
 }
 
 /** Xác định tuần hiện tại đang xử lý (dùng nhãn tuần mới nhất xuất hiện trong
@@ -65,11 +79,18 @@ export function buildEmployeeWeekSummaries(
   const summaries: EmployeeWeekSummary[] = allEmployees().map((emp) => {
     const maChuan = chuanHoaMaNV(emp.maNhanVien);
 
-    const goiYCuaNV = goiY.filter((r) => chuanHoaMaNV(r["Mã nhân viên"]) === maChuan);
+    const goiYCuaNV = goiY
+      .filter((r) => chuanHoaMaNV(r["Mã nhân viên"]) === maChuan)
+      .sort((a, b) => Number(a["Thứ tự ưu tiên"]) - Number(b["Thứ tự ưu tiên"]));
     const xacNhanCuaNV = xacNhanTrongTuan.filter(
       (r) => chuanHoaMaNV(r["Mã nhân viên"]) === maChuan
     );
     const dongYCuaNV = xacNhanCuaNV.filter((r) => r["Trạng thái"] === "Đồng ý");
+
+    const xacNhanMapCuaNV = new Map<string, string>();
+    for (const r of xacNhanCuaNV) {
+      xacNhanMapCuaNV.set(r["Mã khách hàng"], r["Trạng thái"]);
+    }
 
     const diemRow = danhGia.find(
       (r) => chuanHoaMaNV(r["Mã nhân viên"]) === maChuan && r["Tuần"] === weekLabel
@@ -77,6 +98,18 @@ export function buildEmployeeWeekSummaries(
 
     const soGoiY = goiYCuaNV.length;
     const soDongY = dongYCuaNV.length;
+
+    const khachGoiY: KhachGoiY[] = goiYCuaNV.map((r) => ({
+      maKH: r["Mã khách hàng"],
+      tenKH: r["Tên khách hàng"],
+      diaChi: r["Địa chỉ"],
+      tinh: r["Tỉnh"],
+      nhomKH: r["Nhóm KH"],
+      hang: r["Hạng"],
+      thuTuUuTien: r["Thứ tự ưu tiên"],
+      mucTieu: r["Mục tiêu chuyến thăm"],
+      trangThai: xacNhanMapCuaNV.get(r["Mã khách hàng"]),
+    }));
 
     return {
       maNhanVien: emp.maNhanVien!,
@@ -86,6 +119,7 @@ export function buildEmployeeWeekSummaries(
       soDongY,
       tyLeHoanThanh: soGoiY > 0 ? soDongY / soGoiY : 0,
       diemCungTuyen: diemRow ? Number(diemRow["Tổng điểm cung tuyến"]) || 0 : null,
+      khachGoiY,
     };
   });
 
