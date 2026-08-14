@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import StatCard from "@/components/StatCard";
@@ -39,17 +38,8 @@ export default async function QuanLyPage() {
 
   return (
     <>
-      <AppHeader hoTen={user.name ?? ""} role="manager" weekLabel={weekLabel} />
+      <AppHeader hoTen={user.name ?? ""} role="manager" weekLabel={weekLabel} active="cung-tuyen" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <div className="flex justify-end">
-          <Link
-            href="/quan-ly/bao-cao-thau"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            Báo cáo thầu →
-          </Link>
-        </div>
-
         <section className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard label="Số nhân viên" value={employees.length} accentColor="#2a78d6" />
           <StatCard
