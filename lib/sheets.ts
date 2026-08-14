@@ -35,21 +35,27 @@ function getSheetsClient() {
 }
 
 /**
- * Đọc toàn bộ 1 tab Google Sheets, dùng dòng đầu tiên làm tên cột (header),
- * trả về mảng object { [tenCot]: giaTri }.
+ * Đọc toàn bộ (hoặc một vùng cụ thể) 1 tab Google Sheets, dùng DÒNG ĐẦU TIÊN của vùng đọc
+ * làm tên cột (header), trả về mảng object { [tenCot]: giaTri }.
+ *
+ * Mặc định đọc từ spreadsheet chính (GOOGLE_SHEETS_SPREADSHEET_ID) và toàn bộ tab (header ở
+ * dòng 1). Truyền `opts.spreadsheetId` để đọc từ 1 spreadsheet khác (vd sheet "báo cáo thầu"),
+ * và `opts.range` (vd "A4:AE") khi header không nằm ở dòng 1 của tab.
  */
 export async function readSheetAsObjects<T extends Record<string, string>>(
-  sheetName: string
+  sheetName: string,
+  opts?: { spreadsheetId?: string; range?: string }
 ): Promise<T[]> {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = opts?.spreadsheetId ?? process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
   if (!spreadsheetId) {
     throw new Error("Thiếu biến môi trường GOOGLE_SHEETS_SPREADSHEET_ID");
   }
 
   const sheets = getSheetsClient();
+  const range = opts?.range ? `'${sheetName}'!${opts.range}` : `'${sheetName}'`;
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `'${sheetName}'`,
+    range,
     valueRenderOption: "UNFORMATTED_VALUE",
   });
 
