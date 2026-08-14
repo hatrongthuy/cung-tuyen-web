@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import ChatBox, { type ChatMessage } from "./ChatBox";
-import { chuanHoaMaNV } from "@/lib/data";
+
+// Không import chuanHoaMaNV từ "@/lib/data" ở đây: file đó kéo theo lib/sheets.ts
+// (dùng thư viện googleapis, chỉ chạy được ở server) — nếu import vào Client Component
+// sẽ làm lỗi build ("Client Component SSR" import googleapis). Vì hàm này chỉ là xử lý
+// chuỗi thuần, định nghĩa lại y hệt ngay tại đây cho an toàn.
+function chuanHoaMaNV(v: string | null | undefined): string {
+  return String(v ?? "").trim().replace(/^0+(?=\d)/, "");
+}
 
 interface NhanVien {
   maNhanVien: string;
