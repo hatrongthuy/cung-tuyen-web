@@ -10,6 +10,7 @@ export const SHEET_NAMES = {
   canhBaoSanPhamNghi: "Cảnh báo SP nghỉ",
   xacNhanGoiY: "Xác nhận gợi ý",
   danhSachNhanVien: "Danh sách nhân viên",
+  troChuyen: "Trò chuyện",
 } as const;
 
 // ----- Gợi ý tập trung -----
@@ -111,4 +112,20 @@ export interface DanhSachNhanVienRow {
   "Mã nhân viên": string;
   "Tên nhân viên": string;
   [key: string]: string;
+}
+
+// ----- Trò chuyện -----
+// "Loại": "rieng" (1-1 giữa 1 nhân viên và quản lý) | "nhom" (chat chung cả nhóm).
+// Với tin nhắn riêng, phía quản lý luôn dùng mã cố định "QL" (quản lý không có mã nhân
+// viên riêng) — nhờ vậy tài khoản quản lý và tài khoản khách (cũng có role "manager") đều
+// xem được cùng 1 luồng trò chuyện riêng với từng nhân viên.
+export interface TroChuyenRow {
+  [key: string]: string;
+  "Thời gian": string;
+  "Loại": string; // "rieng" | "nhom"
+  "Mã người gửi": string;
+  "Tên người gửi": string;
+  "Mã người nhận": string; // rỗng nếu loại = "nhom"
+  "Tên người nhận": string;
+  "Nội dung": string;
 }
