@@ -8,13 +8,14 @@ const ROLE_LABEL: Record<Role, string> = {
   employee: "Trình dược viên",
 };
 
-export type NavKey = "cung-tuyen" | "bao-cao-thau" | "kpi" | "doanh-so";
+export type NavKey = "cung-tuyen" | "bao-cao-thau" | "kpi" | "doanh-so" | "tro-chuyen";
 
 const NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "cung-tuyen", label: "Cung tuyến", href: "/quan-ly" },
   { key: "bao-cao-thau", label: "Báo cáo thầu", href: "/quan-ly/bao-cao-thau" },
   { key: "kpi", label: "KPI", href: "/quan-ly/kpi" },
   { key: "doanh-so", label: "Doanh số", href: "/quan-ly/doanh-so" },
+  { key: "tro-chuyen", label: "Trò chuyện", href: "/quan-ly/tro-chuyen" },
 ];
 
 export default function AppHeader({
