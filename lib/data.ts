@@ -8,6 +8,7 @@ import {
   type CanhBaoSanPhamNghiRow,
   type XacNhanGoiYRow,
   type DanhSachNhanVienRow,
+  type TroChuyenRow,
 } from "./sheets-schema";
 
 // Chuẩn hóa mã nhân viên (bỏ số 0 ở đầu) để so khớp — Google Sheets có lúc trả mã dưới
@@ -43,6 +44,10 @@ export async function getXacNhanGoiY(): Promise<XacNhanGoiYRow[]> {
 
 export async function getDanhSachNhanVien(): Promise<DanhSachNhanVienRow[]> {
   return readSheetAsObjects<DanhSachNhanVienRow>(SHEET_NAMES.danhSachNhanVien);
+}
+
+export async function getTroChuyen(): Promise<TroChuyenRow[]> {
+  return readSheetAsObjects<TroChuyenRow>(SHEET_NAMES.troChuyen);
 }
 
 // ---------- Tiện ích xử lý cột "Tuần" (dạng "dd/MM/yyyy - dd/MM/yyyy") ----------
