@@ -3,9 +3,9 @@
 // mọi kiểm tra quyền phải tra qua bảng này để dễ chỉnh sửa (thêm/bớt người) sau này.
 //
 // role:
-//  - "manager"  : quản lý nhóm, toàn quyền xem + quản trị (Hà Trọng Thủy)
-//  - "superior" : cấp trên, chỉ xem tổng quan, không có nút thao tác (Lê Công Đức)
-//  - "employee" : nhân viên, chỉ xem/thao tác dữ liệu của chính mình
+// - "manager"  : quản lý nhóm, toàn quyền xem + quản trị (Hà Trọng Thủy)
+// - "superior" : cấp trên, chỉ xem tổng quan, không có nút thao tác (Lê Công Đức)
+// - "employee" : nhân viên, chỉ xem/thao tác dữ liệu của chính mình
 
 export type Role = "manager" | "superior" | "employee";
 
@@ -21,41 +21,46 @@ export const COMPANY_DOMAIN = "cpc1hn.com.vn";
 
 export const ALLOWLIST: AllowlistEntry[] = [
   {
-   email: "booha061294@gmail.com",
+    email: "booha061294@gmail.com",
     hoTen: "Hà Trọng Thủy",
     role: "manager",
   },
   {
-    email: "duc.lecong.ss.ps@cpc1hn.com.vn",
+    email: "daotao.cpc1hn@gmail.com",
+    hoTen: "Khách tham quan",
+    role: "manager",
+  },
+  {
+    email: "lecongducib@gmail.com",
     hoTen: "Lê Công Đức",
     role: "superior",
   },
   {
-    email: "trung.docao.vinhphuc.ps@cpc1hn.com.vn",
+    email: "caotrung3258@gmail.com",
     hoTen: "Đỗ Cao Trung",
     role: "employee",
     maNhanVien: "017886",
   },
   {
-    email: "huy.nguyenquang.phutho.ps@cpc1hn.com.vn",
+    email: "qhuy210199@gmail.com",
     hoTen: "Nguyễn Quang Huy",
     role: "employee",
     maNhanVien: "018468",
   },
   {
-    email: "anh.hathilan.phutho.ps@cpc1hn.com.vn",
+    email: "htlanh2609@gmail.com",
     hoTen: "Hà Thị Lan Anh",
     role: "employee",
     maNhanVien: "018757",
   },
   {
-    email: "tuyen.phanvan.thainguyen.ps@cpc1hn.com.vn",
+    email: "Phantuyen102025@gmail.com",
     hoTen: "Phan Văn Tuyền",
     role: "employee",
     maNhanVien: "019484",
   },
   {
-    email: "cuong.hoangvan.phutho.ps@cpc1hn.com.vn",
+    email: "Cuongtntn100@gmail.com",
     hoTen: "Hoàng Văn Cường",
     role: "employee",
     maNhanVien: "020180",
