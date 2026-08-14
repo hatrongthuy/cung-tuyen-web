@@ -4,6 +4,7 @@ import StatCard from "@/components/StatCard";
 import AlertBadge from "@/components/AlertBadge";
 import ScoreTrendChart from "@/components/ScoreTrendChart";
 import ConfirmButtons from "@/components/ConfirmButtons";
+import ChatBox, { type ChatMessage } from "@/components/ChatBox";
 import {
   chuanHoaMaNV,
   getCanhBaoChuaViengTham,
@@ -11,6 +12,7 @@ import {
   getCanhBaoSanPhamNghi,
   getDanhGiaCungTuyen,
   getGoiYTapTrung,
+  getTroChuyen,
   getXacNhanGoiY,
   sortWeeksAscending,
 } from "@/lib/data";
@@ -28,13 +30,14 @@ export default async function NhanVienPage() {
   const maNV = chuanHoaMaNV(user.maNhanVien);
   const hoTen = user.name ?? "";
 
-  const [goiY, danhGia, xacNhan, chuaVT, khChet, spNghi] = await Promise.all([
+  const [goiY, danhGia, xacNhan, chuaVT, khChet, spNghi, troChuyen] = await Promise.all([
     getGoiYTapTrung(),
     getDanhGiaCungTuyen(),
     getXacNhanGoiY(),
     getCanhBaoChuaViengTham(),
     getCanhBaoKhachChet(),
     getCanhBaoSanPhamNghi(),
+    getTroChuyen(),
   ]);
 
   const weekLabel = getCurrentWeekLabel(danhGia);
@@ -68,6 +71,22 @@ export default async function NhanVienPage() {
   const spNghiCuaToi = spNghi.filter((r) => r["Tên nhân viên"]?.trim() === hoTen.trim());
 
   const soDaXacNhan = goiYCuaToi.filter((r) => xacNhanMap.has(r["Mã khách hàng"])).length;
+
+  const toMessage = (r: (typeof troChuyen)[number]): ChatMessage => ({
+    thoiGian: r["Thời gian"],
+    maGui: chuanHoaMaNV(r["Mã người gửi"]),
+    tenGui: r["Tên người gửi"],
+    noiDung: r["Nội dung"],
+  });
+  const troChuyenSorted = [...troChuyen].sort((a, b) => (a["Thời gian"] > b["Thời gian"] ? 1 : -1));
+  const tinNhanRieng = troChuyenSorted
+    .filter(
+      (r) =>
+        r["Loại"] === "rieng" &&
+        (chuanHoaMaNV(r["Mã người gửi"]) === maNV || chuanHoaMaNV(r["Mã người nhận"]) === maNV)
+    )
+    .map(toMessage);
+  const tinNhanNhom = troChuyenSorted.filter((r) => r["Loại"] === "nhom").map(toMessage);
 
   return (
     <>
@@ -164,66 +183,102 @@ export default async function NhanVienPage() {
         </section>
 
         <section className="mt-6 grid gap-4 lg:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900">Khách chưa viếng thăm</h3>
-            <ul className="mt-3 space-y-2">
-              {chuaVTCuaToi.length === 0 && (
-                <li className="text-xs text-slate-400">Không có cảnh báo.</li>
-              )}
-              {chuaVTCuaToi.map((r, i) => (
-                <li key={i} className="rounded-lg bg-slate-50 p-2 text-xs">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-slate-800">{r["Tên khách hàng"]}</span>
-                    <AlertBadge mucDo={r["Mức độ"]} />
-                  </div>
-                  <p className="mt-0.5 text-slate-500">
-                    {r["Số ngày chưa có lượt viếng thăm/call"]} ngày chưa viếng thăm
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <AlertPanel title="Khách chưa viếng thăm" rows={chuaVTCuaToi} />
+          <AlertPanel
+            title={'Khách hàng "chết"'}
+            rows={khChetCuaToi}
+            field="Số ngày chưa phát sinh"
+            fieldLabel="ngày chưa phát sinh"
+          />
+          <ProductAlertPanel title="Sản phẩm nghỉ" rows={spNghiCuaToi} />
+        </section>
 
+        <section className="mt-6 grid gap-4 lg:grid-cols-2">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900">Khách hàng &quot;chết&quot;</h3>
-            <ul className="mt-3 space-y-2">
-              {khChetCuaToi.length === 0 && (
-                <li className="text-xs text-slate-400">Không có cảnh báo.</li>
-              )}
-              {khChetCuaToi.map((r, i) => (
-                <li key={i} className="rounded-lg bg-slate-50 p-2 text-xs">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-slate-800">{r["Tên khách hàng"]}</span>
-                    <AlertBadge mucDo={r["Mức độ"]} />
-                  </div>
-                  <p className="mt-0.5 text-slate-500">
-                    {r["Số ngày chưa phát sinh"]} ngày chưa phát sinh đơn
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <h2 className="text-sm font-semibold text-slate-900">Trò chuyện với quản lý</h2>
+            <p className="mt-0.5 text-xs text-slate-400">Nhắn tin riêng với quản lý nhóm.</p>
+            <div className="mt-3">
+              <ChatBox
+                messages={tinNhanRieng}
+                loai="rieng"
+                currentSenderCode={maNV}
+                emptyLabel="Chưa có tin nhắn nào với quản lý."
+              />
+            </div>
           </div>
-
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900">Sản phẩm nghỉ</h3>
-            <ul className="mt-3 space-y-2">
-              {spNghiCuaToi.length === 0 && (
-                <li className="text-xs text-slate-400">Không có cảnh báo.</li>
-              )}
-              {spNghiCuaToi.map((r, i) => (
-                <li key={i} className="rounded-lg bg-slate-50 p-2 text-xs">
-                  <p className="font-medium text-slate-800">
-                    {r["Tên khách hàng"]} — {r["Tên sản phẩm"]}
-                  </p>
-                  <p className="mt-0.5 text-slate-500">
-                    {r["Số ngày chưa mua lại"]} ngày chưa mua lại
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <h2 className="text-sm font-semibold text-slate-900">Trò chuyện nhóm</h2>
+            <p className="mt-0.5 text-xs text-slate-400">Trò chuyện chung với cả nhóm.</p>
+            <div className="mt-3">
+              <ChatBox
+                messages={tinNhanNhom}
+                loai="nhom"
+                currentSenderCode={maNV}
+                emptyLabel="Chưa có tin nhắn nào trong nhóm."
+              />
+            </div>
           </div>
         </section>
       </main>
     </>
+  );
+}
+
+function AlertPanel({
+  title,
+  rows,
+  field = "Số ngày chưa có lượt viếng thăm/call",
+  fieldLabel = "ngày chưa viếng thăm",
+}: {
+  title: string;
+  rows: Array<Record<string, string>>;
+  field?: string;
+  fieldLabel?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      <ul className="mt-3 space-y-2">
+        {rows.length === 0 && <li className="text-xs text-slate-400">Không có cảnh báo.</li>}
+        {rows.map((r, i) => (
+          <li key={i} className="rounded-lg bg-slate-50 p-2 text-xs">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium text-slate-800">{r["Tên khách hàng"]}</span>
+              <AlertBadge mucDo={r["Mức độ"]} />
+            </div>
+            <p className="mt-0.5 text-slate-500">
+              {r[field]} {fieldLabel}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ProductAlertPanel({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: Array<Record<string, string>>;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      <ul className="mt-3 space-y-2">
+        {rows.length === 0 && <li className="text-xs text-slate-400">Không có cảnh báo.</li>}
+        {rows.map((r, i) => (
+          <li key={i} className="rounded-lg bg-slate-50 p-2 text-xs">
+            <p className="font-medium text-slate-800">
+              {r["Tên khách hàng"]} — {r["Tên sản phẩm"]}
+            </p>
+            <p className="mt-0.5 text-slate-500">
+              {r["Tên nhân viên"]} · {r["Số ngày chưa mua lại"]} ngày chưa mua lại
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
