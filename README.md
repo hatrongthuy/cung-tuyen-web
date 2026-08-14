@@ -137,6 +137,39 @@ mở workflow "Lập cung tuyến tuần — Nhóm Hà Trọng Thủy" trong n8n
 
 ---
 
+## Bước 5b — Báo cáo thầu (trang `/quan-ly/bao-cao-thau`)
+
+Trang "Báo cáo thầu" đọc dữ liệu từ MỘT Google Sheet KHÁC với sheet cung tuyến chính ở Bước 2
+(spreadsheet riêng "báo cáo thầu"). Cùng một Service Account ở Bước 2 dùng để đọc sheet này,
+nhưng phải cấp quyền Viewer riêng cho sheet đó thì mới đọc được. Các bước:
+
+1. Mở Google Sheet "báo cáo thầu" (link:
+   `https://docs.google.com/spreadsheets/d/12rUumsB65y5wexTASLyh07p81JHnMY2lAjCuYLAESxc/edit`).
+2. Bấm nút **Chia sẻ / Share** (góc trên bên phải).
+3. Dán đúng email của Service Account (giá trị `GOOGLE_SERVICE_ACCOUNT_EMAIL` đã điền ở Bước 2 —
+   xem lại trong mục Environment Variables của project trên Vercel nếu quên), chọn quyền
+   **Người xem / Viewer**, bấm **Gửi / Send**.
+4. Trên Vercel → project → **Settings → Environment Variables**, thêm 2 biến:
+
+   ```
+   GOOGLE_SHEETS_THAU_SPREADSHEET_ID=12rUumsB65y5wexTASLyh07p81JHnMY2lAjCuYLAESxc
+   GOOGLE_SHEETS_THAU_TAB=Chi tiết 1.8.2026
+   ```
+
+5. Bấm **Redeploy** (hoặc chờ lần push code tiếp theo tự deploy).
+
+Ngưỡng cảnh báo (đang để mặc định 6 tháng cho cả 2 loại cảnh báo — "gói thầu sắp hết hiệu lực"
+và "khách lâu chưa gọi thầu mới") nằm ở đầu file `app/quan-ly/bao-cao-thau/page.tsx` (2 hằng số
+`NGUONG_SAP_HET_HAN_THANG` và `NGUONG_LAU_CHUA_GOI_THANG`) — muốn đổi ngưỡng thì sửa số ở đó rồi
+đưa code lên lại.
+
+**Khi có tab tháng mới** (ví dụ sang tháng 9 sẽ có tab "Chi tiết 1.9.2026" mới): chỉ cần sửa lại
+giá trị biến `GOOGLE_SHEETS_THAU_TAB` trên Vercel thành tên tab mới rồi Redeploy — KHÔNG cần sửa
+code, miễn là tab mới giữ nguyên đúng cấu trúc cột (header ở dòng 4, dữ liệu từ dòng 5) như tab
+cũ.
+
+---
+
 ## Thêm / bớt người dùng sau này
 
 Mở file `lib/allowlist.ts`, thêm/sửa/xoá các dòng trong mảng `ALLOWLIST` (email, họ tên, vai
