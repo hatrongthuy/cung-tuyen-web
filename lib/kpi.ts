@@ -5,34 +5,57 @@ import { google } from "googleapis";
 const KPI_SPREADSHEET_ID = "1Yd2bHhWEbEKh68PFuL7GqPGD1pAW14SxkGZNp5lELD4";
 
 function getAuth() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  return new google.auth.JWT({
-    email,
-    key,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-  });
+    const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+    const key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n");
+    return new google.auth.JWT({
+          email,
+          key,
+          scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    });
 }
 
 async function getRawValues(sheetName: string): Promise<string[][]> {
-  const sheets = google.sheets({ version: "v4", auth: getAuth() });
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: KPI_SPREADSHEET_ID,
-    range: `'${sheetName}'`,
-    valueRenderOption: "UNFORMATTED_VALUE",
-  });
-  return (res.data.values as string[][] | undefined) ?? [];
+    const sheets = google.sheets({ version: "v4", auth: getAuth() });
+    const res = await sheets.spreadsheets.values.get({
+          spreadsheetId: KPI_SPREADSHEET_ID,
+          range: `'${sheetName}'`,
+          valueRenderOption: "UNFORMATTED_VALUE",
+    });
+    return (res.data.values as string[][] | undefined) ?? [];
+}
+
+/** Một số tab (vd "Doanh so T8") có kèm theo các cột tổng hợp/tham chiếu đã bị ẩn (hidden columns)
+ * dùng nội bộ trong sheet — không nên hiển thị lẫn với dữ liệu chính cho người dùng. Hàm này lấy
+ * danh sách chỉ số cột đang bị ẩn (ẩn tay) để loại ra khi build bảng hiển thị. */
+async function getHiddenColumnIndexes(sheetName: string): Promise<Set<number>> {
+    const sheets = google.sheets({ version: "v4", auth: getAuth() });
+    const hidden = new Set<number>();
+    try {
+          const res = await sheets.spreadsheets.get({
+                  spreadsheetId: KPI_SPREADSHEET_ID,
+                  ranges: [`'${sheetName}'`],
+                  includeGridData: true,
+                  fields: "sheets(data(columnMetadata(hiddenByUser)))",
+          });
+          const colMeta = res.data.sheets?.[0]?.data?.[0]?.columnMetadata ?? [];
+          colMeta.forEach((c, idx) => {
+                  if (c.hiddenByUser) hidden.add(idx);
+          });
+    } catch {
+          // Nếu không lấy được metadata (vd lỗi quyền/API tạm thời), coi như không có cột nào bị ẩn.
+    }
+    return hidden;
 }
 
 export interface KpiTabConfig {
-  key: string;
-  label: string;
-  sheetName: string;
-  /** Vị trí dòng tiêu đề thực sự trong sheet, 0-based (một số tab có dòng ghi chú/gộp ô phía trên tiêu đề thật) */
+    key: string;
+    label: string;
+    sheetName: string;
+    /** Vị trí dòng tiêu đề thực sự trong sheet, 0-based (một số tab có dòng ghi chú/gộp ô phía trên tiêu đề thật) */
   headerRowIndex: number;
-  /** Vị trí dòng dữ liệu đầu tiên, 0-based */
+    /** Vị trí dòng dữ liệu đầu tiên, 0-based */
   dataStartIndex: number;
-  /** Tên cột dùng để lọc theo Nhóm SS — hầu hết là "Nhóm SS", riêng "Doanh so T8" là "SS" */
+    /** Tên cột dùng để lọc theo Nhóm SS — hầu hết là "Nhóm SS", riêng "Doanh so T8" là "SS" */
   teamColumn: string;
 }
 
@@ -46,60 +69,80 @@ export const KPI_TABS: KpiTabConfig[] = [
   { key: "mo-moi-cap-2", label: "Mở mới SP Cấp 2", sheetName: "Mở mới SP Cấp 2", headerRowIndex: 1, dataStartIndex: 2, teamColumn: "Nhóm SS" },
   { key: "duy-tri-cap-2", label: "Duy trì SP cấp 2", sheetName: "Duy trì SP cấp 2", headerRowIndex: 1, dataStartIndex: 2, teamColumn: "Nhóm SS" },
   { key: "tuyen-dung", label: "Tuyen dung", sheetName: "Tuyen dung", headerRowIndex: 0, dataStartIndex: 1, teamColumn: "Nhóm SS" },
-];
+  ];
 
 export interface KpiTabData {
-  columns: string[];
-  rows: Record<string, string>[];
+    columns: string[];
+    rows: Record<string, string>[];
 }
 
 function cellToString(v: unknown): string {
-  if (v === undefined || v === null) return "";
-  return String(v);
+    if (v === undefined || v === null) return "";
+    return String(v);
+}
+
+/** Đảm bảo tên cột duy nhất — một số sheet có nhiều cột trùng tên (vd nhiều khối "DS KD-PM" lặp
+ * lại chưa đặt tên riêng cho từng cột con). Nếu dùng tên trùng làm khoá object, dữ liệu cột trước sẽ
+ * bị cột sau ghi đè mất. Thêm số thứ tự vào các tên trùng để giữ đủ dữ liệu từng cột. */
+function dedupeNames(names: string[]): string[] {
+    const seen = new Map<string, number>();
+    return names.map((name) => {
+          if (!name) return name;
+          const count = (seen.get(name) ?? 0) + 1;
+          seen.set(name, count);
+          return count === 1 ? name : `${name} (${count})`;
+    });
 }
 
 async function readKpiTab(tab: KpiTabConfig): Promise<KpiTabData> {
-  let raw: string[][];
-  try {
-    raw = await getRawValues(tab.sheetName);
-  } catch {
-    return { columns: [], rows: [] };
-  }
-  const headerRow = raw[tab.headerRowIndex] ?? [];
-  const columns = headerRow.map((h) => cellToString(h).trim());
-  const rows: Record<string, string>[] = [];
-  for (let i = tab.dataStartIndex; i < raw.length; i++) {
-    const row = raw[i];
-    if (!row || row.every((c) => cellToString(c).trim() === "")) continue;
-    const obj: Record<string, string> = {};
-    columns.forEach((col, idx) => {
-      if (!col) return;
-      obj[col] = cellToString(row[idx]);
+    let raw: string[][];
+    let hidden: Set<number>;
+    try {
+          [raw, hidden] = await Promise.all([getRawValues(tab.sheetName), getHiddenColumnIndexes(tab.sheetName)]);
+    } catch {
+          return { columns: [], rows: [] };
+    }
+    const headerRowRaw = raw[tab.headerRowIndex] ?? [];
+    const visibleIdx: number[] = [];
+    headerRowRaw.forEach((_, idx) => {
+          if (!hidden.has(idx)) visibleIdx.push(idx);
     });
-    rows.push(obj);
-  }
-  return { columns: columns.filter(Boolean), rows };
+    const columns = dedupeNames(visibleIdx.map((idx) => cellToString(headerRowRaw[idx]).trim()));
+
+  const rows: Record<string, string>[] = [];
+    for (let i = tab.dataStartIndex; i < raw.length; i++) {
+          const row = raw[i];
+          if (!row || row.every((c) => cellToString(c).trim() === "")) continue;
+          const obj: Record<string, string> = {};
+          visibleIdx.forEach((srcIdx, colPos) => {
+                  const col = columns[colPos];
+                  if (!col) return;
+                  obj[col] = cellToString(row[srcIdx]);
+          });
+          rows.push(obj);
+    }
+    return { columns: columns.filter(Boolean), rows };
 }
 
 /** Đọc dữ liệu 1 tab KPI, đã lọc theo Nhóm SS (mặc định: chỉ nhóm của trưởng nhóm truyền vào). */
 export async function getKpiTabData(tabKey: string, teamName: string): Promise<KpiTabData> {
-  const tab = KPI_TABS.find((t) => t.key === tabKey);
-  if (!tab) return { columns: [], rows: [] };
-  const data = await readKpiTab(tab);
-  const teamTrim = teamName.trim();
-  const rows = data.rows.filter((r) => (r[tab.teamColumn] ?? "").trim() === teamTrim);
-  return { columns: data.columns, rows };
+    const tab = KPI_TABS.find((t) => t.key === tabKey);
+    if (!tab) return { columns: [], rows: [] };
+    const data = await readKpiTab(tab);
+    const teamTrim = teamName.trim();
+    const rows = data.rows.filter((r) => (r[tab.teamColumn] ?? "").trim() === teamTrim);
+    return { columns: data.columns, rows };
 }
 
 /** Đọc dữ liệu tất cả các tab KPI cùng lúc, đã lọc theo Nhóm SS. */
 export async function getAllKpiTabsData(teamName: string): Promise<Record<string, KpiTabData>> {
-  const teamTrim = teamName.trim();
-  const entries = await Promise.all(
-    KPI_TABS.map(async (tab) => {
-      const data = await readKpiTab(tab);
-      const rows = data.rows.filter((r) => (r[tab.teamColumn] ?? "").trim() === teamTrim);
-      return [tab.key, { columns: data.columns, rows }] as const;
-    })
-  );
-  return Object.fromEntries(entries);
+    const teamTrim = teamName.trim();
+    const entries = await Promise.all(
+          KPI_TABS.map(async (tab) => {
+                  const data = await readKpiTab(tab);
+                  const rows = data.rows.filter((r) => (r[tab.teamColumn] ?? "").trim() === teamTrim);
+                  return [tab.key, { columns: data.columns, rows }] as const;
+          })
+        );
+    return Object.fromEntries(entries);
 }
