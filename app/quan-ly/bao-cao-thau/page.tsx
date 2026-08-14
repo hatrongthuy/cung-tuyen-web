@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import StatCard from "@/components/StatCard";
@@ -29,21 +28,13 @@ export default async function BaoCaoThauPage() {
 
   return (
     <>
-      <AppHeader hoTen={user.name ?? ""} role="manager" />
+      <AppHeader hoTen={user.name ?? ""} role="manager" active="bao-cao-thau" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-base font-semibold text-slate-900">Báo cáo thầu</h1>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Dữ liệu đọc trực tiếp từ Google Sheet &quot;báo cáo thầu&quot; mỗi lần tải trang.
-            </p>
-          </div>
-          <Link
-            href="/quan-ly"
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            ← Về tổng quan
-          </Link>
+        <div>
+          <h1 className="text-base font-semibold text-slate-900">Báo cáo thầu</h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Dữ liệu đọc trực tiếp từ Google Sheet &quot;báo cáo thầu&quot; mỗi lần tải trang.
+          </p>
         </div>
 
         <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
