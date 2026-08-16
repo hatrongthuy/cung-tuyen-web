@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export interface KpiTabMeta {
   key: string;
@@ -23,8 +23,17 @@ export default function KpiView({
   const router = useRouter();
   const [active, setActive] = useState<string>(tabs[0]?.key ?? "");
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
 
   const current = dataByTab[active] ?? { columns: [], rows: [] };
+
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return current.rows;
+    return current.rows.filter((row) =>
+      current.columns.some((c) => (row[c] ?? "").toLowerCase().includes(q))
+    );
+  }, [current, search]);
 
   function refresh() {
     setRefreshing(true);
@@ -87,9 +96,25 @@ export default function KpiView({
         ))}
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Tìm kiếm trong bảng (tên, mã, sản phẩm...)..."
+          className="w-full min-w-[220px] flex-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-slate-500 sm:w-auto"
+        />
+        {search && (
+          <span className="text-xs text-slate-400">
+            {filteredRows.length}/{current.rows.length} dòng
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         {current.rows.length === 0 ? (
           <p className="p-6 text-sm text-slate-400">Không có dữ liệu cho nhóm của bạn ở mục này.</p>
+        ) : filteredRows.length === 0 ? (
+          <p className="p-6 text-sm text-slate-400">Không tìm thấy kết quả phù hợp.</p>
         ) : (
           <table className="min-w-full text-left text-xs">
             <thead className="bg-emerald-50/70 text-slate-700">
@@ -103,7 +128,7 @@ export default function KpiView({
               </tr>
             </thead>
             <tbody>
-              {current.rows.map((row, i) => (
+              {filteredRows.map((row, i) => (
                 <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
                   <td className="whitespace-nowrap px-3 py-2 text-slate-400">{i + 1}</td>
                   {current.columns.map((c) => (
