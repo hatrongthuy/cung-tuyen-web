@@ -14,6 +14,7 @@ import {
 import StatCard from "@/components/StatCard";
 import ReportToolbar from "@/components/ReportToolbar";
 import { formatVnd, formatShortVnd, parseMoney, pct } from "@/lib/format";
+import { normalizeMaNV } from "@/lib/report-utils";
 import { downloadCsv } from "@/lib/csv";
 
 interface Props {
@@ -21,6 +22,12 @@ interface Props {
   rows: Record<string, string>[];
   error?: string | null;
   teamName: string;
+  /** Doanh số THỰC HIỆN (tổng, từ file Sale) theo mã nhân viên cho tháng đang xét. */
+  actualByCode?: Record<string, number>;
+  /** Nhãn tháng của số thực hiện, ví dụ "08/2026". */
+  actualMonthLabel?: string;
+  /** Lỗi khi đọc file Sale (nếu có). */
+  salesError?: string | null;
 }
 
 /** Tìm tên cột theo danh sách từ khóa (không phân biệt hoa/thường, dấu cách thừa). */
@@ -33,12 +40,21 @@ function findCol(columns: string[], keywords: string[]): string | null {
   return null;
 }
 
-export default function DoanhSoView({ columns, rows, error, teamName }: Props) {
+export default function DoanhSoView({
+  columns,
+  rows,
+  error,
+  teamName,
+  actualByCode = {},
+  actualMonthLabel,
+  salesError,
+}: Props) {
   const [showAll, setShowAll] = useState(false);
 
   const cols = useMemo(() => {
     return {
       ten: findCol(columns, ["họ và tên"]) ?? findCol(columns, ["tên nhân"]) ?? columns[2] ?? "",
+      maNV: findCol(columns, ["mã nv"]) ?? findCol(columns, ["mã nhân"]) ?? columns[1] ?? "",
       viTri: findCol(columns, ["vị trí"]) ?? columns[0] ?? "",
       diaBan: findCol(columns, ["địa bàn"]) ?? findCol(columns, ["ps "]) ?? "",
       kdKH: findCol(columns, ["kê đơn", "kế hoạch"]),
@@ -58,8 +74,12 @@ export default function DoanhSoView({ columns, rows, error, teamName }: Props) {
 
   const perEmp = useMemo(() => {
     return nvkdRows.map((r) => {
+      const ma = cols.maNV ? normalizeMaNV(r[cols.maNV]) : "";
       const kdKH = cols.kdKH ? parseMoney(r[cols.kdKH]) : 0;
-      const kdTH = cols.kdTH ? parseMoney(r[cols.kdTH]) : 0;
+      // Doanh số THỰC HIỆN lấy từ file Sale (tổng doanh thu tháng theo mã NV). Nếu không có,
+      // dùng tạm cột "Thực hiện" trong sheet KPI (hiện thường trống).
+      const actual = ma in actualByCode ? actualByCode[ma] : undefined;
+      const kdTH = actual ?? (cols.kdTH ? parseMoney(r[cols.kdTH]) : 0);
       const thauKH = cols.thauKH ? parseMoney(r[cols.thauKH]) : 0;
       const thauTH = cols.thauTH ? parseMoney(r[cols.thauTH]) : 0;
       return {
@@ -72,7 +92,7 @@ export default function DoanhSoView({ columns, rows, error, teamName }: Props) {
         tyLe: pct(kdTH, kdKH),
       };
     });
-  }, [nvkdRows, cols]);
+  }, [nvkdRows, cols, actualByCode]);
 
   const tong = useMemo(() => {
     return perEmp.reduce(
@@ -115,7 +135,8 @@ export default function DoanhSoView({ columns, rows, error, teamName }: Props) {
         <div>
           <h1 className="text-base font-semibold text-slate-900">Doanh số — Nhóm {teamName}</h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Đọc trực tiếp từ tab &quot;Doanh so T8&quot; trong file KPI mỗi lần tải trang.
+            Kế hoạch lấy từ file KPI (tab &quot;Doanh so T8&quot;); Thực hiện là tổng doanh thu
+            {actualMonthLabel ? ` tháng ${actualMonthLabel}` : ""} từ file dữ liệu Sale.
           </p>
         </div>
         <ReportToolbar onExportCsv={exportCsv} className="no-print" />
@@ -146,10 +167,21 @@ export default function DoanhSoView({ columns, rows, error, teamName }: Props) {
             <StatCard label="Số nhân viên" value={perEmp.length} accentColor="#eb6834" />
           </section>
 
-          {chuaCoThucHien && (
+          {salesError && (
+            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Không đọc được doanh số thực hiện từ file Sale: {salesError}
+            </p>
+          )}
+          {!salesError && chuaCoThucHien && (
             <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              Lưu ý: cột &quot;Thực hiện&quot; trong sheet hiện đang trống — doanh số thực hiện sẽ hiển thị khi
-              số liệu được nhập vào file KPI. Hiện chỉ có số Kế hoạch.
+              Chưa có doanh thu thực hiện{actualMonthLabel ? ` trong tháng ${actualMonthLabel}` : ""} cho nhóm này
+              (có thể do đầu tháng chưa phát sinh, hoặc file Sale chưa cập nhật).
+            </p>
+          )}
+          {!salesError && !chuaCoThucHien && (
+            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+              &quot;Thực hiện&quot; là tổng doanh thu thực tế{actualMonthLabel ? ` tháng ${actualMonthLabel}` : ""} từ file Sale
+              (gồm mọi mặt hàng), so với &quot;Kế hoạch&quot; kê đơn trong file KPI.
             </p>
           )}
 

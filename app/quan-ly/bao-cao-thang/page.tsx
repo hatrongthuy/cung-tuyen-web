@@ -3,6 +3,7 @@ import AppHeader from "@/components/AppHeader";
 import MonthlyReportView from "@/components/MonthlyReportView";
 import { getDanhGiaCungTuyen } from "@/lib/data";
 import { getKpiTabData } from "@/lib/kpi";
+import { getTeamSales } from "@/lib/sales";
 
 const TEN_NHOM = "Hà Trọng Thủy";
 
@@ -10,17 +11,25 @@ export default async function BaoCaoThangPage() {
   const session = await auth();
   const user = session!.user!;
 
-  const [danhGia, doanhSo, kpis] = await Promise.all([
+  const [danhGia, doanhSo, kpis, sales] = await Promise.all([
     getDanhGiaCungTuyen(),
     getKpiTabData("doanh-so", TEN_NHOM),
     getKpiTabData("kpis", TEN_NHOM),
+    getTeamSales(),
   ]);
 
   return (
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" active="bao-cao-thang" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <MonthlyReportView danhGia={danhGia} doanhSo={doanhSo} kpis={kpis} teamName={TEN_NHOM} />
+        <MonthlyReportView
+          danhGia={danhGia}
+          doanhSo={doanhSo}
+          kpis={kpis}
+          teamName={TEN_NHOM}
+          salesTxns={sales.txns}
+          salesError={sales.error}
+        />
       </main>
     </>
   );

@@ -63,3 +63,38 @@ export function findColumn(columns: string[], keywords: string[]): string | null
   }
   return null;
 }
+
+// ---------- Cộng dồn doanh số THỰC HIỆN (từ file Sale) theo nhân viên ----------
+
+export interface SaleTxnLite {
+  ma: string;
+  dateMs: number | null;
+  nam: number;
+  thang: number;
+  dt: number;
+}
+
+/** Tổng doanh thu theo mã nhân viên cho 1 tháng (nam, thang). */
+export function salesByMonth(txns: SaleTxnLite[], nam: number, thang: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const t of txns) {
+    if (t.nam === nam && t.thang === thang) out[t.ma] = (out[t.ma] ?? 0) + t.dt;
+  }
+  return out;
+}
+
+/** Tổng doanh thu theo mã nhân viên cho 1 khoảng ngày [startMs, endMs] (bao gồm 2 đầu mút). */
+export function salesByRange(txns: SaleTxnLite[], startMs: number, endMs: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const t of txns) {
+    if (t.dateMs != null && t.dateMs >= startMs && t.dateMs <= endMs) {
+      out[t.ma] = (out[t.ma] ?? 0) + t.dt;
+    }
+  }
+  return out;
+}
+
+/** Tổng toàn bộ doanh thu 1 map (theo nhân viên) -> 1 số. */
+export function sumValues(m: Record<string, number>): number {
+  return Object.values(m).reduce((s, x) => s + x, 0);
+}

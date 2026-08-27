@@ -6,7 +6,16 @@ import EmployeeBarChart from "@/components/EmployeeBarChart";
 import ReportToolbar from "@/components/ReportToolbar";
 import { downloadCsv } from "@/lib/csv";
 import { formatVnd, formatShortVnd, parseMoney, pct } from "@/lib/format";
-import { distinctMonthsDesc, monthKeyOfWeek, parseInt0, findColumn } from "@/lib/report-utils";
+import {
+  distinctMonthsDesc,
+  monthKeyOfWeek,
+  parseInt0,
+  findColumn,
+  normalizeMaNV,
+  salesByMonth,
+  sumValues,
+  type SaleTxnLite,
+} from "@/lib/report-utils";
 
 const C = {
   tuan: "Tuần",
@@ -30,23 +39,36 @@ export default function MonthlyReportView({
   doanhSo,
   kpis,
   teamName,
+  salesTxns = [],
+  salesError,
 }: {
   danhGia: Row[];
   doanhSo: TabData;
   kpis: TabData;
   teamName: string;
+  salesTxns?: SaleTxnLite[];
+  salesError?: string | null;
 }) {
   const months = useMemo(() => distinctMonthsDesc(danhGia.map((r) => r[C.tuan])), [danhGia]);
   const [month, setMonth] = useState<string>(months[0] ?? "");
 
+  // "MM/YYYY" -> số tháng/năm để cộng doanh số thực hiện.
+  const [thangSel, namSel] = useMemo(() => {
+    const [mm, yy] = (month || "").split("/").map(Number);
+    return [mm || 0, yy || 0];
+  }, [month]);
+  const actualByMa = useMemo(() => salesByMonth(salesTxns, namSel, thangSel), [salesTxns, namSel, thangSel]);
+  const actualTotal = useMemo(() => sumValues(actualByMa), [actualByMa]);
+
   // ----- Cung tuyến trong tháng: gộp các tuần thuộc tháng đã chọn theo nhân viên -----
   const cungTuyen = useMemo(() => {
     const inMonth = danhGia.filter((r) => monthKeyOfWeek(r[C.tuan]) === month);
-    const map = new Map<string, { ten: string; gap: number; phanHoi: number; sale: number; diem: number; soTuan: number }>();
+    const map = new Map<string, { ma: string; ten: string; gap: number; phanHoi: number; sale: number; diem: number; soTuan: number }>();
     for (const r of inMonth) {
-      const key = (r[C.ma] || r[C.ten] || "").trim();
+      const ma = normalizeMaNV(r[C.ma]);
+      const key = ma || (r[C.ten] || "").trim();
       if (!key) continue;
-      const cur = map.get(key) ?? { ten: r[C.ten] || key, gap: 0, phanHoi: 0, sale: 0, diem: 0, soTuan: 0 };
+      const cur = map.get(key) ?? { ma, ten: r[C.ten] || key, gap: 0, phanHoi: 0, sale: 0, diem: 0, soTuan: 0 };
       cur.gap += parseInt0(r[C.gap]);
       cur.phanHoi += parseInt0(r[C.phanHoi]);
       cur.sale += parseInt0(r[C.sale]);
@@ -54,8 +76,10 @@ export default function MonthlyReportView({
       cur.soTuan += 1;
       map.set(key, cur);
     }
-    return [...map.values()].sort((a, b) => b.diem - a.diem);
-  }, [danhGia, month]);
+    return [...map.values()]
+      .map((e) => ({ ...e, doanhThu: actualByMa[e.ma] ?? 0 }))
+      .sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem);
+  }, [danhGia, month, actualByMa]);
 
   const tongCT = useMemo(
     () => cungTuyen.reduce((a, e) => ({ gap: a.gap + e.gap, phanHoi: a.phanHoi + e.phanHoi, sale: a.sale + e.sale, diem: a.diem + e.diem }), { gap: 0, phanHoi: 0, sale: 0, diem: 0 }),
@@ -91,14 +115,14 @@ export default function MonthlyReportView({
       [`Tháng: ${month}`],
       [],
       ["A. HOẠT ĐỘNG CUNG TUYẾN TRONG THÁNG"],
-      ["Nhân viên", "Số tuần", "Gặp khách", "Phản hồi hàng hóa", "Phát sinh sale", "Tổng điểm"],
-      ...cungTuyen.map((e) => [e.ten, e.soTuan, e.gap, e.phanHoi, e.sale, e.diem]),
-      ["TỔNG", "", tongCT.gap, tongCT.phanHoi, tongCT.sale, tongCT.diem],
+      ["Nhân viên", "Doanh số thực hiện", "Số tuần", "Gặp khách", "Phản hồi hàng hóa", "Phát sinh sale", "Tổng điểm"],
+      ...cungTuyen.map((e) => [e.ten, Math.round(e.doanhThu), e.soTuan, e.gap, e.phanHoi, e.sale, e.diem]),
+      ["TỔNG", Math.round(actualTotal), "", tongCT.gap, tongCT.phanHoi, tongCT.sale, tongCT.diem],
       [],
-      ["B. DOANH SỐ KÊ ĐƠN (tháng hiện tại trong file KPI)"],
-      ["Kế hoạch", ds.KH],
-      ["Thực hiện", ds.TH],
-      ["Tỷ lệ hoàn thành (%)", Math.round(pct(ds.TH, ds.KH))],
+      ["B. DOANH SỐ — KẾ HOẠCH vs THỰC HIỆN"],
+      ["Kế hoạch (kê đơn, từ file KPI)", Math.round(ds.KH)],
+      ["Thực hiện (tổng, từ file Sale)", Math.round(actualTotal)],
+      ["Tỷ lệ hoàn thành (%)", Math.round(pct(actualTotal, ds.KH))],
     ];
     if (kpiRows.length) {
       rows.push([], ["C. TỔNG ĐIỂM KPIs THEO NHÂN VIÊN"], ["Nhân viên", "Tổng điểm KPIs"]);
@@ -139,9 +163,10 @@ export default function MonthlyReportView({
           </div>
 
           {/* A. Cung tuyến tháng */}
-          <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard label="Lượt gặp khách (tháng)" value={tongCT.gap} accentColor="#2a78d6" />
-            <StatCard label="Phản hồi hàng hóa" value={tongCT.phanHoi} accentColor="#1baf7a" />
+          <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            <StatCard label="Doanh số tháng" value={formatShortVnd(actualTotal)} hint={`${formatVnd(actualTotal)} đ`} accentColor="#1baf7a" />
+            <StatCard label="Lượt gặp khách" value={tongCT.gap} accentColor="#2a78d6" />
+            <StatCard label="Phản hồi hàng hóa" value={tongCT.phanHoi} accentColor="#4a3aa7" />
             <StatCard label="Phát sinh sale" value={tongCT.sale} accentColor="#eda100" />
             <StatCard label="Tổng điểm cung tuyến" value={tongCT.diem} accentColor="#eb6834" />
           </section>
@@ -155,6 +180,7 @@ export default function MonthlyReportView({
                   <thead className="text-slate-500">
                     <tr className="border-b border-slate-200">
                       <th className="py-2 pr-3 font-medium">Nhân viên</th>
+                      <th className="py-2 pr-3 text-right font-medium">Doanh số</th>
                       <th className="py-2 pr-3 text-right font-medium">Số tuần</th>
                       <th className="py-2 pr-3 text-right font-medium">Gặp khách</th>
                       <th className="py-2 pr-3 text-right font-medium">Sale</th>
@@ -165,6 +191,7 @@ export default function MonthlyReportView({
                     {cungTuyen.map((e, i) => (
                       <tr key={i} className="border-b border-slate-100">
                         <td className="py-2 pr-3 font-medium text-slate-800">{e.ten}</td>
+                        <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.doanhThu)}</td>
                         <td className="py-2 pr-3 text-right text-slate-600">{e.soTuan}</td>
                         <td className="py-2 pr-3 text-right text-slate-700">{e.gap}</td>
                         <td className="py-2 pr-3 text-right text-slate-700">{e.sale}</td>
@@ -173,6 +200,7 @@ export default function MonthlyReportView({
                     ))}
                     <tr className="border-t-2 border-slate-300 font-semibold">
                       <td className="py-2 pr-3 text-slate-900">TỔNG</td>
+                      <td className="py-2 pr-3 text-right text-slate-900">{formatVnd(actualTotal)}</td>
                       <td className="py-2 pr-3"></td>
                       <td className="py-2 pr-3 text-right text-slate-900">{tongCT.gap}</td>
                       <td className="py-2 pr-3 text-right text-slate-900">{tongCT.sale}</td>
@@ -186,17 +214,20 @@ export default function MonthlyReportView({
 
           {/* B. Doanh số */}
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate-900">B. Doanh số kê đơn</h2>
-            <p className="mt-0.5 text-xs text-slate-400">Số liệu tháng hiện tại trong file KPI (tab &quot;Doanh so T8&quot;).</p>
-            {doanhSo.error ? (
-              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{doanhSo.error}</p>
-            ) : (
-              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <StatCard label="Kế hoạch" value={formatShortVnd(ds.KH)} hint={`${formatVnd(ds.KH)} đ`} accentColor="#2a78d6" />
-                <StatCard label="Thực hiện" value={formatShortVnd(ds.TH)} hint={`${formatVnd(ds.TH)} đ`} accentColor="#1baf7a" />
-                <StatCard label="Tỷ lệ hoàn thành" value={`${Math.round(pct(ds.TH, ds.KH))}%`} accentColor="#eda100" />
-              </div>
+            <h2 className="text-sm font-semibold text-slate-900">B. Doanh số — Kế hoạch vs Thực hiện</h2>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Kế hoạch: file KPI (tab &quot;Doanh so T8&quot;). Thực hiện: tổng doanh thu tháng {month} từ file Sale.
+            </p>
+            {salesError && (
+              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Không đọc được doanh số thực hiện từ file Sale: {salesError}
+              </p>
             )}
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatCard label="Kế hoạch (kê đơn)" value={formatShortVnd(ds.KH)} hint={`${formatVnd(ds.KH)} đ`} accentColor="#2a78d6" />
+              <StatCard label="Thực hiện (tổng)" value={formatShortVnd(actualTotal)} hint={`${formatVnd(actualTotal)} đ`} accentColor="#1baf7a" />
+              <StatCard label="Tỷ lệ hoàn thành" value={`${Math.round(pct(actualTotal, ds.KH))}%`} accentColor="#eda100" />
+            </div>
           </section>
 
           {/* C. KPIs */}
