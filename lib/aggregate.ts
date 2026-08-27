@@ -48,17 +48,32 @@ export function getWeekDateRange(label: string | null): { start: Date; end: Date
 }
 
 function parseThoiGian(v: string): Date | null {
-  // "yyyy-MM-dd HH:mm:ss"
-  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
-  if (!m) return null;
-  return new Date(
-    Number(m[1]),
-    Number(m[2]) - 1,
-    Number(m[3]),
-    Number(m[4]),
-    Number(m[5]),
-    Number(m[6])
-  );
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  // Dạng chuỗi "yyyy-MM-dd HH:mm:ss"
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+  if (m) {
+    return new Date(
+      Number(m[1]),
+      Number(m[2]) - 1,
+      Number(m[3]),
+      Number(m[4]),
+      Number(m[5]),
+      Number(m[6])
+    );
+  }
+  // Dạng SỐ SERIAL của Google Sheets (khi đọc UNFORMATTED_VALUE, ô ngày-giờ trả về số ngày
+  // kể từ 30/12/1899, phần thập phân là giờ). Đây là lý do trước đây xác nhận không hiện:
+  // "Thời gian" bị trả về dạng số nên không parse được chuỗi.
+  const num = Number(s);
+  if (Number.isFinite(num) && num > 20000 && num < 100000) {
+    const ms = Math.round((num - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  // Dạng khác (vd "24/08/2026 20:59") — thử Date parse cuối cùng.
+  const d2 = new Date(s);
+  return Number.isNaN(d2.getTime()) ? null : d2;
 }
 
 export function buildEmployeeWeekSummaries(
