@@ -34,6 +34,25 @@ function isModelUnavailable(status: number, msg: string): boolean {
   );
 }
 
+// Dấu hiệu "model đang quá tải / bị giới hạn tạm thời" -> nên thử lại và/hoặc đổi model khác.
+function isBusy(status: number, msg: string): boolean {
+  const m = (msg || "").toLowerCase();
+  return (
+    status === 503 ||
+    status === 429 ||
+    m.includes("high demand") ||
+    m.includes("overloaded") ||
+    m.includes("try again later") ||
+    m.includes("temporarily") ||
+    m.includes("resource has been exhausted") ||
+    m.includes("rate limit")
+  );
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 // Gọi Gemini để phân tích báo cáo tuần. Yêu cầu đăng nhập (tránh lộ API key/tốn phí).
 // Cần biến môi trường GEMINI_API_KEY trên Vercel (tạo tại https://aistudio.google.com/apikey).
 export async function POST(req: Request) {
@@ -81,39 +100,49 @@ SỐ LIỆU:
 ${tomTat}`;
 
   let lastErr = "Không gọi được Gemini.";
+  let sawBusy = false;
   for (const model of candidates) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.4 },
-          }),
+    // Với mỗi model: thử tối đa 3 lần nếu gặp "quá tải" (chờ tăng dần), rồi mới chuyển model khác.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.4 },
+            }),
+          }
+        );
+        const data = await res.json();
+        if (res.ok) {
+          const text =
+            data?.candidates?.[0]?.content?.parts
+              ?.map((p: { text?: string }) => p.text ?? "")
+              .join("") || "(Gemini không trả về nội dung.)";
+          return NextResponse.json({ text, model });
         }
-      );
-      const data = await res.json();
-      if (!res.ok) {
         const msg = data?.error?.message || `Lỗi gọi Gemini (HTTP ${res.status}).`;
         lastErr = msg;
-        // Model không dùng được -> thử model kế tiếp. Lỗi khác (vd hết quota, key sai) -> dừng.
-        if (isModelUnavailable(res.status, msg)) continue;
-        return NextResponse.json({ error: msg }, { status: 502 });
+        if (isBusy(res.status, msg)) {
+          sawBusy = true;
+          await sleep(700 * (attempt + 1)); // 0.7s, 1.4s
+          continue; // thử lại cùng model
+        }
+        if (isModelUnavailable(res.status, msg)) break; // sang model kế tiếp
+        return NextResponse.json({ error: msg }, { status: 502 }); // lỗi khác -> dừng
+      } catch (e) {
+        lastErr = `Không gọi được Gemini: ${e instanceof Error ? e.message : String(e)}`;
+        await sleep(500);
       }
-      const text =
-        data?.candidates?.[0]?.content?.parts
-          ?.map((p: { text?: string }) => p.text ?? "")
-          .join("") || "(Gemini không trả về nội dung.)";
-      return NextResponse.json({ text, model });
-    } catch (e) {
-      lastErr = `Không gọi được Gemini: ${e instanceof Error ? e.message : String(e)}`;
     }
+    // Hết 3 lần với model này -> vòng for ngoài sẽ thử model kế tiếp.
   }
 
-  return NextResponse.json(
-    { error: `Không có model Gemini nào dùng được. Lỗi cuối: ${lastErr}` },
-    { status: 502 }
-  );
+  const goiY = sawBusy
+    ? "Máy chủ Gemini đang quá tải (giờ cao điểm). Vui lòng bấm lại sau 1–2 phút."
+    : `Không có model Gemini nào dùng được. Lỗi cuối: ${lastErr}`;
+  return NextResponse.json({ error: goiY }, { status: 503 });
 }
