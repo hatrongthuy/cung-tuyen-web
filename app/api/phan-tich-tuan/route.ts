@@ -3,6 +3,37 @@ import { auth } from "@/auth";
 
 export const runtime = "nodejs";
 
+// Các model đã bị Google ngừng phục vụ (nếu env GEMINI_MODEL lỡ trỏ vào đây thì BỎ QUA,
+// tránh trường hợp biến môi trường cũ trên Vercel ghi đè và làm hỏng nút Phân tích AI).
+const RETIRED = new Set([
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
+  "gemini-1.5-pro",
+  "gemini-pro",
+]);
+
+// Danh sách model sẽ thử LẦN LƯỢT. Google khuyến nghị gemini-3.6-flash; nếu vì lý do nào đó
+// không dùng được thì tự động thử các model thay thế cho tới khi có 1 model chạy được.
+const FALLBACKS = [
+  "gemini-3.6-flash",
+  "gemini-flash-latest",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+];
+
+// Dấu hiệu "model này không dùng được" -> nên thử model kế tiếp thay vì báo lỗi ngay.
+function isModelUnavailable(status: number, msg: string): boolean {
+  const m = (msg || "").toLowerCase();
+  return (
+    status === 404 ||
+    m.includes("no longer available") ||
+    m.includes("is not found") ||
+    m.includes("not supported") ||
+    m.includes("does not exist") ||
+    m.includes("unsupported")
+  );
+}
+
 // Gọi Gemini để phân tích báo cáo tuần. Yêu cầu đăng nhập (tránh lộ API key/tốn phí).
 // Cần biến môi trường GEMINI_API_KEY trên Vercel (tạo tại https://aistudio.google.com/apikey).
 export async function POST(req: Request) {
@@ -18,7 +49,14 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+
+  // Thứ tự model để thử: model trong env (nếu KHÔNG phải model đã ngừng) đứng đầu, rồi tới các
+  // fallback. Loại trùng lặp, giữ nguyên thứ tự.
+  const envModel = (process.env.GEMINI_MODEL || "").trim();
+  const candidates = [
+    ...(envModel && !RETIRED.has(envModel) ? [envModel] : []),
+    ...FALLBACKS,
+  ].filter((v, i, a) => v && a.indexOf(v) === i);
 
   let body: { tomTat?: string };
   try {
@@ -42,31 +80,40 @@ Không bịa số liệu ngoài dữ liệu cho sẵn. Không dài dòng.
 SỐ LIỆU:
 ${tomTat}`;
 
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.4 },
-        }),
+  let lastErr = "Không gọi được Gemini.";
+  for (const model of candidates) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.4 },
+          }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        const msg = data?.error?.message || `Lỗi gọi Gemini (HTTP ${res.status}).`;
+        lastErr = msg;
+        // Model không dùng được -> thử model kế tiếp. Lỗi khác (vd hết quota, key sai) -> dừng.
+        if (isModelUnavailable(res.status, msg)) continue;
+        return NextResponse.json({ error: msg }, { status: 502 });
       }
-    );
-    const data = await res.json();
-    if (!res.ok) {
-      const msg = data?.error?.message || `Lỗi gọi Gemini (HTTP ${res.status}).`;
-      return NextResponse.json({ error: msg }, { status: 502 });
+      const text =
+        data?.candidates?.[0]?.content?.parts
+          ?.map((p: { text?: string }) => p.text ?? "")
+          .join("") || "(Gemini không trả về nội dung.)";
+      return NextResponse.json({ text, model });
+    } catch (e) {
+      lastErr = `Không gọi được Gemini: ${e instanceof Error ? e.message : String(e)}`;
     }
-    const text =
-      data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ||
-      "(Gemini không trả về nội dung.)";
-    return NextResponse.json({ text });
-  } catch (e) {
-    return NextResponse.json(
-      { error: `Không gọi được Gemini: ${e instanceof Error ? e.message : String(e)}` },
-      { status: 500 }
-    );
   }
+
+  return NextResponse.json(
+    { error: `Không có model Gemini nào dùng được. Lỗi cuối: ${lastErr}` },
+    { status: 502 }
+  );
 }
