@@ -69,10 +69,15 @@ export function buildEmployeeWeekSummaries(
   const weekLabel = getCurrentWeekLabel(danhGia);
   const range = getWeekDateRange(weekLabel);
 
-  const xacNhanTrongTuan = range
+  // CHỈ chặn mốc DƯỚI (từ đầu tuần đánh giá gần nhất), KHÔNG chặn mốc trên: nhân viên
+  // thường bấm xác nhận cho danh sách gợi ý hiện tại SAU khi tuần đánh giá đã chốt (vd bấm
+  // ngày 23–25 trong khi tuần đánh giá gần nhất là 16–22). Nếu chặn mốc trên sẽ bỏ sót các
+  // xác nhận mới nhất -> hiển thị 0. Trạng thái mỗi khách lấy theo lần bấm MỚI NHẤT (tránh
+  // đếm trùng khi 1 khách được bấm nhiều lần).
+  const xacNhanGanDay = range
     ? xacNhan.filter((r) => {
         const d = parseThoiGian(r["Thời gian"]);
-        return d && d >= range.start && d <= range.end;
+        return d && d >= range.start;
       })
     : xacNhan;
 
@@ -82,40 +87,51 @@ export function buildEmployeeWeekSummaries(
     const goiYCuaNV = goiY
       .filter((r) => chuanHoaMaNV(r["Mã nhân viên"]) === maChuan)
       .sort((a, b) => Number(a["Thứ tự ưu tiên"]) - Number(b["Thứ tự ưu tiên"]));
-    const xacNhanCuaNV = xacNhanTrongTuan.filter(
+    const xacNhanCuaNV = xacNhanGanDay.filter(
       (r) => chuanHoaMaNV(r["Mã nhân viên"]) === maChuan
     );
-    const dongYCuaNV = xacNhanCuaNV.filter((r) => r["Trạng thái"] === "Đồng ý");
 
-    const xacNhanMapCuaNV = new Map<string, string>();
+    // Trạng thái MỚI NHẤT (theo Thời gian) cho từng mã khách hàng.
+    const latestByKH = new Map<string, { trangThai: string; t: number }>();
     for (const r of xacNhanCuaNV) {
-      xacNhanMapCuaNV.set(r["Mã khách hàng"], r["Trạng thái"]);
+      const kh = r["Mã khách hàng"];
+      if (!kh) continue;
+      const t = parseThoiGian(r["Thời gian"])?.getTime() ?? 0;
+      const cur = latestByKH.get(kh);
+      if (!cur || t >= cur.t) latestByKH.set(kh, { trangThai: r["Trạng thái"], t });
     }
 
     const diemRow = danhGia.find(
       (r) => chuanHoaMaNV(r["Mã nhân viên"]) === maChuan && r["Tuần"] === weekLabel
     );
 
-    const soGoiY = goiYCuaNV.length;
-    const soDongY = dongYCuaNV.length;
+    // Đếm dựa trên DANH SÁCH GỢI Ý HIỆN TẠI: mỗi khách được gợi ý đã phản hồi chưa / có đồng ý không.
+    let soDaXacNhan = 0;
+    let soDongY = 0;
+    const khachGoiY: KhachGoiY[] = goiYCuaNV.map((r) => {
+      const trangThai = latestByKH.get(r["Mã khách hàng"])?.trangThai;
+      if (trangThai) soDaXacNhan++;
+      if (trangThai === "Đồng ý") soDongY++;
+      return {
+        maKH: r["Mã khách hàng"],
+        tenKH: r["Tên khách hàng"],
+        diaChi: r["Địa chỉ"],
+        tinh: r["Tỉnh"],
+        nhomKH: r["Nhóm KH"],
+        hang: r["Hạng"],
+        thuTuUuTien: r["Thứ tự ưu tiên"],
+        mucTieu: r["Mục tiêu chuyến thăm"],
+        trangThai,
+      };
+    });
 
-    const khachGoiY: KhachGoiY[] = goiYCuaNV.map((r) => ({
-      maKH: r["Mã khách hàng"],
-      tenKH: r["Tên khách hàng"],
-      diaChi: r["Địa chỉ"],
-      tinh: r["Tỉnh"],
-      nhomKH: r["Nhóm KH"],
-      hang: r["Hạng"],
-      thuTuUuTien: r["Thứ tự ưu tiên"],
-      mucTieu: r["Mục tiêu chuyến thăm"],
-      trangThai: xacNhanMapCuaNV.get(r["Mã khách hàng"]),
-    }));
+    const soGoiY = goiYCuaNV.length;
 
     return {
       maNhanVien: emp.maNhanVien!,
       hoTen: emp.hoTen,
       soGoiY,
-      soDaXacNhan: xacNhanCuaNV.length,
+      soDaXacNhan,
       soDongY,
       tyLeHoanThanh: soGoiY > 0 ? soDongY / soGoiY : 0,
       diemCungTuyen: diemRow ? Number(diemRow["Tổng điểm cung tuyến"]) || 0 : null,
