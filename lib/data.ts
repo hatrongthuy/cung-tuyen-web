@@ -50,6 +50,16 @@ export async function getTroChuyen(): Promise<TroChuyenRow[]> {
   return readSheetAsObjects<TroChuyenRow>(SHEET_NAMES.troChuyen);
 }
 
+// Lịch sử danh sách gợi ý (workflow n8n append mỗi tuần vào tab "Lịch sử gợi ý").
+// Tab có thể CHƯA tồn tại (chưa chạy lần nào) -> trả về [] thay vì để lỗi làm hỏng trang.
+export async function getLichSuGoiY(): Promise<Record<string, string>[]> {
+  try {
+    return await readSheetAsObjects<Record<string, string>>("Lịch sử gợi ý");
+  } catch {
+    return [];
+  }
+}
+
 // ---------- Tiện ích xử lý cột "Tuần" (dạng "dd/MM/yyyy - dd/MM/yyyy") ----------
 
 export function parseWeekStart(tuan: string): Date | null {

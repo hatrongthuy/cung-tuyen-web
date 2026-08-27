@@ -177,3 +177,76 @@ export function averageScoreByWeek(danhGia: DanhGiaCungTuyenRow[]): WeeklyAverag
   }));
   return points.sort((a, b) => (parseWeekStart(a.tuan)?.getTime() ?? 0) - (parseWeekStart(b.tuan)?.getTime() ?? 0));
 }
+
+// ---------- Tồn đọng SO VỚI danh sách gợi ý TUẦN TRƯỚC ----------
+// Đọc "Lịch sử gợi ý" (n8n append mỗi tuần, cột "Ngày lập" dd/MM/yyyy). So danh sách gợi ý
+// của LẦN GẦN NHẤT TRƯỚC ĐÓ với xác nhận (đã gặp) để biết khách nào tuần trước chưa xử lý.
+
+export interface TonDongNV {
+  maNhanVien: string;
+  hoTen: string;
+  tongTuanTruoc: number;
+  khachChuaXuLy: { maKH: string; tenKH: string }[];
+}
+
+export interface TonDongTuanTruoc {
+  ngayTruoc: string;
+  ngayHienTai: string | null;
+  perEmp: TonDongNV[];
+}
+
+function parseNgayLap(v: string): number {
+  const m = (v || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (!m) return 0;
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])).getTime();
+}
+
+export function buildTonDongTuanTruoc(
+  lichSu: Record<string, string>[],
+  xacNhan: XacNhanGoiYRow[]
+): TonDongTuanTruoc | null {
+  if (!lichSu || lichSu.length === 0) return null;
+  const days = [...new Set(lichSu.map((r) => (r["Ngày lập"] || "").trim()).filter(Boolean))].sort(
+    (a, b) => parseNgayLap(b) - parseNgayLap(a)
+  );
+  if (days.length < 2) return null; // cần ít nhất 2 lần chạy mới so được
+  const ngayHienTai = days[0];
+  const ngayTruoc = days[1];
+
+  // Trạng thái xác nhận mới nhất theo (mã NV chuẩn hóa, mã KH).
+  const latest = new Map<string, { status: string; t: number }>();
+  for (const r of xacNhan) {
+    const kh = r["Mã khách hàng"];
+    if (!kh) continue;
+    const key = `${chuanHoaMaNV(r["Mã nhân viên"])}__${kh}`;
+    const m = (r["Thời gian"] || "").match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+    let t = 0;
+    if (m) t = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime();
+    else {
+      const n = Number(r["Thời gian"]);
+      if (Number.isFinite(n) && n > 20000 && n < 100000) t = Math.round((n - 25569) * 86400 * 1000);
+    }
+    const cur = latest.get(key);
+    if (!cur || t >= cur.t) latest.set(key, { status: r["Trạng thái"], t });
+  }
+  const daGap = (maChuan: string, maKH: string) =>
+    latest.get(`${maChuan}__${maKH}`)?.status === "Đồng ý";
+
+  const perEmp: TonDongNV[] = allEmployees().map((emp) => {
+    const maChuan = chuanHoaMaNV(emp.maNhanVien);
+    const khachTuanTruoc = lichSu.filter(
+      (r) => (r["Ngày lập"] || "").trim() === ngayTruoc && chuanHoaMaNV(r["Mã nhân viên"]) === maChuan
+    );
+    const khachChuaXuLy = khachTuanTruoc
+      .filter((r) => !daGap(maChuan, r["Mã khách hàng"]))
+      .map((r) => ({ maKH: r["Mã khách hàng"], tenKH: r["Tên khách hàng"] }));
+    return {
+      maNhanVien: emp.maNhanVien!,
+      hoTen: emp.hoTen,
+      tongTuanTruoc: khachTuanTruoc.length,
+      khachChuaXuLy,
+    };
+  });
+
+  return { ngayTruoc, ngayHienTai, perEmp };
+}

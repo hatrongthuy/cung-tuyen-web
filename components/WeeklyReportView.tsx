@@ -16,7 +16,7 @@ import {
   deltaLabel,
   type SaleTxnLite,
 } from "@/lib/report-utils";
-import type { EmployeeWeekSummary } from "@/lib/aggregate";
+import type { EmployeeWeekSummary, TonDongTuanTruoc } from "@/lib/aggregate";
 
 // Tên cột trong tab "Đánh giá cung tuyến tuần".
 const C = {
@@ -59,6 +59,7 @@ export default function WeeklyReportView({
   salesError,
   summaries = [],
   currentWeekLabel,
+  tonDongTuanTruoc,
 }: {
   rows: Row[];
   teamName: string;
@@ -66,6 +67,7 @@ export default function WeeklyReportView({
   salesError?: string | null;
   summaries?: EmployeeWeekSummary[];
   currentWeekLabel?: string | null;
+  tonDongTuanTruoc?: TonDongTuanTruoc | null;
 }) {
   const weeks = useMemo(() => distinctWeeksDesc(rows.map((r) => r[C.tuan])), [rows]);
   const [week, setWeek] = useState<string>(weeks[0] ?? "");
@@ -164,6 +166,7 @@ export default function WeeklyReportView({
   }, [summaries, laTuanHienTai]);
 
   const [openTonDong, setOpenTonDong] = useState<string | null>(null);
+  const [openPrev, setOpenPrev] = useState<string | null>(null);
 
   // ----- Gemini -----
   const [aiLoading, setAiLoading] = useState(false);
@@ -190,6 +193,14 @@ export default function WeeklyReportView({
       for (const s of summaries) {
         const chuaGap = s.soGoiY - s.soDaXacNhan;
         lines.push(`- ${s.hoTen}: đã đồng ý/gặp ${s.soDongY}/${s.soGoiY}, đã phản hồi ${s.soDaXacNhan}/${s.soGoiY}, còn tồn đọng (chưa phản hồi) ${chuaGap}.`);
+      }
+    }
+    if (tonDongTuanTruoc) {
+      lines.push(`TỒN ĐỌNG TỪ TUẦN TRƯỚC (gợi ý ngày ${tonDongTuanTruoc.ngayTruoc}) — khách chưa xử lý:`);
+      for (const e of tonDongTuanTruoc.perEmp) {
+        if (e.khachChuaXuLy.length) {
+          lines.push(`- ${e.hoTen}: ${e.khachChuaXuLy.length} khách (${e.khachChuaXuLy.map((k) => k.tenKH).join(", ")}).`);
+        }
       }
     }
     return lines.join("\n");
@@ -355,6 +366,64 @@ export default function WeeklyReportView({
                                 <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
                                   {chuaXuLy.map((k) => (
                                     <li key={k.maKH} className="text-xs text-slate-600">• #{k.thuTuUuTien} {k.tenKH} <span className="text-slate-400">({k.tinh})</span></li>
+                                  ))}
+                                </ul>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+          {/* Tồn đọng so với danh sách gợi ý TUẦN TRƯỚC (từ lịch sử n8n) */}
+          {tonDongTuanTruoc && (
+            <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-slate-900">
+                Tồn đọng từ danh sách gợi ý tuần trước (lập ngày {tonDongTuanTruoc.ngayTruoc})
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Khách đã được gợi ý ở tuần trước nhưng đến nay VẪN CHƯA xác nhận &quot;đã gặp&quot; — cần xử lý dứt điểm.
+              </p>
+              <div className="mt-3 overflow-x-auto">
+                <table className="min-w-full text-left text-xs">
+                  <thead className="text-slate-500">
+                    <tr className="border-b border-amber-200">
+                      <th className="py-2 pr-3 font-medium">Nhân viên</th>
+                      <th className="py-2 pr-3 text-right font-medium">Gợi ý tuần trước</th>
+                      <th className="py-2 pr-3 text-right font-medium">Chưa xử lý</th>
+                      <th className="py-2 pr-3 font-medium"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tonDongTuanTruoc.perEmp.map((e) => {
+                      const open = openPrev === e.maNhanVien;
+                      return (
+                        <Fragment key={e.maNhanVien}>
+                          <tr className="border-b border-amber-100">
+                            <td className="py-2 pr-3 font-medium text-slate-800">{e.hoTen}</td>
+                            <td className="py-2 pr-3 text-right text-slate-700">{e.tongTuanTruoc}</td>
+                            <td className={`py-2 pr-3 text-right font-semibold ${e.khachChuaXuLy.length ? "text-red-600" : "text-emerald-600"}`}>
+                              {e.khachChuaXuLy.length}
+                            </td>
+                            <td className="py-2 pr-3 text-right">
+                              {e.khachChuaXuLy.length > 0 && (
+                                <button onClick={() => setOpenPrev(open ? null : e.maNhanVien)} className="no-print text-xs text-blue-600 hover:underline">
+                                  {open ? "Ẩn" : "Xem danh sách"}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                          {open && (
+                            <tr className="border-b border-amber-100">
+                              <td colSpan={4} className="bg-white/70 px-3 py-2">
+                                <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                                  {e.khachChuaXuLy.map((k) => (
+                                    <li key={k.maKH} className="text-xs text-slate-600">• {k.tenKH} <span className="text-slate-400">({k.maKH})</span></li>
                                   ))}
                                 </ul>
                               </td>
