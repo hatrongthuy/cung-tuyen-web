@@ -22,8 +22,10 @@ interface Props {
   rows: Record<string, string>[];
   error?: string | null;
   teamName: string;
-  /** Doanh số THỰC HIỆN (tổng, từ file Sale) theo mã nhân viên cho tháng đang xét. */
-  actualByCode?: Record<string, number>;
+  /** Doanh số THỰC HIỆN kê đơn (từ file Sale) theo mã nhân viên cho tháng đang xét. */
+  keDonByCode?: Record<string, number>;
+  /** Doanh số THỰC HIỆN thầu (từ file Sale) theo mã nhân viên cho tháng đang xét. */
+  thauByCode?: Record<string, number>;
   /** Nhãn tháng của số thực hiện, ví dụ "08/2026". */
   actualMonthLabel?: string;
   /** Lỗi khi đọc file Sale (nếu có). */
@@ -45,7 +47,8 @@ export default function DoanhSoView({
   rows,
   error,
   teamName,
-  actualByCode = {},
+  keDonByCode = {},
+  thauByCode = {},
   actualMonthLabel,
   salesError,
 }: Props) {
@@ -76,12 +79,10 @@ export default function DoanhSoView({
     return nvkdRows.map((r) => {
       const ma = cols.maNV ? normalizeMaNV(r[cols.maNV]) : "";
       const kdKH = cols.kdKH ? parseMoney(r[cols.kdKH]) : 0;
-      // Doanh số THỰC HIỆN lấy từ file Sale (tổng doanh thu tháng theo mã NV). Nếu không có,
-      // dùng tạm cột "Thực hiện" trong sheet KPI (hiện thường trống).
-      const actual = ma in actualByCode ? actualByCode[ma] : undefined;
-      const kdTH = actual ?? (cols.kdTH ? parseMoney(r[cols.kdTH]) : 0);
       const thauKH = cols.thauKH ? parseMoney(r[cols.thauKH]) : 0;
-      const thauTH = cols.thauTH ? parseMoney(r[cols.thauTH]) : 0;
+      // Doanh số THỰC HIỆN lấy từ file Sale, tách riêng kê đơn / thầu theo mã NV.
+      const kdTH = ma && ma in keDonByCode ? keDonByCode[ma] : cols.kdTH ? parseMoney(r[cols.kdTH]) : 0;
+      const thauTH = ma && ma in thauByCode ? thauByCode[ma] : cols.thauTH ? parseMoney(r[cols.thauTH]) : 0;
       return {
         ten: (cols.ten ? r[cols.ten] : "") || "(không tên)",
         diaBan: cols.diaBan ? r[cols.diaBan] : "",
@@ -92,7 +93,7 @@ export default function DoanhSoView({
         tyLe: pct(kdTH, kdKH),
       };
     });
-  }, [nvkdRows, cols, actualByCode]);
+  }, [nvkdRows, cols, keDonByCode, thauByCode]);
 
   const tong = useMemo(() => {
     return perEmp.reduce(
@@ -161,10 +162,10 @@ export default function DoanhSoView({
       {perEmp.length > 0 && (
         <>
           <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard label="KD kế hoạch (tháng)" value={formatShortVnd(tong.kdKH)} hint={`${formatVnd(tong.kdKH)} đ`} accentColor="#2a78d6" />
-            <StatCard label="KD thực hiện (tháng)" value={formatShortVnd(tong.kdTH)} hint={`${formatVnd(tong.kdTH)} đ`} accentColor="#1baf7a" />
-            <StatCard label="Tỷ lệ hoàn thành KD" value={`${Math.round(pct(tong.kdTH, tong.kdKH))}%`} accentColor="#eda100" />
-            <StatCard label="Số nhân viên" value={perEmp.length} accentColor="#eb6834" />
+            <StatCard label="Kê đơn — Kế hoạch" value={formatShortVnd(tong.kdKH)} hint={`${formatVnd(tong.kdKH)} đ`} accentColor="#2a78d6" />
+            <StatCard label="Kê đơn — Thực hiện" value={formatShortVnd(tong.kdTH)} hint={`Đạt ${Math.round(pct(tong.kdTH, tong.kdKH))}%`} accentColor="#1baf7a" />
+            <StatCard label="Thầu — Kế hoạch" value={formatShortVnd(tong.thauKH)} hint={`${formatVnd(tong.thauKH)} đ`} accentColor="#eda100" />
+            <StatCard label="Thầu — Thực hiện" value={formatShortVnd(tong.thauTH)} hint={`Đạt ${Math.round(pct(tong.thauTH, tong.thauKH))}%`} accentColor="#eb6834" />
           </section>
 
           {salesError && (
@@ -180,8 +181,8 @@ export default function DoanhSoView({
           )}
           {!salesError && !chuaCoThucHien && (
             <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
-              &quot;Thực hiện&quot; là tổng doanh thu thực tế{actualMonthLabel ? ` tháng ${actualMonthLabel}` : ""} từ file Sale
-              (gồm mọi mặt hàng), so với &quot;Kế hoạch&quot; kê đơn trong file KPI.
+              &quot;Thực hiện&quot; là doanh thu thực tế{actualMonthLabel ? ` tháng ${actualMonthLabel}` : ""} từ file Sale,
+              đã tách riêng <b>kê đơn</b> (bệnh viện kê đơn, phòng mạch) và <b>thầu</b> theo cột &quot;Nhóm khách hàng&quot;.
             </p>
           )}
 

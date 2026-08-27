@@ -14,11 +14,17 @@ export default async function DoanhSoPage() {
 
   const [plan, sales] = await Promise.all([getKpiTabData("doanh-so", TEN_NHOM), getTeamSales()]);
 
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  const actualByCode = salesByMonth(sales.txns, y, m);
-  const actualMonthLabel = `${String(m).padStart(2, "0")}/${y}`;
+  // Lấy tháng mới nhất có dữ liệu Sale (tránh phụ thuộc đồng hồ máy chủ).
+  const latest = sales.txns.reduce(
+    (b, t) => {
+      const k = t.nam * 12 + t.thang;
+      return k > b.k ? { k, nam: t.nam, thang: t.thang } : b;
+    },
+    { k: 0, nam: new Date().getFullYear(), thang: new Date().getMonth() + 1 }
+  );
+  const keDonByCode = salesByMonth(sales.txns, latest.nam, latest.thang, "keDon");
+  const thauByCode = salesByMonth(sales.txns, latest.nam, latest.thang, "thau");
+  const actualMonthLabel = `${String(latest.thang).padStart(2, "0")}/${latest.nam}`;
 
   return (
     <>
@@ -29,7 +35,8 @@ export default async function DoanhSoPage() {
           rows={plan.rows}
           error={plan.error}
           teamName={TEN_NHOM}
-          actualByCode={actualByCode}
+          keDonByCode={keDonByCode}
+          thauByCode={thauByCode}
           actualMonthLabel={actualMonthLabel}
           salesError={sales.error}
         />

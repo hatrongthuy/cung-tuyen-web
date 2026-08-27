@@ -57,8 +57,16 @@ export default function MonthlyReportView({
     const [mm, yy] = (month || "").split("/").map(Number);
     return [mm || 0, yy || 0];
   }, [month]);
-  const actualByMa = useMemo(() => salesByMonth(salesTxns, namSel, thangSel), [salesTxns, namSel, thangSel]);
-  const actualTotal = useMemo(() => sumValues(actualByMa), [actualByMa]);
+  const actualKeDonByMa = useMemo(() => salesByMonth(salesTxns, namSel, thangSel, "keDon"), [salesTxns, namSel, thangSel]);
+  const actualThauByMa = useMemo(() => salesByMonth(salesTxns, namSel, thangSel, "thau"), [salesTxns, namSel, thangSel]);
+  const actualByMa = useMemo(() => {
+    const o: Record<string, number> = { ...actualKeDonByMa };
+    for (const k in actualThauByMa) o[k] = (o[k] ?? 0) + actualThauByMa[k];
+    return o;
+  }, [actualKeDonByMa, actualThauByMa]);
+  const actualKeDon = useMemo(() => sumValues(actualKeDonByMa), [actualKeDonByMa]);
+  const actualThau = useMemo(() => sumValues(actualThauByMa), [actualThauByMa]);
+  const actualTotal = actualKeDon + actualThau;
 
   // ----- Cung tuyến trong tháng: gộp các tuần thuộc tháng đã chọn theo nhân viên -----
   const cungTuyen = useMemo(() => {
@@ -90,13 +98,13 @@ export default function MonthlyReportView({
   const ds = useMemo(() => {
     const cols = doanhSo.columns;
     const viTri = findColumn(cols, ["vị trí"]) ?? cols[0] ?? "";
-    const kdKH = findColumn(cols, ["kê đơn", "kế hoạch"]);
-    const kdTH = findColumn(cols, ["kê đơn", "thực hiện"]);
+    const kdKHcol = findColumn(cols, ["kê đơn", "kế hoạch"]);
+    const thauKHcol = findColumn(cols, ["thầu", "kế hoạch"]) ?? findColumn(cols, ["thầu", "hoạch"]);
     const nvkd = viTri ? doanhSo.rows.filter((r) => (r[viTri] ?? "").trim().toUpperCase() === "NVKD") : doanhSo.rows;
-    const rows = (nvkd.length ? nvkd : doanhSo.rows);
-    const KH = rows.reduce((s, r) => s + (kdKH ? parseMoney(r[kdKH]) : 0), 0);
-    const TH = rows.reduce((s, r) => s + (kdTH ? parseMoney(r[kdTH]) : 0), 0);
-    return { KH, TH };
+    const rows = nvkd.length ? nvkd : doanhSo.rows;
+    const keDonKH = rows.reduce((s, r) => s + (kdKHcol ? parseMoney(r[kdKHcol]) : 0), 0);
+    const thauKH = rows.reduce((s, r) => s + (thauKHcol ? parseMoney(r[thauKHcol]) : 0), 0);
+    return { keDonKH, thauKH };
   }, [doanhSo]);
 
   // ----- KPIs tháng: tổng điểm KPIs theo nhân viên -----
@@ -120,9 +128,10 @@ export default function MonthlyReportView({
       ["TỔNG", Math.round(actualTotal), "", tongCT.gap, tongCT.phanHoi, tongCT.sale, tongCT.diem],
       [],
       ["B. DOANH SỐ — KẾ HOẠCH vs THỰC HIỆN"],
-      ["Kế hoạch (kê đơn, từ file KPI)", Math.round(ds.KH)],
-      ["Thực hiện (tổng, từ file Sale)", Math.round(actualTotal)],
-      ["Tỷ lệ hoàn thành (%)", Math.round(pct(actualTotal, ds.KH))],
+      ["", "Kế hoạch", "Thực hiện", "Tỷ lệ (%)"],
+      ["Kê đơn", Math.round(ds.keDonKH), Math.round(actualKeDon), Math.round(pct(actualKeDon, ds.keDonKH))],
+      ["Thầu", Math.round(ds.thauKH), Math.round(actualThau), Math.round(pct(actualThau, ds.thauKH))],
+      ["Tổng", Math.round(ds.keDonKH + ds.thauKH), Math.round(actualTotal), Math.round(pct(actualTotal, ds.keDonKH + ds.thauKH))],
     ];
     if (kpiRows.length) {
       rows.push([], ["C. TỔNG ĐIỂM KPIs THEO NHÂN VIÊN"], ["Nhân viên", "Tổng điểm KPIs"]);
@@ -164,7 +173,7 @@ export default function MonthlyReportView({
 
           {/* A. Cung tuyến tháng */}
           <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <StatCard label="Doanh số tháng" value={formatShortVnd(actualTotal)} hint={`${formatVnd(actualTotal)} đ`} accentColor="#1baf7a" />
+            <StatCard label="Doanh số tháng" value={formatShortVnd(actualTotal)} hint={`Kê đơn ${formatShortVnd(actualKeDon)} • Thầu ${formatShortVnd(actualThau)}`} accentColor="#1baf7a" />
             <StatCard label="Lượt gặp khách" value={tongCT.gap} accentColor="#2a78d6" />
             <StatCard label="Phản hồi hàng hóa" value={tongCT.phanHoi} accentColor="#4a3aa7" />
             <StatCard label="Phát sinh sale" value={tongCT.sale} accentColor="#eda100" />
@@ -216,17 +225,18 @@ export default function MonthlyReportView({
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-900">B. Doanh số — Kế hoạch vs Thực hiện</h2>
             <p className="mt-0.5 text-xs text-slate-400">
-              Kế hoạch: file KPI (tab &quot;Doanh so T8&quot;). Thực hiện: tổng doanh thu tháng {month} từ file Sale.
+              Kế hoạch: file KPI (tab &quot;Doanh so T8&quot;). Thực hiện: doanh thu tháng {month} từ file Sale, tách kê đơn / thầu.
             </p>
             {salesError && (
               <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
                 Không đọc được doanh số thực hiện từ file Sale: {salesError}
               </p>
             )}
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <StatCard label="Kế hoạch (kê đơn)" value={formatShortVnd(ds.KH)} hint={`${formatVnd(ds.KH)} đ`} accentColor="#2a78d6" />
-              <StatCard label="Thực hiện (tổng)" value={formatShortVnd(actualTotal)} hint={`${formatVnd(actualTotal)} đ`} accentColor="#1baf7a" />
-              <StatCard label="Tỷ lệ hoàn thành" value={`${Math.round(pct(actualTotal, ds.KH))}%`} accentColor="#eda100" />
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <StatCard label="Kê đơn — Kế hoạch" value={formatShortVnd(ds.keDonKH)} hint={`${formatVnd(ds.keDonKH)} đ`} accentColor="#2a78d6" />
+              <StatCard label="Kê đơn — Thực hiện" value={formatShortVnd(actualKeDon)} hint={`Đạt ${Math.round(pct(actualKeDon, ds.keDonKH))}%`} accentColor="#1baf7a" />
+              <StatCard label="Thầu — Kế hoạch" value={formatShortVnd(ds.thauKH)} hint={`${formatVnd(ds.thauKH)} đ`} accentColor="#eda100" />
+              <StatCard label="Thầu — Thực hiện" value={formatShortVnd(actualThau)} hint={`Đạt ${Math.round(pct(actualThau, ds.thauKH))}%`} accentColor="#eb6834" />
             </div>
           </section>
 

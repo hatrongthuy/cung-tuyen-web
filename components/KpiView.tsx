@@ -19,7 +19,7 @@ export interface KpiTabDataClient {
 export interface KpiSalesSummary {
   monthLabel: string;
   error?: string | null;
-  rows: { ten: string; doanhThu: number }[];
+  rows: { ten: string; keDon: number; thau: number }[];
 }
 
 export default function KpiView({
@@ -27,14 +27,17 @@ export default function KpiView({
   dataByTab,
   error,
   salesSummary,
-  actualByCode,
+  keDonByCode,
+  thauByCode,
 }: {
   tabs: KpiTabMeta[];
   dataByTab: Record<string, KpiTabDataClient>;
   error?: string | null;
   salesSummary?: KpiSalesSummary;
-  /** Doanh số thực hiện theo mã NV (tháng này) — dùng để điền cột "Thực hiện" trong tab Doanh số. */
-  actualByCode?: Record<string, number>;
+  /** Doanh số thực hiện kê đơn theo mã NV — điền cột "kê đơn (Thực hiện)" trong tab Doanh số. */
+  keDonByCode?: Record<string, number>;
+  /** Doanh số thực hiện thầu theo mã NV — điền cột "DS thầu Thực hiện" trong tab Doanh số. */
+  thauByCode?: Record<string, number>;
 }) {
   const router = useRouter();
   const [active, setActive] = useState<string>(tabs[0]?.key ?? "");
@@ -46,17 +49,19 @@ export default function KpiView({
   // Trong tab "Doanh số" (Doanh so T8): điền cột "kê đơn (Thực hiện)" bằng doanh số thực hiện
   // thật (từ file Sale), khớp theo mã nhân viên — thay cho số 0 trống trong sheet KPI.
   const dsOverride = useMemo(() => {
-    if (active !== "doanh-so" || !actualByCode) return null;
-    const thCol = current.columns.find((c) => /kê đơn/i.test(c) && /thực hiện/i.test(c));
+    if (active !== "doanh-so") return null;
     const maCol = current.columns.find((c) => /mã nv|mã nhân/i.test(c));
-    if (!thCol || !maCol) return null;
-    return { thCol, maCol };
-  }, [active, current.columns, actualByCode]);
+    if (!maCol) return null;
+    const keDonCol = current.columns.find((c) => /kê đơn/i.test(c) && /thực hiện/i.test(c));
+    const thauCol = current.columns.find((c) => /thầu/i.test(c) && /thực hiện/i.test(c));
+    return { maCol, keDonCol, thauCol };
+  }, [active, current.columns]);
 
   function cellValue(row: Record<string, string>, c: string): string {
-    if (dsOverride && actualByCode && c === dsOverride.thCol) {
+    if (dsOverride) {
       const ma = normalizeMaNV(row[dsOverride.maCol]);
-      if (ma in actualByCode) return formatVnd(actualByCode[ma]);
+      if (keDonByCode && c === dsOverride.keDonCol && ma in keDonByCode) return formatVnd(keDonByCode[ma]);
+      if (thauByCode && c === dsOverride.thauCol && ma in thauByCode) return formatVnd(thauByCode[ma]);
     }
     return row[c] ?? "";
   }
@@ -101,17 +106,22 @@ export default function KpiView({
               <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 <StatCard
                   label="Tổng nhóm"
-                  value={formatShortVnd(salesSummary.rows.reduce((s, r) => s + r.doanhThu, 0))}
-                  hint={`${formatVnd(salesSummary.rows.reduce((s, r) => s + r.doanhThu, 0))} đ`}
+                  value={formatShortVnd(salesSummary.rows.reduce((s, r) => s + r.keDon + r.thau, 0))}
+                  hint={`Kê đơn ${formatShortVnd(salesSummary.rows.reduce((s, r) => s + r.keDon, 0))} • Thầu ${formatShortVnd(salesSummary.rows.reduce((s, r) => s + r.thau, 0))}`}
                   accentColor="#1baf7a"
                 />
                 {salesSummary.rows.map((r, i) => (
-                  <StatCard key={i} label={r.ten} value={formatShortVnd(r.doanhThu)} hint={`${formatVnd(r.doanhThu)} đ`} />
+                  <StatCard
+                    key={i}
+                    label={r.ten}
+                    value={formatShortVnd(r.keDon + r.thau)}
+                    hint={`KĐ ${formatShortVnd(r.keDon)} • Thầu ${formatShortVnd(r.thau)}`}
+                  />
                 ))}
               </div>
               <p className="mt-2 text-xs text-slate-400">
-                Đây là doanh số thực hiện thực tế. Các bảng điểm KPI bên dưới là số liệu do file KPI của
-                công ty tính; web chỉ hiển thị.
+                Doanh số thực hiện thực tế, tách kê đơn (KĐ) và thầu. Các bảng điểm KPI bên dưới là số liệu
+                do file KPI của công ty tính; web chỉ hiển thị (đã điền cột Thực hiện trong tab Doanh số).
               </p>
             </>
           )}

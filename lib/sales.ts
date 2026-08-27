@@ -49,6 +49,9 @@ function toDateMs(v: unknown): number | null {
   return Number.isNaN(d.getTime()) ? null : d.getTime();
 }
 
+/** Kênh bán: "thau" = doanh số thầu; "keDon" = doanh số kê đơn (bệnh viện kê đơn, phòng mạch...). */
+export type Kenh = "thau" | "keDon";
+
 /** 1 giao dịch bán hàng của nhân viên trong nhóm (đã rút gọn để truyền xuống client). */
 export interface SaleTxn {
   ma: string; // mã nhân viên đã chuẩn hóa
@@ -57,6 +60,7 @@ export interface SaleTxn {
   nam: number;
   thang: number;
   dt: number; // doanh thu
+  kenh: Kenh; // phân loại thầu / kê đơn theo cột "Nhóm khách hàng"
 }
 
 export interface SalesResult {
@@ -102,6 +106,7 @@ export async function getTeamSales(): Promise<SalesResult> {
   const iThang = findCol("Tháng");
   const iNam = findCol("Năm");
   const iDT = findCol("Doanh thu");
+  const iNhom = findCol("Nhóm khách hàng");
   if (iMa < 0 || iDT < 0) {
     return { txns: [], error: `Thiếu cột Mã nhân viên hoặc Doanh thu trong tab "${SALES_TAB}".` };
   }
@@ -116,6 +121,9 @@ export async function getTeamSales(): Promise<SalesResult> {
     const dateMs = iNgay >= 0 ? toDateMs(r[iNgay]) : null;
     const nam = iNam >= 0 ? Number(r[iNam]) || (dateMs ? new Date(dateMs).getFullYear() : 0) : 0;
     const thang = iThang >= 0 ? Number(r[iThang]) || (dateMs ? new Date(dateMs).getMonth() + 1 : 0) : 0;
+    // Phân loại kênh: "Nhóm khách hàng" chứa chữ "thầu" => doanh số thầu; còn lại => kê đơn.
+    const nhom = iNhom >= 0 ? String(r[iNhom] ?? "").toLowerCase() : "";
+    const kenh: Kenh = nhom.includes("thầu") ? "thau" : "keDon";
     txns.push({
       ma,
       ten: String(r[iTen] ?? ""),
@@ -123,6 +131,7 @@ export async function getTeamSales(): Promise<SalesResult> {
       nam,
       thang,
       dt: parseMoney(r[iDT]),
+      kenh,
     });
   }
   return { txns, error: null };

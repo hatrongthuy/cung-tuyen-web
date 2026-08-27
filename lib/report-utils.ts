@@ -66,28 +66,43 @@ export function findColumn(columns: string[], keywords: string[]): string | null
 
 // ---------- Cộng dồn doanh số THỰC HIỆN (từ file Sale) theo nhân viên ----------
 
+export type Kenh = "thau" | "keDon";
+
 export interface SaleTxnLite {
   ma: string;
   dateMs: number | null;
   nam: number;
   thang: number;
   dt: number;
+  kenh?: Kenh;
 }
 
-/** Tổng doanh thu theo mã nhân viên cho 1 tháng (nam, thang). */
-export function salesByMonth(txns: SaleTxnLite[], nam: number, thang: number): Record<string, number> {
+/** Tổng doanh thu theo mã nhân viên cho 1 tháng (nam, thang). Nếu truyền `kenh` thì chỉ tính kênh đó. */
+export function salesByMonth(
+  txns: SaleTxnLite[],
+  nam: number,
+  thang: number,
+  kenh?: Kenh
+): Record<string, number> {
   const out: Record<string, number> = {};
   for (const t of txns) {
-    if (t.nam === nam && t.thang === thang) out[t.ma] = (out[t.ma] ?? 0) + t.dt;
+    if (t.nam === nam && t.thang === thang && (!kenh || t.kenh === kenh)) {
+      out[t.ma] = (out[t.ma] ?? 0) + t.dt;
+    }
   }
   return out;
 }
 
-/** Tổng doanh thu theo mã nhân viên cho 1 khoảng ngày [startMs, endMs] (bao gồm 2 đầu mút). */
-export function salesByRange(txns: SaleTxnLite[], startMs: number, endMs: number): Record<string, number> {
+/** Tổng doanh thu theo mã nhân viên cho 1 khoảng ngày [startMs, endMs]. Lọc theo `kenh` nếu có. */
+export function salesByRange(
+  txns: SaleTxnLite[],
+  startMs: number,
+  endMs: number,
+  kenh?: Kenh
+): Record<string, number> {
   const out: Record<string, number> = {};
   for (const t of txns) {
-    if (t.dateMs != null && t.dateMs >= startMs && t.dateMs <= endMs) {
+    if (t.dateMs != null && t.dateMs >= startMs && t.dateMs <= endMs && (!kenh || t.kenh === kenh)) {
       out[t.ma] = (out[t.ma] ?? 0) + t.dt;
     }
   }

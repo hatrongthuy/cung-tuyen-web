@@ -19,25 +19,41 @@ export default async function KpiPage() {
   ]);
   const tabs = KPI_TABS.map((t) => ({ key: t.key, label: t.label }));
 
-  // Doanh số THỰC HIỆN tháng hiện tại (từ file Sale), theo từng nhân viên trong nhóm.
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  const actualByCode = salesByMonth(sales.txns, y, m);
+  // Doanh số THỰC HIỆN (từ file Sale) — lấy tháng mới nhất có dữ liệu, tách kê đơn / thầu.
+  const latest = sales.txns.reduce(
+    (b, t) => {
+      const k = t.nam * 12 + t.thang;
+      return k > b.k ? { k, nam: t.nam, thang: t.thang } : b;
+    },
+    { k: 0, nam: new Date().getFullYear(), thang: new Date().getMonth() + 1 }
+  );
+  const keDonByCode = salesByMonth(sales.txns, latest.nam, latest.thang, "keDon");
+  const thauByCode = salesByMonth(sales.txns, latest.nam, latest.thang, "thau");
   const salesSummary = {
-    monthLabel: `${String(m).padStart(2, "0")}/${y}`,
+    monthLabel: `${String(latest.thang).padStart(2, "0")}/${latest.nam}`,
     error: sales.error,
-    rows: allEmployees().map((e) => ({
-      ten: e.hoTen,
-      doanhThu: actualByCode[normalizeMaNV(e.maNhanVien)] ?? 0,
-    })),
+    rows: allEmployees().map((e) => {
+      const ma = normalizeMaNV(e.maNhanVien);
+      return {
+        ten: e.hoTen,
+        keDon: keDonByCode[ma] ?? 0,
+        thau: thauByCode[ma] ?? 0,
+      };
+    }),
   };
 
   return (
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" active="kpi" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <KpiView tabs={tabs} dataByTab={dataByTab} error={error} salesSummary={salesSummary} actualByCode={actualByCode} />
+        <KpiView
+          tabs={tabs}
+          dataByTab={dataByTab}
+          error={error}
+          salesSummary={salesSummary}
+          keDonByCode={keDonByCode}
+          thauByCode={thauByCode}
+        />
       </main>
     </>
   );

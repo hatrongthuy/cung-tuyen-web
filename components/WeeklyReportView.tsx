@@ -45,15 +45,18 @@ export default function WeeklyReportView({
 
   const weekRows = useMemo(() => rows.filter((r) => r[C.tuan] === week), [rows, week]);
 
-  // Doanh số thực hiện theo mã NV trong khoảng ngày của tuần đã chọn.
-  const revByMa = useMemo(() => {
+  // Doanh số thực hiện (kê đơn / thầu) theo mã NV trong khoảng ngày của tuần đã chọn.
+  const { keDonByMa, thauByMa } = useMemo(() => {
     const start = parseWeekStart(week);
-    if (!start) return {} as Record<string, number>;
+    if (!start) return { keDonByMa: {} as Record<string, number>, thauByMa: {} as Record<string, number> };
     const startMs = start.getTime();
     const end = new Date(start);
     end.setDate(end.getDate() + 6);
     end.setHours(23, 59, 59, 999);
-    return salesByRange(salesTxns, startMs, end.getTime());
+    return {
+      keDonByMa: salesByRange(salesTxns, startMs, end.getTime(), "keDon"),
+      thauByMa: salesByRange(salesTxns, startMs, end.getTime(), "thau"),
+    };
   }, [salesTxns, week]);
 
   const perEmp = useMemo(
@@ -61,17 +64,21 @@ export default function WeeklyReportView({
       weekRows
         .map((r) => {
           const ma = normalizeMaNV(r[C.ma]);
+          const keDon = keDonByMa[ma] ?? 0;
+          const thau = thauByMa[ma] ?? 0;
           return {
             ten: r[C.ten] || r[C.ma] || "(không tên)",
             gap: parseInt0(r[C.gap]),
             phanHoi: parseInt0(r[C.phanHoi]),
             sale: parseInt0(r[C.sale]),
             diem: parseInt0(r[C.diem]),
-            doanhThu: revByMa[ma] ?? 0,
+            keDon,
+            thau,
+            doanhThu: keDon + thau,
           };
         })
-        .sort((a, b) => b.diem - a.diem),
-    [weekRows, revByMa]
+        .sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem),
+    [weekRows, keDonByMa, thauByMa]
   );
 
   const tong = useMemo(
@@ -82,9 +89,11 @@ export default function WeeklyReportView({
           phanHoi: a.phanHoi + e.phanHoi,
           sale: a.sale + e.sale,
           diem: a.diem + e.diem,
+          keDon: a.keDon + e.keDon,
+          thau: a.thau + e.thau,
           doanhThu: a.doanhThu + e.doanhThu,
         }),
-        { gap: 0, phanHoi: 0, sale: 0, diem: 0, doanhThu: 0 }
+        { gap: 0, phanHoi: 0, sale: 0, diem: 0, keDon: 0, thau: 0, doanhThu: 0 }
       ),
     [perEmp]
   );
@@ -103,9 +112,9 @@ export default function WeeklyReportView({
   }, [rows]);
 
   function exportCsv() {
-    const header = ["Nhân viên", "Doanh số thực hiện", "Số lượt gặp khách", "Phản hồi hàng hóa", "Phát sinh sale", "Tổng điểm cung tuyến"];
-    const body = perEmp.map((e) => [e.ten, Math.round(e.doanhThu), e.gap, e.phanHoi, e.sale, e.diem]);
-    const footer = ["TỔNG", Math.round(tong.doanhThu), tong.gap, tong.phanHoi, tong.sale, tong.diem];
+    const header = ["Nhân viên", "DS kê đơn", "DS thầu", "Số lượt gặp khách", "Phản hồi hàng hóa", "Phát sinh sale", "Tổng điểm cung tuyến"];
+    const body = perEmp.map((e) => [e.ten, Math.round(e.keDon), Math.round(e.thau), e.gap, e.phanHoi, e.sale, e.diem]);
+    const footer = ["TỔNG", Math.round(tong.keDon), Math.round(tong.thau), tong.gap, tong.phanHoi, tong.sale, tong.diem];
     downloadCsv(`bao-cao-tuan_${teamName}_${week.replace(/[^\d]/g, "-")}`, [
       [`Báo cáo tuần — Nhóm ${teamName}`],
       [`Tuần: ${week}`],
@@ -151,7 +160,7 @@ export default function WeeklyReportView({
           </div>
 
           <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <StatCard label="Doanh số tuần" value={formatShortVnd(tong.doanhThu)} hint={`${formatVnd(tong.doanhThu)} đ`} accentColor="#1baf7a" />
+            <StatCard label="Doanh số tuần" value={formatShortVnd(tong.doanhThu)} hint={`Kê đơn ${formatShortVnd(tong.keDon)} • Thầu ${formatShortVnd(tong.thau)}`} accentColor="#1baf7a" />
             <StatCard label="Lượt gặp khách" value={tong.gap} accentColor="#2a78d6" />
             <StatCard label="Phản hồi hàng hóa" value={tong.phanHoi} accentColor="#4a3aa7" />
             <StatCard label="Phát sinh sale" value={tong.sale} accentColor="#eda100" />
@@ -185,7 +194,8 @@ export default function WeeklyReportView({
                 <thead className="text-slate-500">
                   <tr className="border-b border-slate-200">
                     <th className="py-2 pr-3 font-medium">Nhân viên</th>
-                    <th className="py-2 pr-3 text-right font-medium">Doanh số</th>
+                    <th className="py-2 pr-3 text-right font-medium">DS kê đơn</th>
+                    <th className="py-2 pr-3 text-right font-medium">DS thầu</th>
                     <th className="py-2 pr-3 text-right font-medium">Gặp khách</th>
                     <th className="py-2 pr-3 text-right font-medium">Phản hồi hàng hóa</th>
                     <th className="py-2 pr-3 text-right font-medium">Phát sinh sale</th>
@@ -196,7 +206,8 @@ export default function WeeklyReportView({
                   {perEmp.map((e, i) => (
                     <tr key={i} className="border-b border-slate-100">
                       <td className="py-2 pr-3 font-medium text-slate-800">{e.ten}</td>
-                      <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.doanhThu)}</td>
+                      <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.keDon)}</td>
+                      <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.thau)}</td>
                       <td className="py-2 pr-3 text-right text-slate-700">{e.gap}</td>
                       <td className="py-2 pr-3 text-right text-slate-700">{e.phanHoi}</td>
                       <td className="py-2 pr-3 text-right text-slate-700">{e.sale}</td>
@@ -205,7 +216,8 @@ export default function WeeklyReportView({
                   ))}
                   <tr className="border-t-2 border-slate-300 font-semibold">
                     <td className="py-2 pr-3 text-slate-900">TỔNG</td>
-                    <td className="py-2 pr-3 text-right text-slate-900">{formatVnd(tong.doanhThu)}</td>
+                    <td className="py-2 pr-3 text-right text-slate-900">{formatVnd(tong.keDon)}</td>
+                    <td className="py-2 pr-3 text-right text-slate-900">{formatVnd(tong.thau)}</td>
                     <td className="py-2 pr-3 text-right text-slate-900">{tong.gap}</td>
                     <td className="py-2 pr-3 text-right text-slate-900">{tong.phanHoi}</td>
                     <td className="py-2 pr-3 text-right text-slate-900">{tong.sale}</td>
