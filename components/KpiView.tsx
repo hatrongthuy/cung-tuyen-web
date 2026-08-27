@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import StatCard from "@/components/StatCard";
 import { formatVnd, formatShortVnd } from "@/lib/format";
+import { normalizeMaNV } from "@/lib/report-utils";
 
 export interface KpiTabMeta {
   key: string;
@@ -26,11 +27,14 @@ export default function KpiView({
   dataByTab,
   error,
   salesSummary,
+  actualByCode,
 }: {
   tabs: KpiTabMeta[];
   dataByTab: Record<string, KpiTabDataClient>;
   error?: string | null;
   salesSummary?: KpiSalesSummary;
+  /** Doanh số thực hiện theo mã NV (tháng này) — dùng để điền cột "Thực hiện" trong tab Doanh số. */
+  actualByCode?: Record<string, number>;
 }) {
   const router = useRouter();
   const [active, setActive] = useState<string>(tabs[0]?.key ?? "");
@@ -38,6 +42,24 @@ export default function KpiView({
   const [search, setSearch] = useState("");
 
   const current = dataByTab[active] ?? { columns: [], rows: [] };
+
+  // Trong tab "Doanh số" (Doanh so T8): điền cột "kê đơn (Thực hiện)" bằng doanh số thực hiện
+  // thật (từ file Sale), khớp theo mã nhân viên — thay cho số 0 trống trong sheet KPI.
+  const dsOverride = useMemo(() => {
+    if (active !== "doanh-so" || !actualByCode) return null;
+    const thCol = current.columns.find((c) => /kê đơn/i.test(c) && /thực hiện/i.test(c));
+    const maCol = current.columns.find((c) => /mã nv|mã nhân/i.test(c));
+    if (!thCol || !maCol) return null;
+    return { thCol, maCol };
+  }, [active, current.columns, actualByCode]);
+
+  function cellValue(row: Record<string, string>, c: string): string {
+    if (dsOverride && actualByCode && c === dsOverride.thCol) {
+      const ma = normalizeMaNV(row[dsOverride.maCol]);
+      if (ma in actualByCode) return formatVnd(actualByCode[ma]);
+    }
+    return row[c] ?? "";
+  }
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -186,7 +208,7 @@ export default function KpiView({
                   <td className="whitespace-nowrap px-3 py-2 text-slate-400">{i + 1}</td>
                   {current.columns.map((c) => (
                     <td key={c} className="whitespace-nowrap px-3 py-2 text-slate-700">
-                      {row[c] ?? ""}
+                      {cellValue(row, c)}
                     </td>
                   ))}
                 </tr>

@@ -37,7 +37,7 @@ export default async function KpiPage() {
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" active="kpi" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <KpiView tabs={tabs} dataByTab={dataByTab} error={error} salesSummary={salesSummary} />
+        <KpiView tabs={tabs} dataByTab={dataByTab} error={error} salesSummary={salesSummary} actualByCode={actualByCode} />
       </main>
     </>
   );
