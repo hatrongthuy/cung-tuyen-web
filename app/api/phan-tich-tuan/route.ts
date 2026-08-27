@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+  const model = process.env.GEMINI_MODEL || "gemini-3.6-flash";
 
   let body: { tomTat?: string };
   try {
