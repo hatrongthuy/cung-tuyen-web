@@ -16,9 +16,11 @@ export interface KpiTabDataClient {
 export default function KpiView({
   tabs,
   dataByTab,
+  error,
 }: {
   tabs: KpiTabMeta[];
   dataByTab: Record<string, KpiTabDataClient>;
+  error?: string | null;
 }) {
   const router = useRouter();
   const [active, setActive] = useState<string>(tabs[0]?.key ?? "");
@@ -43,6 +45,12 @@ export default function KpiView({
 
   return (
     <div>
+      {error && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+          <p className="font-semibold">Chưa đọc được dữ liệu KPI</p>
+          <p className="mt-1 leading-relaxed">{error}</p>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">KPI</h1>

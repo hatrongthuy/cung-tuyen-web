@@ -10,14 +10,14 @@ export default async function KpiPage() {
   const session = await auth();
   const user = session!.user!;
 
-  const dataByTab = await getAllKpiTabsData(TEN_NHOM);
+  const { dataByTab, error } = await getAllKpiTabsData(TEN_NHOM);
   const tabs = KPI_TABS.map((t) => ({ key: t.key, label: t.label }));
 
   return (
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" active="kpi" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <KpiView tabs={tabs} dataByTab={dataByTab} />
+        <KpiView tabs={tabs} dataByTab={dataByTab} error={error} />
       </main>
     </>
   );
