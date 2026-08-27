@@ -53,6 +53,11 @@ export default function MonthlyReportView({
   const months = useMemo(() => distinctMonthsDesc(danhGia.map((r) => r[C.tuan])), [danhGia]);
   const [month, setMonth] = useState<string>(months[0] ?? "");
 
+  // ----- Gemini -----
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiText, setAiText] = useState<string>("");
+  const [aiError, setAiError] = useState<string>("");
+
   // "MM/YYYY" -> số tháng/năm để cộng doanh số thực hiện.
   const [thangSel, namSel] = useMemo(() => {
     const [mm, yy] = (month || "").split("/").map(Number);
@@ -144,6 +149,54 @@ export default function MonthlyReportView({
       .filter((r) => r.ten);
   }, [kpis]);
 
+  // ----- Tóm tắt số liệu tháng để gửi Gemini -----
+  function buildTomTat() {
+    const dm = (c: number, p: number | undefined, isPct = true) =>
+      prev ? ` (${deltaLabel(c, p ?? 0, isPct)})` : "";
+    const lines: string[] = [];
+    lines.push(`Nhóm: ${teamName} | Tháng: ${month}${prevMonth ? ` | Tháng trước: ${prevMonth}` : ""}`);
+    lines.push(
+      `TỔNG NHÓM: Doanh số ${formatVnd(actualTotal)}đ (kê đơn ${formatVnd(actualKeDon)}, thầu ${formatVnd(actualThau)})${dm(actualTotal, prev?.doanhThu)}; ` +
+        `Gặp khách ${tongCT.gap}${dm(tongCT.gap, prev?.gap, false)}; Phản hồi ${tongCT.phanHoi}${dm(tongCT.phanHoi, prev?.phanHoi, false)}; ` +
+        `Phát sinh sale ${tongCT.sale}${dm(tongCT.sale, prev?.sale, false)}; Điểm cung tuyến ${tongCT.diem}${dm(tongCT.diem, prev?.diem)}.`
+    );
+    lines.push(
+      `KẾ HOẠCH vs THỰC HIỆN: Kê đơn ${formatVnd(actualKeDon)}/${formatVnd(ds.keDonKH)} (đạt ${Math.round(pct(actualKeDon, ds.keDonKH))}%); ` +
+        `Thầu ${formatVnd(actualThau)}/${formatVnd(ds.thauKH)} (đạt ${Math.round(pct(actualThau, ds.thauKH))}%).`
+    );
+    lines.push("THEO NHÂN VIÊN:");
+    for (const e of cungTuyen) {
+      lines.push(
+        `- ${e.ten}: DS ${formatVnd(e.doanhThu)}đ, gặp ${e.gap}, phản hồi ${e.phanHoi}, sale ${e.sale}, điểm ${e.diem} (${e.soTuan} tuần).`
+      );
+    }
+    if (kpiRows.length) {
+      lines.push("TỔNG ĐIỂM KPIs THEO NHÂN VIÊN:");
+      for (const k of kpiRows) lines.push(`- ${k.ten}: ${k.diem} điểm.`);
+    }
+    return lines.join("\n");
+  }
+
+  async function phanTichAI() {
+    setAiLoading(true);
+    setAiError("");
+    setAiText("");
+    try {
+      const res = await fetch("/api/phan-tich-tuan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tomTat: buildTomTat(), ky: "tháng" }),
+      });
+      const data = await res.json();
+      if (!res.ok) setAiError(data?.error || "Lỗi phân tích.");
+      else setAiText(data?.text || "");
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   function exportCsv() {
     const rows: (string | number)[][] = [
       [`Báo cáo tháng — Nhóm ${teamName}`],
@@ -196,7 +249,32 @@ export default function MonthlyReportView({
                 <option key={m} value={m}>Tháng {m}</option>
               ))}
             </select>
+            {prevMonth && <span className="text-xs text-slate-400">So sánh với tháng trước: {prevMonth}</span>}
+            <button
+              onClick={phanTichAI}
+              disabled={aiLoading}
+              className="no-print ml-auto inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+                <path d="M11 2 8.5 8.5 2 11l6.5 2.5L11 20l2.5-6.5L20 11l-6.5-2.5L11 2Z" />
+              </svg>
+              {aiLoading ? "Đang phân tích..." : "Phân tích AI (Gemini)"}
+            </button>
           </div>
+
+          {(aiText || aiError) && (
+            <section className="mt-4 rounded-2xl border border-violet-200 bg-violet-50/50 p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-violet-900">Phân tích của Gemini — tháng {month}</h2>
+                <button onClick={() => { setAiText(""); setAiError(""); }} className="no-print text-xs text-slate-400 hover:text-slate-600">Đóng</button>
+              </div>
+              {aiError ? (
+                <p className="mt-2 text-xs text-red-700">{aiError}</p>
+              ) : (
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{aiText}</div>
+              )}
+            </section>
+          )}
 
           {/* A. Cung tuyến tháng */}
           <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

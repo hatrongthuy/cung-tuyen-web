@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     ...FALLBACKS,
   ].filter((v, i, a) => v && a.indexOf(v) === i);
 
-  let body: { tomTat?: string };
+  let body: { tomTat?: string; ky?: string };
   try {
     body = await req.json();
   } catch {
@@ -88,12 +88,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Không có số liệu để phân tích." }, { status: 400 });
   }
 
-  const prompt = `Bạn là trợ lý phân tích cho quản lý nhóm trình dược viên (ngành dược). Dưới đây là số liệu BÁO CÁO CUNG TUYẾN TUẦN của nhóm.
+  // Kỳ báo cáo: "tháng" hoặc "tuần" (mặc định tuần) — chỉ đổi cách xưng hô trong prompt.
+  const isThang = String(body?.ky ?? "").toLowerCase().includes("tháng");
+  const kyHoaThuong = isThang ? "tháng" : "tuần";
+  const kyHoa = isThang ? "THÁNG" : "TUẦN";
+
+  const prompt = `Bạn là trợ lý phân tích cho quản lý nhóm trình dược viên (ngành dược). Dưới đây là số liệu BÁO CÁO CUNG TUYẾN ${kyHoa} của nhóm.
 Hãy phân tích NGẮN GỌN bằng tiếng Việt, trình bày theo các mục có tiêu đề rõ ràng và gạch đầu dòng:
-1. Tổng quan tuần này & so sánh với tuần trước (doanh số, gặp khách, phản hồi, điểm — nêu tăng/giảm).
+1. Tổng quan ${kyHoaThuong} này & so sánh với ${kyHoaThuong} trước (doanh số, gặp khách, phản hồi, điểm — nêu tăng/giảm).
 2. Nhân viên nổi bật và nhân viên cần cải thiện (kèm lý do từ số liệu).
-3. Tồn đọng cần xử lý (khách được gợi ý nhưng chưa gặp/chưa phản hồi).
-4. 3–5 đề xuất hành động cụ thể cho tuần tới.
+3. Tồn đọng cần xử lý (khách/chỉ tiêu chưa đạt).
+4. 3–5 đề xuất hành động cụ thể cho ${kyHoaThuong} tới.
 Không bịa số liệu ngoài dữ liệu cho sẵn. Không dài dòng.
 
 SỐ LIỆU:
