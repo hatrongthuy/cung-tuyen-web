@@ -4,6 +4,7 @@ import WeeklyReportView from "@/components/WeeklyReportView";
 import { getDanhGiaCungTuyen, getGoiYTapTrung, getXacNhanGoiY, getLichSuGoiY } from "@/lib/data";
 import { buildEmployeeWeekSummaries, buildTonDongTuanTruoc } from "@/lib/aggregate";
 import { getTeamSales } from "@/lib/sales";
+import { currentWeekLabel as computeCurrentWeek, todayInVN } from "@/lib/report-utils";
 
 const TEN_NHOM = "Hà Trọng Thủy";
 
@@ -20,6 +21,9 @@ export default async function BaoCaoTuanPage() {
   ]);
   const { weekLabel, summaries } = buildEmployeeWeekSummaries(goiY, xacNhan, danhGia);
   const tonDongTuanTruoc = buildTonDongTuanTruoc(lichSu, xacNhan);
+  // "Tuần hiện tại" theo NGÀY HÔM NAY (căn theo tuần đánh giá gần nhất). Có thể là tuần chưa
+  // được chấm điểm cung tuyến (workflow chấm vào 20h thứ 7) — vẫn hiển thị doanh số + gặp gợi ý.
+  const todayWeekLabel = computeCurrentWeek(weekLabel, todayInVN());
 
   return (
     <>
@@ -32,6 +36,7 @@ export default async function BaoCaoTuanPage() {
           salesError={sales.error}
           summaries={summaries}
           currentWeekLabel={weekLabel}
+          todayWeekLabel={todayWeekLabel}
           tonDongTuanTruoc={tonDongTuanTruoc}
         />
       </main>

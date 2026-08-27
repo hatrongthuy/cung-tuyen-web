@@ -4,6 +4,7 @@ import MonthlyReportView from "@/components/MonthlyReportView";
 import { getDanhGiaCungTuyen } from "@/lib/data";
 import { getKpiTabData } from "@/lib/kpi";
 import { getTeamSales } from "@/lib/sales";
+import { monthKeyOf, todayInVN } from "@/lib/report-utils";
 
 const TEN_NHOM = "Hà Trọng Thủy";
 
@@ -29,6 +30,7 @@ export default async function BaoCaoThangPage() {
           teamName={TEN_NHOM}
           salesTxns={sales.txns}
           salesError={sales.error}
+          todayMonthKey={monthKeyOf(todayInVN())}
         />
       </main>
     </>

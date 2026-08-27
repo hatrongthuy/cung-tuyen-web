@@ -15,6 +15,47 @@ export function monthKeyOfWeek(tuan: string): string | null {
   return `${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
+/** Ghép nhãn tuần "dd/MM/yyyy - dd/MM/yyyy" từ ngày bắt đầu. */
+export function formatWeekLabel(start: Date): string {
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const f = (d: Date) =>
+    `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  return `${f(start)} - ${f(end)}`;
+}
+
+/** Nhãn tuần (căn theo THỨ bắt đầu của `anchorLabel`) CHỨA ngày `today`.
+ * Dùng để xác định "tuần hiện tại" ngay cả khi tuần đó CHƯA có trong dữ liệu đánh giá
+ * (workflow mới chấm điểm vào 20h thứ 7). Nếu không có anchor hợp lệ -> null. */
+export function currentWeekLabel(anchorLabel: string | null | undefined, today: Date): string | null {
+  const anchor = anchorLabel ? parseWeekStart(anchorLabel) : null;
+  if (!anchor) return null;
+  const t = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const DAY = 86400 * 1000;
+  let s = anchor.getTime();
+  while (s + 6 * DAY < t) s += 7 * DAY; // tiến tới khi cửa sổ [s, s+6] chạm/ vượt today
+  while (s > t) s -= 7 * DAY; // lùi lại nếu today nằm trước anchor
+  return formatWeekLabel(new Date(s));
+}
+
+/** Khóa tháng "MM/yyyy" của một ngày. */
+export function monthKeyOf(today: Date): string {
+  return `${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+}
+
+/** Ngày HÔM NAY theo giờ Việt Nam (Asia/Ho_Chi_Minh), trả về Date ở nửa đêm địa phương.
+ * Tính bằng Intl nên đúng cả khi server chạy ở UTC. */
+export function todayInVN(): Date {
+  const s = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 /** Danh sách các tuần (không trùng) sắp xếp mới -> cũ. */
 export function distinctWeeksDesc(tuans: string[]): string[] {
   const set = new Map<string, Date | null>();

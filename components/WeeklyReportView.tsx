@@ -16,6 +16,7 @@ import {
   deltaLabel,
   type SaleTxnLite,
 } from "@/lib/report-utils";
+import { allEmployees } from "@/lib/allowlist";
 import type { EmployeeWeekSummary, TonDongTuanTruoc } from "@/lib/aggregate";
 
 // Tên cột trong tab "Đánh giá cung tuyến tuần".
@@ -59,6 +60,7 @@ export default function WeeklyReportView({
   salesError,
   summaries = [],
   currentWeekLabel,
+  todayWeekLabel,
   tonDongTuanTruoc,
 }: {
   rows: Row[];
@@ -67,10 +69,17 @@ export default function WeeklyReportView({
   salesError?: string | null;
   summaries?: EmployeeWeekSummary[];
   currentWeekLabel?: string | null;
+  todayWeekLabel?: string | null;
   tonDongTuanTruoc?: TonDongTuanTruoc | null;
 }) {
-  const weeks = useMemo(() => distinctWeeksDesc(rows.map((r) => r[C.tuan])), [rows]);
-  const [week, setWeek] = useState<string>(weeks[0] ?? "");
+  // Danh sách tuần = các tuần đã có dữ liệu đánh giá; NẾU tuần hiện tại (theo hôm nay) chưa có
+  // trong đó thì THÊM vào đầu để người dùng xem được số liệu tới hôm nay (doanh số, gặp gợi ý).
+  const weeks = useMemo(() => {
+    const list = distinctWeeksDesc(rows.map((r) => r[C.tuan]));
+    if (todayWeekLabel && !list.includes(todayWeekLabel)) return [todayWeekLabel, ...list];
+    return list;
+  }, [rows, todayWeekLabel]);
+  const [week, setWeek] = useState<string>(todayWeekLabel ?? weeks[0] ?? "");
 
   // Tuần liền trước tuần đang chọn (để so sánh).
   const prevWeek = useMemo(() => {
@@ -80,6 +89,8 @@ export default function WeeklyReportView({
 
   const weekRows = useMemo(() => rows.filter((r) => r[C.tuan] === week), [rows, week]);
   const prevRows = useMemo(() => (prevWeek ? rows.filter((r) => r[C.tuan] === prevWeek) : []), [rows, prevWeek]);
+  // Tuần này đã được chấm điểm cung tuyến chưa (có dòng trong "Đánh giá cung tuyến tuần").
+  const hasEval = weekRows.length > 0;
 
   const salesOf = (label: string, kenh: "keDon" | "thau") => {
     const r = rangeOfWeek(label);
@@ -88,27 +99,40 @@ export default function WeeklyReportView({
   const keDonByMa = useMemo(() => salesOf(week, "keDon"), [salesTxns, week]);
   const thauByMa = useMemo(() => salesOf(week, "thau"), [salesTxns, week]);
 
-  const perEmp = useMemo(
-    () =>
-      weekRows
-        .map((r) => {
-          const ma = normalizeMaNV(r[C.ma]);
-          const keDon = keDonByMa[ma] ?? 0;
-          const thau = thauByMa[ma] ?? 0;
-          return {
-            ten: r[C.ten] || r[C.ma] || "(không tên)",
-            gap: parseInt0(r[C.gap]),
-            phanHoi: parseInt0(r[C.phanHoi]),
-            sale: parseInt0(r[C.sale]),
-            diem: parseInt0(r[C.diem]),
-            keDon,
-            thau,
-            doanhThu: keDon + thau,
-          };
-        })
-        .sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem),
-    [weekRows, keDonByMa, thauByMa]
-  );
+  // Danh sách nhân viên = HỢP của bảng lương 5 TDV + bất kỳ mã nào có trong đánh giá tuần này
+  // (phòng trường hợp tuần cũ có nhân viên đã nghỉ). Nhờ vậy tuần hiện tại dù CHƯA chấm điểm
+  // vẫn hiện đủ 5 người kèm doanh số cập nhật tới hôm nay.
+  const perEmp = useMemo(() => {
+    const byMa = new Map<string, Row>();
+    for (const r of weekRows) byMa.set(normalizeMaNV(r[C.ma]), r);
+    const order: { ma: string; ten: string }[] = [];
+    const seen = new Set<string>();
+    for (const emp of allEmployees()) {
+      const ma = normalizeMaNV(emp.maNhanVien);
+      order.push({ ma, ten: emp.hoTen });
+      seen.add(ma);
+    }
+    for (const [ma, r] of byMa) {
+      if (!seen.has(ma)) order.push({ ma, ten: r[C.ten] || r[C.ma] || "(không tên)" });
+    }
+    return order
+      .map(({ ma, ten }) => {
+        const r = byMa.get(ma);
+        const keDon = keDonByMa[ma] ?? 0;
+        const thau = thauByMa[ma] ?? 0;
+        return {
+          ten: r ? r[C.ten] || ten : ten,
+          gap: r ? parseInt0(r[C.gap]) : 0,
+          phanHoi: r ? parseInt0(r[C.phanHoi]) : 0,
+          sale: r ? parseInt0(r[C.sale]) : 0,
+          diem: r ? parseInt0(r[C.diem]) : 0,
+          keDon,
+          thau,
+          doanhThu: keDon + thau,
+        };
+      })
+      .sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem);
+  }, [weekRows, keDonByMa, thauByMa]);
 
   const tong = useMemo(
     () =>
@@ -152,7 +176,10 @@ export default function WeeklyReportView({
   }, [rows]);
 
   // Tình hình gặp khách theo gợi ý — chỉ có cho TUẦN HIỆN TẠI (danh sách gợi ý bị ghi đè mỗi tuần).
-  const laTuanHienTai = !!currentWeekLabel && week === currentWeekLabel;
+  // Danh sách gợi ý đang chạy là của tuần hiện tại theo lịch (todayWeekLabel); nếu không có thì
+  // rơi về nhãn tuần đánh giá gần nhất.
+  const nhanTuanHienTai = todayWeekLabel ?? currentWeekLabel ?? null;
+  const laTuanHienTai = !!nhanTuanHienTai && week === nhanTuanHienTai;
   const tongGoiY = useMemo(() => {
     if (!laTuanHienTai) return null;
     return summaries.reduce(
@@ -271,6 +298,7 @@ export default function WeeklyReportView({
                 <option key={w} value={w}>{w}</option>
               ))}
             </select>
+            {week === todayWeekLabel && <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">Tuần hiện tại</span>}
             {prevWeek && <span className="text-xs text-slate-400">So sánh với tuần trước: {prevWeek}</span>}
             <button
               onClick={phanTichAI}
@@ -298,12 +326,20 @@ export default function WeeklyReportView({
             </section>
           )}
 
+          {!hasEval && (
+            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Tuần này chưa được chấm điểm cung tuyến (hệ thống chấm tự động vào <b>20h thứ 7</b>). Doanh số và
+              &quot;tình hình gặp theo gợi ý&quot; bên dưới là số liệu <b>cập nhật tới hôm nay</b>; các chỉ số cung tuyến
+              (gặp khách, phản hồi, điểm) sẽ hiện sau khi chạy.
+            </p>
+          )}
+
           <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <StatCard label="Doanh số tuần" value={formatShortVnd(tong.doanhThu)} hint={cardHint(tong.doanhThu, prevTong.doanhThu)} accentColor="#1baf7a" />
-            <StatCard label="Lượt gặp khách" value={tong.gap} hint={cardHint(tong.gap, prevTong.gap, false)} accentColor="#2a78d6" />
-            <StatCard label="Phản hồi hàng hóa" value={tong.phanHoi} hint={cardHint(tong.phanHoi, prevTong.phanHoi, false)} accentColor="#4a3aa7" />
-            <StatCard label="Phát sinh sale" value={tong.sale} hint={cardHint(tong.sale, prevTong.sale, false)} accentColor="#eda100" />
-            <StatCard label="Tổng điểm cung tuyến" value={tong.diem} hint={cardHint(tong.diem, prevTong.diem)} accentColor="#eb6834" />
+            <StatCard label="Lượt gặp khách" value={hasEval ? tong.gap : "—"} hint={hasEval ? cardHint(tong.gap, prevTong.gap, false) : undefined} accentColor="#2a78d6" />
+            <StatCard label="Phản hồi hàng hóa" value={hasEval ? tong.phanHoi : "—"} hint={hasEval ? cardHint(tong.phanHoi, prevTong.phanHoi, false) : undefined} accentColor="#4a3aa7" />
+            <StatCard label="Phát sinh sale" value={hasEval ? tong.sale : "—"} hint={hasEval ? cardHint(tong.sale, prevTong.sale, false) : undefined} accentColor="#eda100" />
+            <StatCard label="Tổng điểm cung tuyến" value={hasEval ? tong.diem : "—"} hint={hasEval ? cardHint(tong.diem, prevTong.diem) : undefined} accentColor="#eb6834" />
           </section>
 
           {salesError && (
@@ -441,7 +477,11 @@ export default function WeeklyReportView({
           <section className="mt-6 grid gap-4 lg:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="text-sm font-semibold text-slate-900">Điểm cung tuyến theo nhân viên</h2>
-              <EmployeeBarChart data={perEmp.map((e) => ({ hoTen: e.ten, giaTri: e.diem }))} valueLabel="Điểm cung tuyến" />
+              {hasEval ? (
+                <EmployeeBarChart data={perEmp.map((e) => ({ hoTen: e.ten, giaTri: e.diem }))} valueLabel="Điểm cung tuyến" />
+              ) : (
+                <p className="mt-6 text-center text-xs text-slate-400">Tuần này chưa được chấm điểm (chờ hệ thống chạy 20h thứ 7).</p>
+              )}
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="text-sm font-semibold text-slate-900">Xu hướng tổng điểm nhóm theo tuần</h2>
@@ -470,20 +510,20 @@ export default function WeeklyReportView({
                       <td className="py-2 pr-3 font-medium text-slate-800">{e.ten}</td>
                       <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.keDon)}</td>
                       <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.thau)}</td>
-                      <td className="py-2 pr-3 text-right text-slate-700">{e.gap}</td>
-                      <td className="py-2 pr-3 text-right text-slate-700">{e.phanHoi}</td>
-                      <td className="py-2 pr-3 text-right text-slate-700">{e.sale}</td>
-                      <td className="py-2 pr-3 text-right font-semibold text-slate-900">{e.diem}</td>
+                      <td className="py-2 pr-3 text-right text-slate-700">{hasEval ? e.gap : "—"}</td>
+                      <td className="py-2 pr-3 text-right text-slate-700">{hasEval ? e.phanHoi : "—"}</td>
+                      <td className="py-2 pr-3 text-right text-slate-700">{hasEval ? e.sale : "—"}</td>
+                      <td className="py-2 pr-3 text-right font-semibold text-slate-900">{hasEval ? e.diem : "—"}</td>
                     </tr>
                   ))}
                   <tr className="border-t-2 border-slate-300 font-semibold">
                     <td className="py-2 pr-3 text-slate-900">TỔNG</td>
                     <td className="py-2 pr-3 text-right text-slate-900">{formatVnd(tong.keDon)}</td>
                     <td className="py-2 pr-3 text-right text-slate-900">{formatVnd(tong.thau)}</td>
-                    <td className="py-2 pr-3 text-right text-slate-900">{tong.gap}</td>
-                    <td className="py-2 pr-3 text-right text-slate-900">{tong.phanHoi}</td>
-                    <td className="py-2 pr-3 text-right text-slate-900">{tong.sale}</td>
-                    <td className="py-2 pr-3 text-right text-slate-900">{tong.diem}</td>
+                    <td className="py-2 pr-3 text-right text-slate-900">{hasEval ? tong.gap : "—"}</td>
+                    <td className="py-2 pr-3 text-right text-slate-900">{hasEval ? tong.phanHoi : "—"}</td>
+                    <td className="py-2 pr-3 text-right text-slate-900">{hasEval ? tong.sale : "—"}</td>
+                    <td className="py-2 pr-3 text-right text-slate-900">{hasEval ? tong.diem : "—"}</td>
                   </tr>
                 </tbody>
               </table>

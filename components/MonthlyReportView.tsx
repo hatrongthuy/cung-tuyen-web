@@ -17,6 +17,7 @@ import {
   deltaLabel,
   type SaleTxnLite,
 } from "@/lib/report-utils";
+import { allEmployees } from "@/lib/allowlist";
 
 const C = {
   tuan: "Tuần",
@@ -42,6 +43,7 @@ export default function MonthlyReportView({
   teamName,
   salesTxns = [],
   salesError,
+  todayMonthKey,
 }: {
   danhGia: Row[];
   doanhSo: TabData;
@@ -49,9 +51,16 @@ export default function MonthlyReportView({
   teamName: string;
   salesTxns?: SaleTxnLite[];
   salesError?: string | null;
+  todayMonthKey?: string | null;
 }) {
-  const months = useMemo(() => distinctMonthsDesc(danhGia.map((r) => r[C.tuan])), [danhGia]);
-  const [month, setMonth] = useState<string>(months[0] ?? "");
+  // Danh sách tháng = các tháng đã có đánh giá; nếu THÁNG HIỆN TẠI (theo hôm nay) chưa có thì
+  // thêm vào đầu để luôn xem được số liệu tới hôm nay (doanh số cập nhật hằng ngày).
+  const months = useMemo(() => {
+    const list = distinctMonthsDesc(danhGia.map((r) => r[C.tuan]));
+    if (todayMonthKey && !list.includes(todayMonthKey)) return [todayMonthKey, ...list];
+    return list;
+  }, [danhGia, todayMonthKey]);
+  const [month, setMonth] = useState<string>(todayMonthKey ?? months[0] ?? "");
 
   // ----- Gemini -----
   const [aiLoading, setAiLoading] = useState(false);
@@ -74,26 +83,41 @@ export default function MonthlyReportView({
   const actualThau = useMemo(() => sumValues(actualThauByMa), [actualThauByMa]);
   const actualTotal = actualKeDon + actualThau;
 
+  // Tháng này đã có đánh giá cung tuyến chưa (có tuần nào thuộc tháng trong dữ liệu).
+  const inMonthRows = useMemo(() => danhGia.filter((r) => monthKeyOfWeek(r[C.tuan]) === month), [danhGia, month]);
+  const hasEval = inMonthRows.length > 0;
+
   // ----- Cung tuyến trong tháng: gộp các tuần thuộc tháng đã chọn theo nhân viên -----
+  // Danh sách = HỢP bảng lương 5 TDV + mã lạ xuất hiện trong đánh giá (nhân viên cũ). Nhờ vậy
+  // tháng hiện tại dù chưa chấm điểm vẫn hiện đủ người kèm doanh số cập nhật tới hôm nay.
   const cungTuyen = useMemo(() => {
-    const inMonth = danhGia.filter((r) => monthKeyOfWeek(r[C.tuan]) === month);
-    const map = new Map<string, { ma: string; ten: string; gap: number; phanHoi: number; sale: number; diem: number; soTuan: number }>();
-    for (const r of inMonth) {
+    const agg = new Map<string, { ma: string; ten: string; gap: number; phanHoi: number; sale: number; diem: number; soTuan: number }>();
+    for (const r of inMonthRows) {
       const ma = normalizeMaNV(r[C.ma]);
       const key = ma || (r[C.ten] || "").trim();
       if (!key) continue;
-      const cur = map.get(key) ?? { ma, ten: r[C.ten] || key, gap: 0, phanHoi: 0, sale: 0, diem: 0, soTuan: 0 };
+      const cur = agg.get(key) ?? { ma, ten: r[C.ten] || key, gap: 0, phanHoi: 0, sale: 0, diem: 0, soTuan: 0 };
       cur.gap += parseInt0(r[C.gap]);
       cur.phanHoi += parseInt0(r[C.phanHoi]);
       cur.sale += parseInt0(r[C.sale]);
       cur.diem += parseInt0(r[C.diem]);
       cur.soTuan += 1;
-      map.set(key, cur);
+      agg.set(key, cur);
     }
-    return [...map.values()]
-      .map((e) => ({ ...e, doanhThu: actualByMa[e.ma] ?? 0 }))
-      .sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem);
-  }, [danhGia, month, actualByMa]);
+    // Ghép đủ 5 TDV (kể cả người chưa có dòng đánh giá tháng này).
+    const out: { ma: string; ten: string; gap: number; phanHoi: number; sale: number; diem: number; soTuan: number; doanhThu: number }[] = [];
+    const seen = new Set<string>();
+    for (const emp of allEmployees()) {
+      const ma = normalizeMaNV(emp.maNhanVien);
+      const e = agg.get(ma) ?? { ma, ten: emp.hoTen, gap: 0, phanHoi: 0, sale: 0, diem: 0, soTuan: 0 };
+      out.push({ ...e, ten: e.ten || emp.hoTen, doanhThu: actualByMa[ma] ?? 0 });
+      seen.add(ma);
+    }
+    for (const [ma, e] of agg) {
+      if (!seen.has(ma)) out.push({ ...e, doanhThu: actualByMa[ma] ?? 0 });
+    }
+    return out.sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem);
+  }, [inMonthRows, actualByMa]);
 
   const tongCT = useMemo(
     () => cungTuyen.reduce((a, e) => ({ gap: a.gap + e.gap, phanHoi: a.phanHoi + e.phanHoi, sale: a.sale + e.sale, diem: a.diem + e.diem }), { gap: 0, phanHoi: 0, sale: 0, diem: 0 }),
@@ -249,6 +273,7 @@ export default function MonthlyReportView({
                 <option key={m} value={m}>Tháng {m}</option>
               ))}
             </select>
+            {month === todayMonthKey && <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">Tháng hiện tại</span>}
             {prevMonth && <span className="text-xs text-slate-400">So sánh với tháng trước: {prevMonth}</span>}
             <button
               onClick={phanTichAI}
@@ -276,13 +301,20 @@ export default function MonthlyReportView({
             </section>
           )}
 
+          {!hasEval && (
+            <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Tháng này chưa có dữ liệu chấm điểm cung tuyến (hệ thống chấm hằng tuần vào <b>20h thứ 7</b>). Doanh số
+              bên dưới là số liệu <b>cập nhật tới hôm nay</b>; các chỉ số cung tuyến sẽ hiện dần khi có tuần được chấm.
+            </p>
+          )}
+
           {/* A. Cung tuyến tháng */}
           <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <StatCard label="Doanh số tháng" value={formatShortVnd(actualTotal)} hint={mHint(actualTotal, prev?.doanhThu) ?? `KĐ ${formatShortVnd(actualKeDon)} • Thầu ${formatShortVnd(actualThau)}`} accentColor="#1baf7a" />
-            <StatCard label="Lượt gặp khách" value={tongCT.gap} hint={mHint(tongCT.gap, prev?.gap, false)} accentColor="#2a78d6" />
-            <StatCard label="Phản hồi hàng hóa" value={tongCT.phanHoi} hint={mHint(tongCT.phanHoi, prev?.phanHoi, false)} accentColor="#4a3aa7" />
-            <StatCard label="Phát sinh sale" value={tongCT.sale} hint={mHint(tongCT.sale, prev?.sale, false)} accentColor="#eda100" />
-            <StatCard label="Tổng điểm cung tuyến" value={tongCT.diem} hint={mHint(tongCT.diem, prev?.diem)} accentColor="#eb6834" />
+            <StatCard label="Lượt gặp khách" value={hasEval ? tongCT.gap : "—"} hint={hasEval ? mHint(tongCT.gap, prev?.gap, false) : undefined} accentColor="#2a78d6" />
+            <StatCard label="Phản hồi hàng hóa" value={hasEval ? tongCT.phanHoi : "—"} hint={hasEval ? mHint(tongCT.phanHoi, prev?.phanHoi, false) : undefined} accentColor="#4a3aa7" />
+            <StatCard label="Phát sinh sale" value={hasEval ? tongCT.sale : "—"} hint={hasEval ? mHint(tongCT.sale, prev?.sale, false) : undefined} accentColor="#eda100" />
+            <StatCard label="Tổng điểm cung tuyến" value={hasEval ? tongCT.diem : "—"} hint={hasEval ? mHint(tongCT.diem, prev?.diem) : undefined} accentColor="#eb6834" />
           </section>
 
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
