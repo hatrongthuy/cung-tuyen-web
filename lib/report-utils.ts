@@ -113,3 +113,22 @@ export function salesByRange(
 export function sumValues(m: Record<string, number>): number {
   return Object.values(m).reduce((s, x) => s + x, 0);
 }
+
+/** % thay đổi so với kỳ trước. Trả về null nếu không so được (kỳ trước = 0). */
+export function pctChange(cur: number, prev: number): number | null {
+  if (!prev) return cur ? null : 0;
+  return ((cur - prev) / Math.abs(prev)) * 100;
+}
+
+/** Chuỗi hiển thị chênh lệch so với kỳ trước, ví dụ "▲ +12%" / "▼ -8%" / "+3". */
+export function deltaLabel(cur: number, prev: number, asPercent = true): string {
+  const diff = cur - prev;
+  if (prev === 0 && cur === 0) return "—";
+  const arrow = diff > 0 ? "▲" : diff < 0 ? "▼" : "→";
+  if (asPercent) {
+    const p = pctChange(cur, prev);
+    if (p === null) return `${arrow} mới`;
+    return `${arrow} ${p > 0 ? "+" : ""}${Math.round(p)}% so với kỳ trước`;
+  }
+  return `${arrow} ${diff > 0 ? "+" : ""}${diff} so với kỳ trước`;
+}

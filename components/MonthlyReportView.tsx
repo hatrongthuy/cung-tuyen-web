@@ -14,6 +14,7 @@ import {
   normalizeMaNV,
   salesByMonth,
   sumValues,
+  deltaLabel,
   type SaleTxnLite,
 } from "@/lib/report-utils";
 
@@ -94,6 +95,32 @@ export default function MonthlyReportView({
     [cungTuyen]
   );
 
+  // ----- Tháng liền trước (để so sánh) -----
+  const prevMonth = useMemo(() => {
+    const idx = months.indexOf(month);
+    return idx >= 0 && idx + 1 < months.length ? months[idx + 1] : null;
+  }, [months, month]);
+
+  const prev = useMemo(() => {
+    if (!prevMonth) return null;
+    const [pm, py] = prevMonth.split("/").map(Number);
+    const inMonth = danhGia.filter((r) => monthKeyOfWeek(r[C.tuan]) === prevMonth);
+    const ct = inMonth.reduce(
+      (a, r) => ({
+        gap: a.gap + parseInt0(r[C.gap]),
+        phanHoi: a.phanHoi + parseInt0(r[C.phanHoi]),
+        sale: a.sale + parseInt0(r[C.sale]),
+        diem: a.diem + parseInt0(r[C.diem]),
+      }),
+      { gap: 0, phanHoi: 0, sale: 0, diem: 0 }
+    );
+    const ds = sumValues(salesByMonth(salesTxns, py || 0, pm || 0));
+    return { ...ct, doanhThu: ds };
+  }, [prevMonth, danhGia, salesTxns]);
+
+  const mHint = (cur: number, prevVal: number | undefined, isPct = true) =>
+    prev ? deltaLabel(cur, prevVal ?? 0, isPct) : undefined;
+
   // ----- Doanh số tháng (ảnh chụp tháng hiện tại trong file KPI) -----
   const ds = useMemo(() => {
     const cols = doanhSo.columns;
@@ -173,11 +200,11 @@ export default function MonthlyReportView({
 
           {/* A. Cung tuyến tháng */}
           <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <StatCard label="Doanh số tháng" value={formatShortVnd(actualTotal)} hint={`Kê đơn ${formatShortVnd(actualKeDon)} • Thầu ${formatShortVnd(actualThau)}`} accentColor="#1baf7a" />
-            <StatCard label="Lượt gặp khách" value={tongCT.gap} accentColor="#2a78d6" />
-            <StatCard label="Phản hồi hàng hóa" value={tongCT.phanHoi} accentColor="#4a3aa7" />
-            <StatCard label="Phát sinh sale" value={tongCT.sale} accentColor="#eda100" />
-            <StatCard label="Tổng điểm cung tuyến" value={tongCT.diem} accentColor="#eb6834" />
+            <StatCard label="Doanh số tháng" value={formatShortVnd(actualTotal)} hint={mHint(actualTotal, prev?.doanhThu) ?? `KĐ ${formatShortVnd(actualKeDon)} • Thầu ${formatShortVnd(actualThau)}`} accentColor="#1baf7a" />
+            <StatCard label="Lượt gặp khách" value={tongCT.gap} hint={mHint(tongCT.gap, prev?.gap, false)} accentColor="#2a78d6" />
+            <StatCard label="Phản hồi hàng hóa" value={tongCT.phanHoi} hint={mHint(tongCT.phanHoi, prev?.phanHoi, false)} accentColor="#4a3aa7" />
+            <StatCard label="Phát sinh sale" value={tongCT.sale} hint={mHint(tongCT.sale, prev?.sale, false)} accentColor="#eda100" />
+            <StatCard label="Tổng điểm cung tuyến" value={tongCT.diem} hint={mHint(tongCT.diem, prev?.diem)} accentColor="#eb6834" />
           </section>
 
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
