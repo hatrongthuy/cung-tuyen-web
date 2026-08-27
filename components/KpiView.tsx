@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import StatCard from "@/components/StatCard";
+import { formatVnd, formatShortVnd } from "@/lib/format";
 
 export interface KpiTabMeta {
   key: string;
@@ -13,14 +15,22 @@ export interface KpiTabDataClient {
   rows: Record<string, string>[];
 }
 
+export interface KpiSalesSummary {
+  monthLabel: string;
+  error?: string | null;
+  rows: { ten: string; doanhThu: number }[];
+}
+
 export default function KpiView({
   tabs,
   dataByTab,
   error,
+  salesSummary,
 }: {
   tabs: KpiTabMeta[];
   dataByTab: Record<string, KpiTabDataClient>;
   error?: string | null;
+  salesSummary?: KpiSalesSummary;
 }) {
   const router = useRouter();
   const [active, setActive] = useState<string>(tabs[0]?.key ?? "");
@@ -51,6 +61,41 @@ export default function KpiView({
           <p className="mt-1 leading-relaxed">{error}</p>
         </div>
       )}
+
+      {salesSummary && (
+        <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">
+              Doanh số thực hiện — tháng {salesSummary.monthLabel}
+            </h2>
+            <span className="text-xs text-slate-400">Tổng doanh thu thực tế từ file Sale (theo nhân viên)</span>
+          </div>
+          {salesSummary.error ? (
+            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Không đọc được doanh số từ file Sale: {salesSummary.error}
+            </p>
+          ) : (
+            <>
+              <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                <StatCard
+                  label="Tổng nhóm"
+                  value={formatShortVnd(salesSummary.rows.reduce((s, r) => s + r.doanhThu, 0))}
+                  hint={`${formatVnd(salesSummary.rows.reduce((s, r) => s + r.doanhThu, 0))} đ`}
+                  accentColor="#1baf7a"
+                />
+                {salesSummary.rows.map((r, i) => (
+                  <StatCard key={i} label={r.ten} value={formatShortVnd(r.doanhThu)} hint={`${formatVnd(r.doanhThu)} đ`} />
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-slate-400">
+                Đây là doanh số thực hiện thực tế. Các bảng điểm KPI bên dưới là số liệu do file KPI của
+                công ty tính; web chỉ hiển thị.
+              </p>
+            </>
+          )}
+        </section>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">KPI</h1>
