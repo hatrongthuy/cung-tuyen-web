@@ -42,6 +42,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       token.role = entry?.role ?? null;
       token.maNhanVien = entry?.maNhanVien ?? null;
       token.allowed = !!entry;
+
+      // Bộ đếm đăng nhập: mỗi người dùng ĐƯỢC PHÉP ghi 1 dòng "có mặt" mỗi NGÀY (giờ VN).
+      // Throttle bằng chính token nên tải lại trang nhiều lần trong ngày không ghi thêm.
+      if (entry && token.email) {
+        const today = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "Asia/Ho_Chi_Minh",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date()); // yyyy-mm-dd theo giờ VN
+        if ((token as Record<string, unknown>).lastLoginLog !== today) {
+          (token as Record<string, unknown>).lastLoginLog = today;
+          try {
+            const { logLogin } = await import("@/lib/login-log");
+            // Không để việc ghi log làm chậm/hỏng đăng nhập: giới hạn 3s, nuốt mọi lỗi.
+            await Promise.race([
+              logLogin(String(token.email), String(token.name ?? entry.hoTen ?? "")),
+              new Promise((resolve) => setTimeout(resolve, 3000)),
+            ]);
+          } catch {
+            // bỏ qua — không ảnh hưởng đăng nhập
+          }
+        }
+      }
       return token;
     },
     async session({ session, token }) {

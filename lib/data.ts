@@ -60,6 +60,16 @@ export async function getLichSuGoiY(): Promise<Record<string, string>[]> {
   }
 }
 
+// Lịch sử đăng nhập (web tự ghi vào tab "Lịch sử đăng nhập" mỗi khi người dùng vào, tối đa 1
+// dòng/người/ngày). Tab có thể chưa tồn tại (chưa ai đăng nhập kể từ khi bật) -> trả về [].
+export async function getLichSuDangNhap(): Promise<Record<string, string>[]> {
+  try {
+    return await readSheetAsObjects<Record<string, string>>("Lịch sử đăng nhập");
+  } catch {
+    return [];
+  }
+}
+
 // ---------- Tiện ích xử lý cột "Tuần" (dạng "dd/MM/yyyy - dd/MM/yyyy") ----------
 
 export function parseWeekStart(tuan: string): Date | null {

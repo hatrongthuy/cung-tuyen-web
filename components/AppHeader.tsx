@@ -15,7 +15,8 @@ export type NavKey =
   | "bao-cao-thau"
   | "kpi"
   | "doanh-so"
-  | "tro-chuyen";
+  | "tro-chuyen"
+  | "dang-nhap";
 
 const NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "cung-tuyen", label: "Cung tuyến", href: "/quan-ly" },
@@ -25,6 +26,7 @@ const NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "kpi", label: "KPI", href: "/quan-ly/kpi" },
   { key: "doanh-so", label: "Doanh số", href: "/quan-ly/doanh-so" },
   { key: "tro-chuyen", label: "Trò chuyện", href: "/quan-ly/tro-chuyen" },
+  { key: "dang-nhap", label: "Đăng nhập", href: "/quan-ly/thong-ke-dang-nhap" },
 ];
 
 export default function AppHeader({
