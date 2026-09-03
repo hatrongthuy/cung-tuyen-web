@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tra cứu Sale — Nhóm Hà Trọng Thủy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6f6; --surface:#ffffff; --surface-2:#f9fafa; --border:#e2e7e7; --border-2:#eef1f1;
+  --ink:#111817; --ink-2:#51605e; --muted:#8a9997; --muted-2:#a9b6b4;
+  --brand:#0b6e75; --brand-ink:#075055; --brand-soft:#e2f1f1;
+  --good:#2b8a3e; --good-soft:#e6f4ea; --warn:#b5730a; --warn-soft:#fbf0da; --crit:#c0392b; --crit-soft:#fbe7e4;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#c98a00; --s5:#d1568a;
+  --shadow:0 1px 2px rgba(16,30,30,.04),0 2px 8px rgba(16,30,30,.05);
+  --shadow-lg:0 8px 30px rgba(16,30,30,.10);
+  --r:12px; --r-sm:8px;
+}
+:root:not([data-theme="light"]){ }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1413; --surface:#161d1c; --surface-2:#1b2322; --border:#283130; --border-2:#212928;
+    --ink:#eef2f1; --ink-2:#aab6b4; --muted:#7f8d8b; --muted-2:#5f6d6b;
+    --brand:#3fb5bd; --brand-ink:#7fd6db; --brand-soft:#12312f;
+    --good:#4cbf6a; --good-soft:#12301c; --warn:#e0a53c; --warn-soft:#33260c; --crit:#e8695c; --crit-soft:#341814;
+    --s1:#3987e5; --s2:#e0713e; --s3:#31c08d; --s4:#d9a026; --s5:#df6e9c;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 2px 10px rgba(0,0,0,.35); --shadow-lg:0 10px 34px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1413; --surface:#161d1c; --surface-2:#1b2322; --border:#283130; --border-2:#212928;
+  --ink:#eef2f1; --ink-2:#aab6b4; --muted:#7f8d8b; --muted-2:#5f6d6b;
+  --brand:#3fb5bd; --brand-ink:#7fd6db; --brand-soft:#12312f;
+  --good:#4cbf6a; --good-soft:#12301c; --warn:#e0a53c; --warn-soft:#33260c; --crit:#e8695c; --crit-soft:#341814;
+  --s1:#3987e5; --s2:#e0713e; --s3:#31c08d; --s4:#d9a026; --s5:#df6e9c;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 2px 10px rgba(0,0,0,.35); --shadow-lg:0 10px 34px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:.86em;letter-spacing:-.2px}
+h1,h2,h3{margin:0;font-weight:700;text-wrap:balance}
+button{font-family:inherit}
+a{color:var(--brand-ink)}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);}
+.top-in{max-width:1240px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(150deg,var(--brand),var(--brand-ink));color:#fff;display:grid;place-items:center;font-weight:800;font-size:15px;flex:none;box-shadow:var(--shadow)}
+.brand h1{font-size:15.5px;letter-spacing:-.2px;line-height:1.15}
+.brand .sub{font-size:11.5px;color:var(--muted);font-weight:500}
+.top-sp{flex:1}
+.asof{font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border);padding:5px 10px;border-radius:20px;white-space:nowrap}
+.icon-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);background:var(--surface);color:var(--ink-2);cursor:pointer;display:grid;place-items:center;font-size:15px}
+.icon-btn:hover{color:var(--brand-ink);border-color:var(--brand)}
+
+/* filter bar */
+.filters{max-width:1240px;margin:0 auto;padding:12px 20px 0;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;padding-left:2px}
+select,input[type=text]{font-family:inherit;font-size:13.5px;color:var(--ink);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;min-height:38px;outline:none}
+select:focus,input[type=text]:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.chk{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--ink-2);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;min-height:38px;cursor:pointer;user-select:none}
+.chk input{accent-color:var(--brand);width:15px;height:15px}
+.chk.on{color:var(--brand-ink);border-color:var(--brand);background:var(--brand-soft)}
+
+/* tabs */
+.tabs{max-width:1240px;margin:14px auto 0;padding:0 20px;display:flex;gap:3px;border-bottom:1px solid var(--border);overflow-x:auto}
+.tab{appearance:none;border:0;background:none;font-family:inherit;font-size:13.5px;font-weight:600;color:var(--muted);padding:10px 14px;cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--brand-ink);border-bottom-color:var(--brand)}
+
+/* layout */
+main{max-width:1240px;margin:0 auto;padding:20px}
+.grid{display:grid;gap:16px}
+.kpis{grid-template-columns:repeat(4,1fr)}
+@media(max-width:820px){.kpis{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+.card.pad{padding:16px 18px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow)}
+.kpi .k-lab{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.kpi .k-val{font-size:25px;font-weight:800;letter-spacing:-.5px;margin-top:6px;line-height:1}
+.kpi .k-sub{font-size:11.5px;color:var(--ink-2);margin-top:5px}
+.k-dot{width:8px;height:8px;border-radius:3px;flex:none}
+.sec-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.sec-head h2{font-size:15px}
+.sec-head .hint{font-size:12px;color:var(--muted)}
+.two{grid-template-columns:1.35fr 1fr}
+@media(max-width:900px){.two{grid-template-columns:1fr}}
+
+/* seg control */
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:2px}
+.seg button{appearance:none;border:0;background:none;font-family:inherit;font-size:12.5px;font-weight:600;color:var(--ink-2);padding:5px 11px;border-radius:6px;cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--brand-ink);box-shadow:var(--shadow)}
+
+/* chart */
+.chart-wrap{width:100%;overflow-x:auto}
+svg.chart{display:block;width:100%;height:auto}
+.axis-lab{fill:var(--muted);font-size:11px}
+.grid-line{stroke:var(--border-2);stroke-width:1}
+.bar-val{fill:var(--ink-2);font-size:10.5px;font-weight:600}
+
+/* table */
+.tbl-wrap{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border-2);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:700;position:sticky;top:0;background:var(--surface);cursor:pointer;user-select:none}
+th.no-sort{cursor:default}
+th .arr{color:var(--brand-ink)}
+td.r,th.r{text-align:right}
+tbody tr:hover{background:var(--surface-2)}
+tr.clickable{cursor:pointer}
+.name-cell{white-space:normal;min-width:170px;max-width:320px}
+.name-cell .n1{font-weight:600;color:var(--ink)}
+.name-cell .n2{font-size:11.5px;color:var(--muted)}
+
+/* chip */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:20px;border:1px solid transparent;white-space:nowrap}
+.chip .cd{width:6px;height:6px;border-radius:50%}
+.chip.good{color:var(--good);background:var(--good-soft)}
+.chip.warn{color:var(--warn);background:var(--warn-soft)}
+.chip.crit{color:var(--crit);background:var(--crit-soft)}
+.chip.good .cd{background:var(--good)}.chip.warn .cd{background:var(--warn)}.chip.crit .cd{background:var(--crit)}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--brand-soft);color:var(--brand-ink);letter-spacing:.02em}
+
+/* customer search */
+.search-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:2px}
+.search-row input{flex:1;min-width:220px;font-size:14.5px}
+.cust-list{display:grid;gap:8px;margin-top:14px;grid-template-columns:repeat(auto-fill,minmax(280px,1fr))}
+.cust-item{text-align:left;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;box-shadow:var(--shadow)}
+.cust-item:hover{border-color:var(--brand)}
+.cust-item .ci-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.cust-item .ci-name{font-weight:600;line-height:1.25}
+.cust-item .ci-meta{font-size:11.5px;color:var(--muted);margin-top:3px}
+.empty{color:var(--muted);text-align:center;padding:40px 16px;font-size:13.5px}
+
+/* detail */
+.back{appearance:none;border:1px solid var(--border);background:var(--surface);color:var(--ink-2);font-family:inherit;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer;margin-bottom:14px}
+.back:hover{color:var(--brand-ink);border-color:var(--brand)}
+.dhead{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;margin-bottom:4px}
+.dhead h2{font-size:19px;letter-spacing:-.3px}
+.dmeta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--ink-2);margin:8px 0 4px}
+.dmeta b{color:var(--ink);font-weight:600}
+.mini-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
+@media(max-width:720px){.mini-kpis{grid-template-columns:repeat(2,1fr)}}
+.mini{background:var(--surface-2);border:1px solid var(--border-2);border-radius:10px;padding:12px 13px}
+.mini .m-l{font-size:11px;color:var(--muted);font-weight:600}
+.mini .m-v{font-size:19px;font-weight:800;margin-top:4px;letter-spacing:-.4px}
+
+/* focus cards */
+.focus-grid{grid-template-columns:repeat(auto-fill,minmax(340px,1fr))}
+.fcard{padding:16px 18px}
+.fcard .f-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.fcard .f-name{font-size:15px;font-weight:700}
+.fcard .f-code{font-size:11px;color:var(--muted)}
+.fcard .f-big{font-size:23px;font-weight:800;letter-spacing:-.5px;margin-top:10px}
+.fcard .f-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.f-stat .fs-l{font-size:11px;color:var(--muted);font-weight:600}
+.f-stat .fs-v{font-size:15px;font-weight:700;margin-top:2px}
+.delta{font-size:12px;font-weight:700}
+.delta.up{color:var(--good)}.delta.down{color:var(--crit)}
+.spark{margin-top:12px}
+
+/* tooltip */
+#tip{position:fixed;z-index:80;pointer-events:none;background:var(--ink);color:var(--surface);font-size:12px;font-weight:500;padding:7px 10px;border-radius:8px;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(-4px);transition:opacity .1s;max-width:260px;line-height:1.45}
+#tip .tt-t{font-weight:700;margin-bottom:2px}
+#tip .tt-r{display:flex;justify-content:space-between;gap:14px}
+#tip .tt-r span:last-child{font-variant-numeric:tabular-nums;font-weight:700}
+:root[data-theme="dark"] #tip,:root:not([data-theme="light"]) #tip{background:#0a0f0e}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) #tip{color:#eef2f1}}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:12px;color:var(--ink-2)}
+.legend .li{display:flex;align-items:center;gap:6px}
+.legend .lk{width:11px;height:11px;border-radius:3px}
+.srcbar{max-width:1240px;margin:10px auto 0;padding:9px 14px;font-size:12px;color:var(--warn);background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);border-radius:8px;line-height:1.45}
+.srcbar b{color:var(--ink)}
+.foot{max-width:1240px;margin:8px auto 30px;padding:0 20px;font-size:11.5px;color:var(--muted)}
+.note{font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--border-2);border-radius:8px;padding:10px 12px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+body.embed .brand{display:none}
+body.embed .top-in{padding-top:8px;padding-bottom:8px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div class="logo">PS</div>
+      <div>
+        <h1>Tra cứu Sale — Nhóm Hà Trọng Thủy</h1>
+        <div class="sub">PS Tây Bắc · CPC1 · dữ liệu bán hàng theo khách hàng &amp; sản phẩm</div>
+      </div>
+    </div>
+    <div class="top-sp"></div>
+    <div class="asof" id="asof"></div>
+    <button class="icon-btn" id="theme" title="Đổi giao diện sáng/tối">◐</button>
+  </div>
+  <div class="filters" id="filters"></div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+<div style="max-width:1240px;margin:0 auto;padding:0 20px"><div class="srcbar">⚠ Nguồn số liệu: <b>T1–T5/2026</b> lấy từ Sale sạch (có thể thiếu do gộp trùng chứng từ) · <b>T6–T8/2026</b> lấy từ kế toán gốc theo Mã chứng từ (đã sửa, chính xác). Vì vậy doanh thu/số lượng từ T6 nhỉnh hơn là do đổi nguồn cho chuẩn, không hẳn do tăng trưởng.</div></div>
+<main id="app"></main>
+<div class="foot" id="foot"></div>
+<div id="tip"></div>
+
+<script>
+const DATA = {"base":"2026-01-01","asofDi":242,"tdv":["Hoàng Văn Cường","Đỗ Cao Trung","Nguyễn Quang Huy","Hà Thị Lan Anh","Phan Văn Tuyền"],"cust":[["P19174","Phòng khám phụ sản bs trần loan","Phú Thọ","Phòng mạch"],["C01207","Công ty Cổ phần Bệnh viện quốc tế Vĩnh Phúc","Vĩnh Phúc","Bv kê đơn"],["P06243","CÔNG TY TNHH Y TẾ TÂN VIỆT","Vĩnh Phúc","Phòng mạch"],["P12698","Hộ Kinh Doanh Quầy thuốc An Phát","Vĩnh Phúc","Phòng mạch"],["N02579","Nhà Thuốc Trung tâm y tế huyện Thanh Thủy","Phú Thọ","Bv kê đơn"],["P09326","Khoa sản 1- Bệnh viện sản nhi tỉnh Phú Thọ","Phú Thọ","Bv kê đơn"],["P12481","Phòng khám Việt Yến 2","Phú Thọ","Phòng mạch"],["C00150","Công ty TNHH Phát triển Y học Việt","Phú Thọ","Bv kê đơn"],["P19072","Phòng khám hữu nghị việt đức","Phú Thọ","Phòng mạch"],["C00154","Công ty Cổ phần Tập đoàn Lạc Việt","Vĩnh Phúc","Bv kê đơn"],["N00111","Nhà Thuốc Bệnh Viện Đa Khoa Tỉnh Vĩnh Phúc","Vĩnh Phúc","Bv kê đơn"],["C00445","Công ty Cổ phần Thương Mại Dược phẩm Sơn Hải","Phú Thọ","Bv kê đơn"],["P16031","Phòng Khám Hữu Nghị 103 Yên Lập","Phú Thọ","Phòng mạch"],["C01191","Công ty TNHH Y Khoa Nam Long","Vĩnh Phúc","Bv kê đơn"],["P08238","Phòng khám sản phụ khoa 71 Nguyễn Văn Linh","Phú Thọ","Phòng mạch"],["P19635","Phòng khám sản phụ khoa Châu Anh","Phú Thọ","Phòng mạch"],["B00218","Bệnh Viện Đa khoa Phúc Yên","Vĩnh Phúc","Thầu"],["P18445","Phòng khám Tâm Phúc","Phú Thọ","Phòng mạch"],["B00219","Bệnh Viện đa khoa tỉnh Vĩnh Phúc","Vĩnh Phúc","Thầu"],["P19714","Phòng khám bác sĩ y khoa lương sơn","Phú Thọ","Miniapp"],["P07259","HỘ KINH DOANH NGUYỄN THỊ THU TRANG","Phú Thọ","Phòng mạch"],["P20690","Phòng Khám Sản phụ khoa Vuông tròn","Phú Thọ","Phòng mạch"],["P21526","Phòng khám sản phụ khoa Lãi Hương","Phú Thọ","Phòng mạch"],["C00794","Công ty Cổ phần Lạc Việt Phúc Yên","Vĩnh Phúc","Bv kê đơn"],["P15523","Phòng khám bác sĩ Đăng","Phú Thọ","Phòng mạch"],["P21487","Phòng khám đa khoa Hà Nội - Thanh Thủy","Phú Thọ","Phòng mạch"],["P19173","Phòng khám sản phụ khoa BS Thuỷ","Phú Thọ","Phòng mạch"],["T10026","Trạm y tế xã Lãng Công","Phú Thọ","Phòng mạch"],["P14024","Phòng Khám Bác sĩ Nghĩa","Phú Thọ","Phòng mạch"],["P15792","Phòng Khám Chuyên Khoa Nội Phúc Hoà","Phú Thọ","Phòng mạch"],["P16143","Phòng khám Bác sĩ Bộ","Vĩnh Phúc","Phòng mạch"],["P18690","Trạm y tế Bằng Doãn","Phú Thọ","Phòng mạch"],["P11574","Phòng khám Quý Nhân","Phú Thọ","Phòng mạch"],["P11163","Phòng khám Bình Minh","Phú Thọ","Phòng mạch"],["P21600","Spa and Beauty Khánh Hường","Phú Thọ","Phòng mạch"],["P21601","Phòng khám nha khoa Lập Hiền","Phú Thọ","Phòng mạch"],["P18195","Phòng khám tiêu hoá Quang Vinh","Phú Thọ","Phòng mạch"],["P11619","Phòng khám đa khoa khu vực Lãng Công","Phú Thọ","Phòng mạch"],["P20351","Phòng khám sản BS Đình Thắng","Phú Thọ","Phòng mạch"],["P20809","Phòng khám Nội Nhi","Phú Thọ","Phòng mạch"],["P21654","Nha Khoa Minh Hải","Phú Thọ","Phòng mạch"],["N01573","Nhà Thuốc Tiến Sen","Phú Thọ","Phòng mạch"],["P05034","Phòng Khám Sản Phụ Khoa Thái Dương","Phú Thọ","Phòng mạch"],["P11520","Phòng khám Sơn Thuỷ","Phú Thọ","Phòng mạch"],["P20194","Phòng Khám Đức Trí","Phú Thọ","Phòng mạch"],["P20389","Phòng khám Tiến Sen","Phú Thọ","Phòng mạch"],["P09482","PK Chuyên sản phụ khoa Thanh Mỹ","Vĩnh Phúc","Phòng mạch"],["C01032","CHI NHÁNH CÔNG TY CỔ PHẦN Y KHOA VIỆT ĐỨC - BỆNH VIỆN ĐA KHOA VIỆT ĐỨC","Phú Thọ","Bv kê đơn"],["B00273","BỆNH VIỆN ĐA KHOA THỊ XÃ PHÚ THỌ","Phú Thọ","Thầu"],["P05822","Khoa gây mê hồi sức bệnh viện đa khoa tỉnh Vĩnh Phúc","Phú Thọ","Phòng mạch"],["P06502","Phòng khám chuyên khoa nội -nhi","Vĩnh Phúc","Phòng mạch"],["P11137","Phòng khám chuyên khoa nhi Hồng Đức","Phú Thọ","Phòng mạch"],["P15420","Phòng khám tư vấn sức khoẻ sinh sản","Phú Thọ","Phòng mạch"],["P19618","Phòng khám sản phụ khoa mê linh","Phú Thọ","Phòng mạch"],["P16602","Phòng khám Đông Y Thu Ngân","Vĩnh Phúc","Phòng mạch"],["P07753","Phòng khám Hồng Ngọc","Phú Thọ","Phòng mạch"],["P10953","Phòng khám bác sĩ Hiệp","Vĩnh Phúc","Phòng mạch"],["P09628","PK Nội soi Tai mũi họng","Phú Thọ","Phòng mạch"],["P15654","Phòng Khám Nhi Thuỷ Nguyên","Phú Thọ","Phòng mạch"],["P20490","Trạm y tế Thị Trấn Lập Thạch","Phú Thọ","Phòng mạch"],["P21039","Phòng khám sản phụ khoa Tâm Anh","Phú Thọ","Phòng mạch"],["P06650","Khoa Nhi - TTYT huyện Sông Lô","Phú Thọ","Phòng mạch"],["P20863","Phòng khám chuyên khoa Nội Tâm Phúc","Phú Thọ","Phòng mạch"],["N07635","Nhà thuốc trung tâm y tế huyện Yên Lập","Phú Thọ","Bv kê đơn"],["N04556","HỘ KINH DOANH VŨ THỊ HUYỀN","Phú Thọ","Bv kê đơn"],["N17992","Nhà thuốc số 2 - Bệnh viện đa khoa Việt Đức","Phú Thọ","Bv kê đơn"],["T00397","BỆNH VIỆN SẢN NHI TỈNH PHÚ THỌ","Phú Thọ","Thầu"],["P10556","Phòng Khám Tai Mũi Họng","Phú Thọ","Phòng mạch"],["P13542","Phòng khám sản phụ khoa - KHHGĐ","Phú Thọ","Phòng mạch"],["T00333","Trung tâm y tế huyện Yên Lập","Phú Thọ","Thầu"],["P14525","Phòng Khám Nhi BS Tuấn","Phú Thọ","Phòng mạch"],["P19106","Phòng khám Ngọc Sơn","Phú Thọ","Phòng mạch"],["P21943","Phòng Khám Long Châu","Phú Thọ","Phòng mạch"],["P18554","Phòng khám Hướng Anh","Phú Thọ","Phòng mạch"],["N02123","Nhà thuốc TTYT Huyện Lâm Thao","Phú Thọ","Bv kê đơn"],["P21219","Phòng khám Bác Sĩ Đông","Phú Thọ","Phòng mạch"],["T00093","Trung tâm Y tế huyện Thanh Thủy","Phú Thọ","Thầu"],["P19250","Trạm Y tế Xã Tứ Yên","Phú Thọ","Phòng mạch"],["P19794","Phòng khám Bác sĩ Hưng","Phú Thọ","Phòng mạch"],["P18569","Phòng khám răng hàm mặt bác sĩ Huy","Phú Thọ","Miniapp"],["P19688","Phòng Khám Chuyên Khoa Tai - Mũi - Họng và Đầu Cổ","Phú Thọ","Phòng mạch"],["P16293","Phòng Khám Nhi Bs Hà Huy","Phú Thọ","Phòng mạch"],["P16768","Trạm Y tế xã Tử Du","Phú Thọ","Phòng mạch"],["P06703","Phòng khám Minh Hương","Phú Thọ","Phòng mạch"],["P14666","Phòng Khám Nội Nhi Bác Sĩ Lâm","Phú Thọ","Phòng mạch"],["P15353","Phòng Khám Linh Chi","Phú Thọ","Phòng mạch"],["P17446","Trạm y tế xã Đồng Quế","Vĩnh Phúc","Phòng mạch"],["P19267","Phòng khám y cao tâm đức","Phú Thọ","Phòng mạch"],["P22004","Khoa Sản TTYT khu vực Lâm Thao","Phú Thọ","Phòng mạch"],["P08338","Phòng khám Bình An","Phú Thọ","Phòng mạch"],["P18722","Phòng khám Minh Ngọc","Phú Thọ","Phòng mạch"],["N00669","Công ty TNHH phát triển Y học Việt- Chi nhánh Nhà thuốc Bệnh viện đa khoa Hùng Vương","Phú Thọ","Bv kê đơn"],["P22079","Phòng Khám Đa Khoa 115 Thiện An","Phú Thọ","Phòng mạch"],["P11073","Phòng khám nhi Trường Ngân","Vĩnh Phúc","Phòng mạch"],["C01280","Công ty cổ phần dịch vụ và thiết bị y tế HTC","Vĩnh Phúc","Bv kê đơn"],["P22091","Phòng khám BS Minh","Phú Thọ","Phòng mạch"],["P20898","Phòng khám An Sinh","Phú Thọ","Phòng mạch"],["P04199","Phòng khám bác sĩ Thành","Vĩnh Phúc","Phòng mạch"],["P18634","Công ty cổ phần Sao Việt Phú Thọ","Phú Thọ","Phòng mạch"],["P22173","Phòng khám Eva","Phú Thọ","Phòng mạch"],["P18152","Phòng khám chuyên khoa ngoại","Phú Thọ","Phòng mạch"],["P18883","Pk nha khoa","Phú Thọ","Phòng mạch"],["T00097","Trung Tâm Y Tế Huyện Lâm Thao","Phú Thọ","Thầu"],["B00009","Trung tâm Y tế huyện Lạc Thủy","Hòa Bình","Thầu"],["P05415","Phòng Khám Tai Mũi Họng Hồng Đức","Phú Thọ","Phòng mạch"],["N18116","Nhà thuốc Thanh Sơn","Phú Thọ","Bv kê đơn"],["P12335","Khoa Sản Trung Tâm Y Tế Hạ Hòa","Phú Thọ","Phòng mạch"],["P16499","Trạm y tế xã Đồng Thịnh","Vĩnh Phúc","Phòng mạch"],["P22233","Trạm y tế bằng luân","Phú Thọ","Phòng mạch"],["C00957","Chi Nhánh Chân Mộng -Công ty TNHH Phát triển Y Học Việt","Phú Thọ","Bv kê đơn"],["P20976","Phòng khám sản phụ khoa Bsi Thu","Phú Thọ","Phòng mạch"],["P22249","Phòng khám nha khoa Minh Châu","Phú Thọ","Phòng mạch"],["P21009","Phòng khám y khoa Phúc Lâm","Phú Thọ","Phòng mạch"],["P12029","Phòng Khám Nhi BS Ly","Phú Thọ","KM"],["P22315","Khoa cấp cứu TTYT Lập Thạch","Phú Thọ","Phòng mạch"],["P07600","Phòng khám nội tổng hợp Bs Tế","Phú Thọ","Phòng mạch"],["C00983","Công ty cổ phần dược phẩm Thiên Trang","Phú Thọ","Bv kê đơn"],["Q06437","Quầy thuốc Nguyễn Cường","Vĩnh Phúc","Bv kê đơn"],["P12539","Phòng khám Diệp Quân 2","Phú Thọ","Phòng mạch"],["B00242","Trung tâm y tế huyện Lập Thạch","Vĩnh Phúc","Thầu"],["P07011","Khoa Ngoại- Sản - TTYT huyện Sông Lô","Phú Thọ","Phòng mạch"],["P12605","Phòng khám 268","Phú Thọ","Phòng mạch"],["P22520","Phòng phám răng Bác sĩ Minh","Phú Thọ","Phòng mạch"],["P10568","PK Cường Chinh","Phú Thọ","Phòng mạch"],["P22508","Phòng khám Bác Sĩ Lâm","Phú Thọ","Phòng mạch"],["P22532","Phòng khám nha khoa Hồng Điệp","Phú Thọ","Phòng mạch"],["C15595","Công Ty TNHH Phát Triển Y Học Âu Cơ","Phú Thọ","Bv kê đơn"],["P21353","Phòng khám Bác sĩ Quỳnh","Phú Thọ","Phòng mạch"],["P06942","Phòng khám Sản Phụ Khoa Tâm Việt","Phú Thọ","Phòng mạch"],["P06872","HỘ KINH DOANH NHÀ THUỐC TRƯỜNG AN","Phú Thọ","Phòng mạch"],["P22632","Trạm y tế Tiên Lữ","Phú Thọ","Phòng mạch"],["T10020","Trạm y tế xã Hải Lựu","Vĩnh Phúc","Phòng mạch"],["B00282","Trung Tâm Y Tế Huyện Hạ Hòa","Phú Thọ","Thầu"],["P08449","Phòng khám nội khoa 103","Phú Thọ","Phòng mạch"],["N01513","Nhà Thuốc Trung Tâm Y tế Huyện Tam Dương","Vĩnh Phúc","Bv kê đơn"],["N07662","HỘ KINH DOANH NHÀ THUỐC 74","Vĩnh Phúc","Bv kê đơn"],["N04412","Nhà Thuốc số 2 -Bệnh Viện Đa Khoa Tỉnh Phú Thọ","Phú Thọ","Bv kê đơn"],["P19827","Phòng khám nội khoa bs Lương Trang","Phú Thọ","Phòng mạch"],["N18083","Nhà thuốc ttyt Thanh Sơn","Phú Thọ","Bv kê đơn"],["T00165","Trung Tâm Y Tế Huyện Thanh Ba","Phú Thọ","Thầu đạp giá"],["P10235","Phòng khám nhi An Nhiên 2","Phú Thọ","Phòng mạch"],["P19408","Phòng khám nha khoa Tuấn Thanh","Phú Thọ","Phòng mạch"],["P21508","Phòng khám chuyên khoa Nội Trường Bình(QT Trường Bình)","Phú Thọ","Phòng mạch"],["B00216","Bệnh Viện Sản Nhi Vĩnh Phúc","Vĩnh Phúc","Thầu"],["P22776","Phòng khám sản phụ khoa Việt Đức","Phú Thọ","Phòng mạch"],["P09316","Phòng khám Bác sĩ Lê - Green Momspa","Phú Thọ","Phòng mạch"],["P06642","Phòng khám Hương Lý","Phú Thọ","Phòng mạch"],["P13992","Phòng khám bác sĩ Thường","Phú Thọ","Phòng mạch"],["B00280","Bệnh Viện Đa Khoa Tỉnh Phú Thọ","Phú Thọ","Thầu"],["P07337","Phòng khám Hải Anh chuyên khoa nội","Phú Thọ","Phòng mạch"],["P11094","Phòng khám đa khoa 103","Phú Thọ","Phòng mạch"],["P22864","Trạm y tế Bình Dương (xã Vĩnh Tường)","Phú Thọ","Phòng mạch"],["P22882","phòng khám Đa khoa phụ sản Hương Giang (Tề Lỗ)","Phú Thọ","Phòng mạch"],["P22923","Trạm Y tế Xã Đức Bác","Phú Thọ","Phòng mạch"],["P07680","Trạm Y Tế xã Thanh Trù","Vĩnh Phúc","Phòng mạch"],["P23159","Trạm y tế Liên Hoà","Phú Thọ","Phòng mạch"],["P23129","Phòng khám sản phụ khoa Việt Trì - Lâm Thao","Phú Thọ","Phòng mạch"],["P23098","Nha khoa Minh Lâm","Phú Thọ","Phòng mạch"],["C15624","Công ty TNHH Phòng Khám Đa Khoa Gia Đình","Phú Thọ","Phòng mạch"],["B00287","Trung tâm Y tế Huyện Đoan Hùng","Phú Thọ","Thầu"],["P23077","Phòng khám sản khoa Phúc An (Tam Dương)","Vĩnh Phúc","Phòng mạch"],["K00165","Khoa sản TTYT huyện Tam Dương","Vĩnh Phúc","Phòng mạch"],["H00007","Công ty TNHH Dược phẩm Hà Việt","Hòa Bình","Bv kê đơn"],["T00092","Trung tâm y tế huyện Tân Sơn","Phú Thọ","Thầu"],["C15822","CÔNG TY CỔ PHẦN Y TẾ THANH SƠN","Phú Thọ",""],["T00605","Trạm Y Tế Xã Tân Cương","Thái Nguyên",""],["C15812","CÔNG TY TNHH BỆNH VIỆN ĐA KHOA HÙNG VƯƠNG THANH BA","Phú Thọ","Bv kê đơn"],["P23426","Nha Khoa Hải Hưng","Phú Thọ",""],["P23406","Phòng khám Tùng Ân","Phú Thọ",""],["P22748","Trạm y tế Phường Quan Triều 3","Thái Nguyên",""],["P22663","Trạm Y Tế Phường Quan Triều","Thái Nguyên",""],["P18061","Phòng khám nội soi Tâm Phúc","Thái Nguyên",""],["N07608","Bệnh Viện Trung Ương Thái Nguyên","Thái Nguyên",""],["P07087","Khoa nội soi và KCB tiêu hóa - Bệnh viện trường Đại học Y-Dược Thái Nguyên","Thái Nguyên",""],["P01495","Nhà Thuốc Tuệ Minh","Vĩnh Phúc","Bv kê đơn"],["K10931","Khoa sản TTYT huyện Đoan Hùng","Phú Thọ",""],["P18776","Nha khoa Hùng Vương","Phú Thọ","Phòng mạch"],["P19783","Trạm Y Tế Hồ Sơn","Phú Thọ",""],["P05381","Phòng khám Nhi Quyết Dừa","Vĩnh Phúc",""],["C00343","Bệnh viện Quốc tế Thái Nguyên -Chi nhánh Công ty Cổ Phần Tập Đoàn Bệnh Viện TNH","Thái Nguyên",""],["P23677","Phòng khám Thái Dương","Thái Nguyên",""],["P23714","Phòng khám Nam Thuý","Phú Thọ",""],["P23459","Khoa GMHS bệnh viện TNH Phổ Yên","Thái Nguyên",""],["P16064","Trạm y tế Phương Khai Quang","Vĩnh Phúc","Phòng mạch"],["P12922","Phòng khám BS Phương Nga","Vĩnh Phúc",""],["P18301","Hộ kinh doanh Nguyễn Bá Hạnh","Phú Thọ",""],["T00238","Trung tâm Y tế khu vực Thanh Sơn","Phú Thọ",""],["P15303","Khoa phụ sản - chăm sóc sức khoẻ sinh sản (Trung tâm y tế huyện Phù Ninh)","Phú Thọ","Bv kê đơn"],["P23506","Phòng khám Ngọc Hà","Thái Nguyên",""],["P23456","Phòng Khám Y Khoa Xuân Hoà","Phú Thọ",""],["Q06425","Bệnh Viện Đa Khoa Vĩnh Phúc","Vĩnh Phúc",""],["B00017","Bệnh viện đa khoa tỉnh Hòa Bình","Hòa Bình","Thầu"]],"prod":[["M02038","Metovomit - Hộp 1 lọ 30ml"],["R00376","Rocuronium - BFS"],["N00928","Nausazy 4mg"],["L01261","Laforin - Hộp 1 lọ 500ml"],["N00922","Nimovaso Sol"],["A01497","Atosiban-BFS - Hộp 1 lọ 5ml"],["P01879","pH Balance Protect Intimate Gel - Hộp 1 lọ 200ml"],["P01275","Phytok - Hộp 1 ống 2ml"],["L01331","Laforin Daily - Hộp 1 lọ 500ml (MP)"],["S01434","Sugam-BFS - Hộp 10 ống 2ml"],["L00822","Levobupi-BFS 50 mg"],["B01304","BFS-Nicardipin"],["H00852","Hemotocin"],["V01173","Vagidequa - Hộp 1 vỉ 6 viên"],["P10005","pH Balance Intimate Gel - Hộp 1 lọ 200ml"],["G01167","Gel bọt pH Balance Bio Intimate Gel - Hộp 1 lọ 200ml"],["B01373","Bixazol - 4 vỉ x 5 ống 10ml"],["P01846","Proges Sup 200mg - Hộp 3 vỉ x 5 viên"],["Z00230","Zenace"],["G01184","Gravia Sup 500mg - Hộp 1 vỉ x 1 viên"],["V02592","Viên đặt pH.Balance - Hộp 1 vỉ 7 viên"],["P01481","Progermila - 4 vỉ x 5 ống 5ml"],["M01740","Mucome Baby Spray - Hộp 1 lọ 10ml"],["F00550","Fosmitic - Hộp 1 lọ 5ml"],["P01808","Proges sup 400mg - Hộp 3 vỉ x 5 viên"],["M01657","Metroral - Hộp 1 lọ 60ml"],["P01845","Propofol-BFS 10mg/ml - Hộp 10 túi x 1 lọ 10ml"],["B01235","BFS-Grani (không chất bảo quản)"],["N01369","Novoliver - 30 viên"],["L01282","Laforin baby hương cam - Hộp 1 lọ 350ml"],["F00701","Fentizol - Hộp 1 vỉ x 3 viên"],["N00979","BFS-Noradrenalin 10mg"],["A01324","BFS-Adenosin - Hộp 10 lọ 2ml"],["D01877","Dobu-SB 1mg/ml - Túi 250ml"],["D01519","Duchat - Hộp 1 lọ 120ml"],["C02466","Cjel Calci - Hộp 20 gói 15g"],["Z00347","Zentokid C&F"],["VOCHER-DB","Chiết khấu thương mại theo chương trình đặc biệt"],["R00342","Rocuronium - BFS"],["D01349","Desone - Hộp 1 lọ 30ml"],["B01774","BFS-Cafein - Hộp 10 ống 3ml (R1)"],["F00464","Fogyma - H40"],["F00598","Fogyma - Hộp 1 lọ 120ml"],["G00821","Golistin-enema"],["P01882","pH balance intimate gel for men - Hộp 1 lọ 135ml"],["P01899","Gel bọt pH Balance Baby Intimate Gel - Hộp 1 lọ 200ml"],["Z00338","Zensonid"],["Z00324","Zentokid Giải độc & Mát gan - Hộp 4 vỉ x 5 ống 5ml"],["D01758","Dobutamin-BFS - 5ml (ống vuông)"],["P01083","Pargine"],["P01529","Pyridol - Hộp 20 gói 10ml"],["G01058","Gravia Sup 500mg - Hộp 1 vỉ x 1 viên"],["D01961","Dopamin-BFS - Hộp 10 ống 5ml"],["Z00330","Zensalbu nebules 2.5"],["L01284","Laforin baby hương ổi - Hộp 1 lọ 350ml"],["P01278","PhytoK 5ml"],["Z00209","Zentokid - H10"],["N01041","Nước cất ống nhựa - 5ml"],["VOCHER-CTBH","Voucher"],["TB08295","pH.Balance Sup H7"],["K00547","Kama-BFS"],["Z00312","Zentokid ZinC - 5ml"],["Z00309","Zentokid Ivy - 5ml"],["C01829","Conipa pure - H20"],["Z00397","Zentokid D3K2 - Hộp 1 lọ 5ml"],["M02338","Milrinone-BFS - 10ml"],["E00557","Ergome-BFS - Hộp 10 ống 1ml"],["TH00895","Zensalbu nebules 2.5"],["MP09865","Laforin Baby Hương cam 350ml (SĐK-25)"],["R00464","Ropicain-BFS 5mg/ml - Hộp 10 lọ 10ml"],["P01597","Premical D3,K2 - Hộp 4 vỉ x 5 ống 10 ml"],["TH06097","Hepaphagen 10-BFS Inj 10ml H10"],["R00432","Rocuronium - BFS - Hộp 5 túi x 1 ống 2.5ml (BFS-R1)"],["TH07897","Metovomit Sol 30ml (mới)"],["TH07004","Dexasol Sol 30ml"],["TP10142","Genomin Softcap H2x15"],["W00544","Hantacid - Hộp 30 gói 10ml"],["TB12028","Viên đặt pH.Balance - Hộp 1 vỉ 7 viên (NB-D)"],["P01771","Pred-new - Hộp 4 vỉ x 5 ống 5ml"],["D01998","Diasyl Softcap - 30 viên"],["MP09858","Laforin Baby Hương ổi 350ml (SĐK-25)"],["TH11432","Sugam-BFS - Hộp 10 ống 2ml (SĐK-25)"],["J00546","Gravia Sup 500mg - 1 viên"],["G01207","Garenca for her - Lọ 30 viên"]],"focus":{"Atosiban":[5],"Proges sup":[24,17],"pH Protect":[6],"Progermila":[21],"Propofol":[26]},"rows":[[0,0,0,1,10,457143],[0,0,0,1,2,0],[1,1,1,1,25,1600000],[2,1,2,1,200,2800000],[2,1,2,1,40,0],[3,1,3,1,10,859093],[3,1,3,1,2,0],[4,2,4,4,300,4500000],[5,3,5,4,3,4500000],[5,3,5,4,4,6000000],[6,2,6,4,5,631819],[7,2,7,5,20,1680000],[5,3,5,5,3,4500000],[5,3,5,5,2,3000000],[8,2,8,5,50,2529550],[8,2,8,5,6,0],[8,2,8,5,4,0],[9,0,5,5,10,15000000],[10,1,9,5,50,75000000],[7,2,10,6,200,16000000],[11,2,11,6,20,1600000],[5,3,5,6,3,4500000],[5,3,5,6,4,6000000],[12,2,6,6,5,661905],[12,2,6,6,1,0],[13,1,2,6,200,2800000],[14,0,6,7,5,631819],[5,3,5,7,4,6000000],[5,3,5,7,3,4500000],[5,3,5,7,2,3000000],[15,0,6,7,5,631819],[16,0,12,7,50,16488095],[17,2,13,8,30,428571],[17,2,8,8,10,505910],[17,2,6,8,5,631819],[10,1,9,8,50,75000000],[5,3,5,9,4,6000000],[5,3,5,11,3,4500000],[5,3,5,11,4,6000000],[18,1,1,11,3900,152285714],[18,1,9,11,6,9000000],[18,0,12,11,750,218250000],[19,2,14,12,10,890910],[19,2,14,12,2,0],[19,2,8,12,10,505910],[19,2,8,12,2,0],[19,2,15,12,10,933333],[19,2,15,12,2,0],[20,2,16,13,200,952381],[20,2,16,13,40,0],[21,2,13,13,90,1285714],[22,0,17,13,75,900000],[22,0,17,13,15,0],[23,0,12,13,30,8685000],[23,1,18,13,200,2400000],[24,2,19,14,10,504762],[24,2,6,14,5,631819],[25,3,20,14,140,1333333],[26,0,15,15,10,933333],[27,3,6,16,5,631819],[28,2,21,18,200,1080000],[29,2,22,18,20,666667],[30,1,21,18,200,1040000],[31,2,23,18,30,1285714],[31,2,23,18,6,0],[32,3,24,19,75,1935714],[32,3,24,19,15,0],[15,0,24,19,75,1935714],[15,0,24,19,15,0],[4,2,4,20,600,9000000],[33,3,17,20,75,900000],[34,3,15,20,10,890907],[34,3,6,20,5,631819],[35,1,25,20,5,471429],[36,1,26,21,10,520000],[9,1,27,21,300,14400000],[37,3,22,22,10,333333],[31,2,28,22,150,400000],[38,3,28,22,150,400000],[39,2,23,22,20,857143],[40,2,29,22,2,0],[40,2,29,22,10,505910],[41,2,25,23,5,471429],[42,2,19,23,10,504762],[42,2,6,23,5,631819],[43,2,21,23,200,1040000],[32,3,6,23,5,631819],[44,2,21,23,200,1040000],[45,2,22,23,10,333333],[46,3,30,25,6,0],[46,3,30,25,30,571429],[47,2,12,26,100,33000000],[47,2,31,26,100,13809524],[47,2,32,26,3,2285714],[48,2,33,27,152,14476190],[7,2,10,27,200,16000000],[7,2,12,27,50,16500000],[49,1,26,27,10,520000],[50,1,34,27,10,1047619],[50,1,21,27,200,1040000],[5,3,5,27,3,4500000],[5,3,5,27,2,3000000],[51,2,2,27,50,700000],[33,3,6,27,5,631819],[52,2,6,27,5,631819],[0,0,35,27,20,0],[0,0,35,27,100,555556],[53,0,24,27,150,3871428],[53,0,24,27,30,0],[39,2,36,27,10,814815],[39,2,36,27,2,0],[39,2,37,27,1,-166667],[54,1,28,27,150,400000],[47,2,38,28,300,10542857],[55,2,17,28,75,900000],[55,2,21,28,200,1040000],[55,2,21,28,40,0],[5,3,5,28,4,6000000],[56,1,22,28,10,333333],[57,1,21,29,200,1040000],[58,1,21,29,200,1040000],[0,0,13,29,60,857143],[0,0,6,29,5,631819],[59,1,21,29,200,1040000],[60,0,6,29,5,631819],[61,1,2,30,50,700000],[48,2,33,32,48,4571429],[5,3,5,32,2,3000000],[5,3,5,32,3,4500000],[39,2,39,32,40,1714286],[62,2,6,32,10,1263639],[62,2,6,32,2,0],[9,0,12,32,50,14475000],[18,0,5,33,20,30000000],[7,2,7,34,20,1680000],[7,2,40,34,50,2000000],[63,2,31,34,10,1380952],[64,2,41,35,1200,8571429],[65,2,41,35,800,5714286],[20,2,6,35,2,0],[20,2,6,35,10,1263639],[40,2,8,35,10,505910],[40,2,8,35,2,0],[66,3,12,35,300,99000000],[7,2,5,36,30,45000000],[47,2,32,36,3,2285714],[47,2,31,36,60,8285714],[47,2,4,36,100,1500000],[67,2,22,36,10,333333],[32,2,25,36,10,942857],[32,2,25,36,2,0],[68,2,13,36,30,428571],[68,2,6,36,5,631819],[39,2,36,36,20,1629630],[39,2,36,36,4,0],[69,2,12,36,100,33000000],[69,2,33,36,50,4761905],[18,0,5,36,30,45000000],[70,2,34,39,20,2095238],[10,1,9,39,100,150000000],[5,3,5,40,3,4500000],[71,3,22,40,10,333333],[44,2,13,40,30,428571],[44,2,6,40,5,631819],[72,2,39,40,20,857143],[73,2,21,41,200,1040000],[31,2,21,41,200,1040000],[26,0,19,41,10,504762],[26,0,13,41,30,428571],[59,1,22,41,10,333333],[74,2,9,42,2,3000000],[5,3,5,42,3,4500000],[5,3,5,42,2,3000000],[70,2,2,42,50,700000],[39,2,21,42,200,1080000],[75,2,21,42,200,1080000],[76,3,12,42,100,33000000],[46,3,6,43,5,631819],[77,3,6,43,5,631819],[78,3,42,54,10,1142857],[78,3,42,54,2,0],[64,2,41,55,1200,8571429],[79,2,8,56,10,505910],[79,2,8,56,2,0],[80,2,43,56,10,495000],[80,2,43,56,2,0],[80,2,0,56,10,457143],[45,2,22,56,10,333333],[20,2,26,57,10,520000],[81,2,21,57,200,1040000],[82,1,21,57,200,1080000],[17,2,22,57,10,333333],[17,2,21,57,200,1040000],[83,3,20,58,70,666667],[51,2,2,58,50,700000],[84,2,2,58,50,700000],[85,2,22,58,10,333333],[86,1,21,58,200,1040000],[73,2,22,58,10,333333],[87,2,6,58,5,631819],[38,3,19,58,10,504762],[88,3,44,58,10,933333],[88,3,45,58,5,445455],[88,3,44,58,2,0],[88,3,45,58,1,0],[88,3,6,58,5,631819],[88,3,6,58,1,0],[7,2,5,61,20,30000000],[7,2,12,61,50,16500000],[7,2,10,61,400,32000000],[0,1,35,61,40,0],[0,1,35,61,200,1111111],[39,2,36,61,10,814815],[39,2,36,61,2,0],[88,3,35,61,800,4444444],[88,3,35,61,160,0],[10,1,9,61,50,75000000],[7,2,34,64,0,0],[89,2,13,64,30,428571],[5,3,5,64,3,4500000],[90,2,20,64,70,666667],[21,2,13,64,120,1714286],[21,2,13,64,24,0],[5,3,5,65,1,1500000],[91,2,34,67,20,2095238],[31,2,23,67,2,85714],[31,2,23,67,10,428571],[92,2,0,67,30,1371429],[92,2,0,67,6,274286],[1,1,1,67,50,3200000],[46,3,45,68,10,962180],[93,1,46,68,100,1200000],[33,3,14,68,10,890910],[45,2,25,68,10,942857],[45,2,25,68,2,0],[94,3,11,68,20,1600000],[21,2,6,69,5,682365],[95,3,47,69,200,814815],[95,3,47,69,40,0],[11,2,12,70,2,0],[11,2,12,70,30,9900000],[11,2,2,70,60,840000],[47,2,10,70,50,4000000],[64,2,41,70,1200,8571429],[50,1,21,70,200,1040000],[58,1,21,70,200,1040000],[66,3,12,70,500,165000000],[47,2,10,71,50,4000000],[47,2,4,71,200,3000000],[47,2,48,71,20,1047619],[47,2,31,71,100,13809524],[55,2,6,71,5,682365],[96,3,49,71,200,1047620],[96,3,21,71,200,1040000],[96,3,6,71,5,682365],[95,1,21,71,200,1040000],[31,2,25,72,1,94286],[31,2,25,72,4,377143],[32,3,50,74,400,1904762],[32,3,50,74,80,0],[5,3,5,75,1,1500000],[5,3,5,75,3,4500000],[5,3,5,75,2,3000000],[46,3,30,75,30,571429],[46,3,6,75,5,631819],[46,3,6,75,1,0],[46,3,30,75,6,114286],[68,2,51,75,20,1009524],[68,2,51,75,4,0],[52,2,15,75,10,890907],[52,2,15,75,2,0],[52,2,6,75,5,631819],[52,2,6,75,1,0],[47,2,40,76,20,800000],[97,1,25,76,5,471429],[57,1,21,76,200,1040000],[30,1,21,76,200,1040000],[97,3,24,77,75,1935714],[97,3,24,77,15,0],[5,3,5,77,1,1500000],[5,3,5,77,2,3000000],[5,3,5,77,3,4500000],[52,2,51,77,10,504762],[52,2,51,77,2,0],[73,2,21,77,200,1040000],[98,2,26,77,10,520000],[8,2,21,77,200,1040000],[80,2,21,77,200,1040000],[75,2,21,77,200,1040000],[99,3,6,77,5,631819],[100,1,25,78,5,471429],[73,2,6,78,5,682365],[101,1,3,78,10,859093],[102,3,12,78,20,6600000],[24,2,6,79,5,682365],[92,2,51,79,4,0],[92,2,51,79,20,1009524],[103,1,11,81,200,16000000],[63,2,11,81,20,1600000],[97,3,0,81,2,91429],[97,3,0,81,10,457143],[104,1,18,81,20,240000],[104,1,18,81,100,1200000],[11,2,11,82,20,1600000],[105,2,52,82,10,210000],[32,3,24,82,75,1935714],[32,3,24,82,15,0],[106,2,24,82,150,3871428],[106,2,24,82,30,0],[107,3,20,82,70,666667],[17,2,6,82,5,682365],[108,2,21,82,200,1040000],[108,2,21,82,40,0],[7,2,10,83,200,16000000],[109,2,2,83,400,5600000],[5,3,5,83,1,1500000],[5,3,5,83,3,4500000],[93,1,53,83,200,840000],[93,1,53,83,20,84000],[87,2,0,83,10,457143],[87,2,0,83,2,91429],[39,2,36,83,10,814815],[39,2,36,83,2,0],[110,0,50,83,-40,0],[110,0,50,83,-200,-952381],[111,1,54,83,10,505907],[111,1,54,83,2,0],[105,2,33,84,10,952381],[31,2,21,84,200,1040000],[31,2,21,84,40,0],[112,1,25,84,5,471429],[46,3,17,85,75,900000],[51,2,2,85,50,700000],[33,3,17,85,75,900000],[59,1,22,85,10,333333],[59,1,22,85,2,0],[5,3,5,86,2,3000000],[5,3,5,86,1,1500000],[32,2,25,86,2,188571],[32,2,25,86,2,0],[32,2,25,86,8,754286],[113,2,25,86,30,2828571],[113,2,25,86,6,565714],[106,2,24,86,150,3871428],[106,2,24,86,30,0],[114,1,26,88,10,520000],[49,1,9,89,2,3000000],[49,1,9,89,1,1500000],[49,1,9,89,3,4500000],[5,3,5,89,1,1500000],[5,3,5,89,3,4500000],[5,3,5,89,2,3000000],[56,1,22,89,10,333333],[81,2,21,89,200,1040000],[86,1,21,89,200,1040000],[100,1,21,89,200,1040000],[27,1,25,89,5,471429],[7,2,10,90,300,24000000],[7,2,7,90,20,1680000],[65,2,41,90,1200,8571429],[115,1,55,90,10,1428571],[115,1,55,90,2,285714],[39,2,56,90,20,0],[39,2,56,90,100,1666700],[13,1,2,90,200,2800000],[32,2,25,91,2,0],[32,2,25,91,10,942857],[6,2,6,92,5,631819],[3,1,46,92,20,240000],[3,1,46,92,100,1200000],[47,2,38,93,200,7028571],[32,3,17,93,15,0],[32,3,17,93,75,900000],[80,2,36,93,4,0],[80,2,36,93,20,1629630],[5,3,5,95,2,3000000],[5,3,5,95,1,1500000],[90,2,6,95,5,631819],[38,3,30,95,30,571429],[38,3,30,95,6,114286],[72,2,19,95,10,504762],[72,2,19,95,2,0],[72,2,6,95,1,0],[72,2,6,95,5,631819],[10,1,9,95,20,30000000],[109,2,25,96,5,471429],[116,2,31,96,10,1380952],[5,3,5,96,3,4500000],[5,3,5,96,1,1500000],[5,3,5,96,2,3000000],[107,3,45,96,10,890907],[117,1,21,96,200,1040000],[42,2,19,97,4,201905],[42,2,19,97,16,807619],[106,2,19,97,20,1009524],[118,2,22,97,10,333333],[68,2,19,97,10,504762],[68,2,6,97,5,631819],[8,2,19,97,10,504762],[88,3,35,97,800,4444444],[88,3,35,97,160,0],[76,3,12,97,150,49500000],[23,1,18,97,200,2400000],[7,2,34,98,20,2095238],[91,2,34,98,-20,-2095238],[25,2,26,98,30,1560000],[25,2,26,98,90,4680000],[76,3,57,98,20000,9142857],[10,1,9,98,50,75000000],[97,3,45,99,10,890907],[50,1,21,99,200,1040000],[50,1,21,99,40,0],[68,2,19,99,10,0],[68,2,19,99,50,2523810],[5,3,5,100,1,1500000],[5,3,5,100,2,3000000],[65,2,41,102,1600,11428571],[42,2,6,102,5,631819],[10,1,9,102,50,75000000],[7,2,2,103,400,5600000],[5,3,5,103,3,4500000],[5,3,58,103,1,-1500000],[5,3,5,103,2,3000000],[65,2,41,104,1200,8571429],[55,2,19,104,12,605714],[55,2,13,104,72,1028571],[55,2,58,104,1,-272381],[5,3,5,104,3,4500000],[82,1,21,104,240,1248000],[82,1,58,104,1,-208000],[96,3,58,104,1,-774286],[96,3,24,104,180,4645714],[25,2,26,104,20,1040000],[25,2,26,104,60,3120000],[119,1,12,104,50,16500000],[5,3,58,105,1,-1500000],[5,3,5,105,3,4500000],[5,3,5,105,2,3000000],[8,2,6,105,5,631819],[25,3,59,105,168,1600000],[25,3,58,105,1,-266667],[9,1,60,105,1200,18285714],[9,1,27,105,200,9600000],[46,3,30,106,36,685714],[46,3,58,106,1,-294286],[46,3,17,106,90,1080000],[12,2,6,106,5,631819],[120,1,35,107,360,2000000],[120,1,58,107,1,-333333],[5,3,5,107,3,4500000],[5,3,5,107,1,1500000],[5,3,58,107,1,-1500000],[5,3,5,107,4,6000000],[121,2,22,107,12,400000],[121,2,58,107,1,-66667],[79,2,8,107,9,566667],[79,2,8,107,3,188889],[79,2,58,107,1,-125926],[112,1,25,107,5,471429],[27,1,25,107,1,94286],[27,1,25,107,4,377143],[7,2,7,109,20,1680000],[32,3,58,109,1,-387143],[32,3,24,109,90,2322857],[71,3,58,109,1,-333333],[71,3,22,109,60,2000000],[95,1,21,109,240,1248000],[95,1,58,109,1,-208000],[122,2,58,109,1,-208000],[122,2,21,109,240,1248000],[66,2,52,109,100,2100000],[66,2,57,109,15000,6857143],[5,3,5,110,2,3000000],[5,3,58,110,1,-1500000],[5,3,5,110,4,6000000],[123,1,21,110,240,1248000],[123,1,58,110,1,-208000],[70,2,58,110,1,-208000],[70,2,21,110,240,1248000],[40,2,58,110,1,-227108],[40,2,8,110,12,755556],[40,2,29,110,12,607092],[108,2,58,110,1,-94286],[108,2,25,110,6,565714],[124,2,14,110,10,890907],[125,3,29,110,2,101182],[125,3,3,110,2,171819],[27,3,58,110,1,-126364],[27,3,6,110,6,758183],[5,3,58,111,1,-1500000],[5,3,5,111,4,6000000],[5,3,5,111,2,3000000],[33,3,6,111,6,758183],[33,3,58,111,1,-126364],[122,2,29,111,12,607092],[122,2,58,111,1,-101182],[48,2,12,112,20,6600000],[47,2,12,112,100,33000000],[126,2,26,112,200,6400000],[97,3,58,112,1,-133333],[97,3,59,112,84,800000],[77,3,6,112,6,758183],[77,3,58,112,1,-126364],[127,1,22,112,12,400000],[127,1,21,112,240,1248000],[127,1,58,112,1,-274667],[47,2,4,113,200,3000000],[128,3,58,113,1,-252728],[128,3,6,113,12,1516367],[39,2,21,113,240,1248000],[39,2,58,113,1,-208000],[114,1,58,113,1,-208000],[114,1,21,113,240,1248000],[16,1,52,113,20,420000],[10,1,9,113,50,75000000],[109,2,2,114,400,5600000],[129,2,58,114,1,-208000],[129,2,21,114,240,1248000],[5,3,5,114,4,6000000],[5,3,58,114,1,-1500000],[5,3,5,114,2,3000000],[28,2,25,114,6,565714],[28,2,58,114,1,-94286],[86,1,23,114,12,514286],[86,1,58,114,1,-85714],[17,2,13,114,36,514286],[17,2,58,114,1,-209697],[17,2,6,114,6,758183],[92,2,21,114,240,1248000],[92,2,58,114,1,-208000],[130,1,61,114,100,509259],[131,1,61,114,100,509259],[131,1,62,114,10,814815],[132,2,52,117,20,420000],[132,2,57,117,10000,4571429],[7,2,10,117,400,32000000],[6,2,6,117,6,758183],[6,2,13,117,36,514286],[6,2,58,117,1,-209697],[98,2,26,117,10,320000],[10,1,9,117,20,30000000],[133,0,58,118,1,-85714],[133,0,13,118,36,514286],[5,3,5,118,2,3000000],[106,2,24,118,180,4645714],[106,2,58,118,1,-774286],[100,1,21,118,240,1248000],[100,1,58,118,1,-293714],[100,1,23,118,12,514286],[134,1,38,118,15,500000],[5,3,58,119,1,-1500000],[5,3,5,119,4,6000000],[106,2,24,119,180,4645714],[106,2,58,119,1,-774286],[20,2,63,121,240,1028571],[20,2,58,121,1,-171429],[10,1,9,121,30,45000000],[70,2,2,123,60,840000],[70,2,58,123,1,-140000],[96,3,58,123,1,-183333],[96,3,64,123,12,1100000],[7,2,12,124,30,9900000],[32,3,24,124,90,2322857],[32,3,58,124,1,-387143],[90,2,58,124,1,-307811],[90,2,20,124,84,800000],[90,2,15,124,12,1069089],[8,2,58,124,1,-302857],[8,2,19,124,36,1817143],[8,2,58,124,1,-377778],[8,2,8,124,36,2266667],[135,1,21,124,100,520000],[3,1,58,125,1,-171819],[3,1,3,125,12,1030911],[11,2,2,126,60,840000],[136,3,55,126,20,2857143],[97,3,24,126,90,2322857],[97,3,58,126,1,-387143],[5,3,5,126,4,6000000],[5,3,58,126,1,-1500000],[5,3,5,126,3,4500000],[19,2,6,126,6,758183],[19,2,58,126,1,-126364],[5,3,58,127,1,-1500000],[5,3,5,127,4,6000000],[5,3,5,127,3,4500000],[107,3,14,127,12,1069092],[107,3,58,127,1,-178182],[97,3,16,128,240,1142856],[97,3,58,128,1,-291428],[97,3,19,128,12,605714],[5,3,5,128,3,4500000],[5,3,58,128,1,-1500000],[5,3,5,128,4,6000000],[5,3,5,128,2,3000000],[5,3,5,128,1,1500000],[84,2,58,128,1,-140000],[84,2,2,128,60,840000],[137,0,23,128,60,2571428],[137,0,58,128,1,-428571],[59,1,21,128,240,1248000],[59,1,58,128,1,-293714],[59,1,23,128,12,514286],[21,2,58,128,1,-209697],[21,2,6,128,6,758183],[21,2,13,128,36,514286],[132,2,52,130,20,420000],[138,2,11,130,100,8000000],[97,1,58,130,1,-85714],[97,1,23,130,12,514286],[5,3,5,130,2,3000000],[5,3,5,130,4,6000000],[5,3,58,130,1,-1500000],[28,2,21,130,240,1248000],[28,2,58,130,1,-208000],[8,2,58,130,1,-208000],[8,2,21,130,240,1248000],[139,2,12,130,30,9900000],[140,1,58,131,1,-140000],[140,1,2,131,60,840000],[56,1,22,131,12,400000],[56,1,58,131,1,-66667],[32,3,6,131,6,758183],[32,3,58,131,1,-126364],[141,3,58,131,1,-171819],[141,3,3,131,12,1030911],[142,2,6,131,6,758183],[142,2,36,131,12,977778],[142,2,45,131,12,1069092],[142,2,58,131,1,-467509],[143,1,12,131,200,57900000],[143,1,65,131,10,1100000],[5,3,5,132,3,4500000],[5,3,58,132,1,-1500000],[139,2,57,132,10000,4571429],[66,3,12,132,300,99000000],[128,3,6,133,6,758183],[128,3,58,133,1,-304546],[128,3,45,133,12,1069092],[5,3,5,133,3,4500000],[5,3,5,133,4,6000000],[5,3,58,133,1,-1500000],[39,2,58,133,1,-171429],[39,2,39,133,24,1028571],[10,1,9,133,100,150000000],[20,2,26,134,-10,-520000],[14,0,19,134,12,605714],[14,0,14,134,12,1069092],[14,0,58,134,1,-276330],[5,3,58,134,1,-1500000],[5,3,5,134,3,4500000],[5,3,5,134,4,6000000],[46,3,30,134,72,1371429],[46,3,58,134,1,-228571],[44,2,6,134,6,758183],[44,2,58,134,1,-126364],[34,3,58,134,1,-505456],[34,3,6,134,24,3032733],[144,0,58,134,1,-22000],[144,0,66,134,12,132000],[2,1,58,134,1,-94286],[2,1,25,134,6,565714],[5,3,5,135,3,4500000],[5,3,5,135,4,6000000],[5,3,58,135,1,-1500000],[86,1,21,135,240,1248000],[86,1,58,135,1,-208000],[0,0,58,137,1,-178181],[0,0,15,137,12,1069089],[77,3,58,137,1,-178182],[77,3,14,137,12,1069092],[15,0,58,137,1,-774286],[15,0,24,137,15,387143],[15,0,24,137,165,4258571],[7,2,12,138,50,16500000],[7,2,10,138,300,24000000],[7,2,2,138,400,5600000],[47,2,4,138,200,3000000],[47,2,12,138,100,33000000],[65,2,41,138,1200,8571429],[5,3,58,138,1,-1500000],[5,3,5,138,4,6000000],[5,3,5,138,3,4500000],[145,2,58,139,1,-330000],[145,2,12,139,11,3630000],[20,2,16,140,240,1142857],[20,2,58,140,1,-190476],[62,2,58,140,1,-357845],[62,2,6,140,6,758183],[130,1,21,140,240,1248000],[130,1,58,140,1,-379429],[130,1,23,140,24,1028571],[146,2,21,141,240,1248000],[146,2,58,141,1,-208000],[25,3,58,141,1,-400000],[25,3,20,141,252,2400000],[120,1,10,142,20,1600000],[57,1,21,142,240,1248000],[57,1,58,142,1,-208000],[147,2,6,142,6,758183],[147,2,58,142,1,-126364],[8,2,58,142,1,-416000],[8,2,21,142,480,2496000],[38,3,6,142,6,758183],[38,3,58,142,1,-126364],[72,2,19,142,12,605714],[72,2,58,142,1,-224512],[72,2,6,142,6,758183],[134,1,38,142,30,1000000],[11,2,11,144,20,1600000],[5,3,5,144,3,4500000],[5,3,5,144,1,1500000],[5,3,58,144,1,-1500000],[9,1,27,144,200,9600000],[148,2,38,145,600,21085714],[148,2,57,145,16000,7314287],[42,2,58,145,1,-387143],[42,2,24,145,90,2322857],[149,2,58,145,1,-560000],[149,2,2,145,240,3360000],[55,2,21,145,240,1248000],[55,2,58,145,1,-208000],[150,2,26,145,10,320000],[31,2,8,145,12,755556],[31,2,58,145,1,-125926],[53,0,58,145,1,-774286],[53,0,24,145,180,4645714],[151,0,6,145,6,758183],[151,0,58,145,1,-126364],[30,1,58,145,1,-208000],[30,1,21,145,240,1248000],[5,3,5,146,4,6000000],[5,3,58,146,1,-1500000],[5,3,5,146,2,3000000],[98,2,26,146,10,320000],[53,0,24,146,180,4645714],[53,0,58,146,1,-774286],[152,0,58,146,1,-100952],[152,0,19,146,12,605714],[7,2,25,147,50,4714286],[5,3,58,147,1,-1500000],[5,3,5,147,4,6000000],[5,3,5,147,2,3000000],[6,2,13,147,36,514286],[6,2,58,147,1,-209697],[6,2,6,147,6,758183],[53,0,58,147,1,-774286],[53,0,24,147,180,4645714],[108,2,22,147,20,666667],[7,2,5,148,26,39000000],[7,2,5,148,4,6000000],[7,2,7,148,20,1680000],[5,3,5,148,4,6000000],[5,3,58,148,1,-1500000],[5,3,5,148,2,3000000],[93,1,58,148,1,-240000],[93,1,46,148,120,1440000],[77,3,19,148,12,605714],[77,3,58,148,1,-100952],[130,1,22,148,12,400000],[130,1,58,148,1,-66667],[43,2,58,149,1,-208000],[43,2,21,149,240,1248000],[28,2,21,149,240,1248000],[28,2,58,149,1,-208000],[52,2,15,149,12,1069089],[52,2,58,149,1,-276330],[52,2,19,149,12,605714],[79,2,58,149,1,-101181],[79,2,29,149,12,607089],[80,2,36,149,12,977778],[80,2,58,149,1,-162963],[39,2,58,149,1,-85714],[39,2,39,149,12,514286],[92,2,58,149,1,-126364],[92,2,6,149,6,758183],[151,0,45,149,12,1069092],[151,0,58,149,1,-178182],[153,3,6,149,6,758183],[153,3,58,149,1,-126364],[154,1,22,149,12,400000],[154,1,58,149,1,-66667],[56,1,67,180,110,462000],[155,1,23,180,24,1028571],[155,1,37,180,1,-171429],[56,1,37,180,1,-42000],[86,1,21,180,240,1248000],[86,1,22,180,12,400000],[86,1,61,180,240,1222222],[86,1,37,180,1,-484190],[5,3,37,179,1,-1500000],[5,3,37,179,1,-1500000],[5,3,37,179,1,-1500000],[15,0,37,179,1,-387143],[6,2,37,179,1,-85714],[5,3,5,179,4,6000000],[5,3,5,179,3,4500000],[5,3,5,179,4,6000000],[5,3,5,179,4,6000000],[15,0,24,179,90,2322857],[6,2,13,179,36,514286],[156,3,6,178,6,758183],[156,3,20,178,84,800000],[156,3,21,178,240,1248000],[156,3,37,178,1,-471308],[34,3,37,177,1,-178182],[34,3,45,177,12,1069092],[5,3,37,177,1,-1500000],[5,3,5,177,3,4500000],[5,3,5,177,4,6000000],[5,3,5,177,4,6000000],[5,3,5,177,4,6000000],[5,3,37,177,1,-1500000],[5,3,37,177,1,-1500000],[96,3,37,177,1,-774286],[42,2,37,177,1,-126364],[42,2,6,177,6,758183],[96,3,24,177,180,4645714],[157,2,68,176,12,607092],[157,2,8,176,12,777143],[157,2,37,176,1,-227108],[148,2,33,176,171,16285714],[7,2,12,176,50,16500000],[7,2,10,176,400,32000000],[10,1,9,175,50,75000000],[47,2,69,175,50,4285714],[30,1,37,175,1,-379429],[158,2,37,175,1,-208000],[71,3,37,175,1,-342857],[0,0,37,175,1,-178181],[5,3,37,175,1,-1500000],[5,3,37,175,1,-1500000],[5,3,5,175,4,6000000],[5,3,5,175,2,3000000],[5,3,5,175,4,6000000],[158,2,21,175,240,1248000],[0,0,15,175,12,1069089],[30,1,23,175,24,1028571],[30,1,21,175,240,1248000],[131,1,21,175,240,1248000],[131,1,61,175,240,1222222],[131,1,37,175,1,-417524],[71,3,23,175,48,2057143],[159,2,5,175,10,15000000],[17,2,17,174,120,1440000],[17,2,37,174,1,-663251],[152,0,6,174,6,758183],[75,2,22,174,12,400000],[77,3,45,174,12,1069092],[77,3,6,174,6,758183],[160,0,19,174,12,605714],[31,2,21,174,240,1248000],[31,2,37,174,1,-293714],[31,2,23,174,12,514286],[142,2,21,174,240,1248000],[97,3,23,174,48,2057143],[142,2,70,174,240,1100000],[142,2,61,174,240,1222222],[142,2,37,174,1,-387037],[142,2,37,174,1,-208000],[97,3,37,174,1,-342857],[128,3,6,174,6,758183],[75,2,37,174,1,-66667],[77,3,37,174,1,-304546],[160,0,37,174,1,-100952],[152,0,37,174,1,-126364],[128,3,37,174,1,-126364],[47,2,4,174,200,3000000],[47,2,11,173,100,8000000],[161,0,37,173,1,-126364],[68,2,37,173,1,-230927],[161,0,24,173,15,387143],[161,0,35,173,120,666667],[161,0,37,173,1,-111111],[68,2,19,173,12,605714],[161,0,6,173,6,758183],[68,2,6,173,6,758183],[151,0,6,172,6,758183],[39,2,37,172,1,-208000],[39,2,21,172,240,1248000],[151,0,37,172,1,-126364],[162,2,12,172,20,6600000],[59,1,37,170,1,-208000],[59,1,21,170,240,1248000],[3,1,37,168,1,-101182],[92,2,37,168,1,-457140],[92,2,71,168,60,2742840],[93,1,37,168,1,-282000],[93,1,67,168,110,462000],[93,1,46,168,120,1440000],[3,1,68,168,12,607092],[3,1,37,168,1,-171819],[3,1,3,168,12,1030911],[5,3,5,167,4,6000000],[5,3,5,167,3,4500000],[5,3,5,167,3,4500000],[5,3,5,167,4,6000000],[5,3,5,167,4,6000000],[5,3,5,167,4,6000000],[5,3,5,167,4,6000000],[5,3,5,167,4,6000000],[5,3,37,167,1,-1500000],[5,3,37,167,1,-1500000],[5,3,37,167,1,-1500000],[5,3,37,167,1,-1500000],[5,3,37,167,1,-1500000],[5,3,37,167,1,-1500000],[51,2,2,167,60,840000],[105,2,6,167,10,1263639],[105,2,6,167,1,0],[51,2,37,167,1,-140000],[163,2,5,166,20,30000000],[7,2,10,166,300,24000000],[7,2,5,166,40,60000000],[7,2,7,166,30,2520000],[161,0,24,166,15,387143],[161,0,37,166,1,-111111],[161,0,35,166,120,666667],[164,2,23,166,36,1542857],[164,2,37,166,1,-257143],[5,3,5,166,4,6000000],[5,3,5,166,2,3000000],[5,3,5,166,4,6000000],[5,3,37,166,1,-1500000],[5,3,37,166,1,-1500000],[46,3,6,165,6,758183],[130,1,23,165,12,514286],[72,2,6,165,6,758183],[92,2,20,165,84,800000],[92,2,37,165,1,-133333],[72,2,37,165,1,-126364],[40,2,68,165,12,607092],[40,2,8,165,24,1511111],[38,3,6,165,6,758183],[40,2,37,165,1,-353034],[38,3,14,165,12,1069092],[46,3,17,165,180,2160000],[130,1,37,165,1,-85714],[46,3,37,165,1,-126364],[148,2,72,165,1400,49200000],[46,3,37,165,1,-360000],[38,3,37,165,1,-304546],[18,1,10,165,500,40000000],[159,2,72,165,200,7028571],[97,1,37,163,1,-85714],[151,0,37,163,1,-100952],[97,3,37,163,1,-133333],[5,3,37,163,1,-1500000],[5,3,37,163,1,-1500000],[97,1,23,163,12,514286],[5,3,5,163,1,1500000],[5,3,5,163,1,1500000],[5,3,5,163,4,6000000],[5,3,5,163,4,6000000],[151,0,19,163,12,605714],[97,3,20,163,84,800000],[77,1,21,162,240,1248000],[165,4,21,162,240,1248000],[165,4,37,162,1,-208000],[77,1,37,162,1,-208000],[126,2,26,162,0,-6400000],[150,2,19,160,36,1817143],[150,2,6,160,24,3032733],[5,3,37,160,1,-1500000],[5,3,37,160,1,-1500000],[5,3,5,160,4,6000000],[5,3,5,160,2,3000000],[5,3,5,160,4,6000000],[97,3,37,160,1,-387143],[97,3,24,160,90,2322857],[150,2,37,160,1,-822754],[7,2,2,160,600,8400000],[65,2,41,160,1200,8571428],[166,2,25,159,10,942857],[32,2,37,159,1,-208000],[32,2,21,159,240,1248000],[62,2,6,158,6,758183],[62,2,37,158,1,-357844],[52,2,37,157,1,-91429],[96,3,37,157,1,-209524],[96,3,49,157,240,1257143],[52,2,73,157,12,548571],[5,3,5,156,2,3000000],[5,3,5,156,2,3000000],[5,3,5,156,4,6000000],[5,3,5,156,4,6000000],[5,3,5,156,4,6000000],[5,3,5,156,4,6000000],[5,3,37,156,1,-1500000],[5,3,37,156,1,-1500000],[5,3,37,156,1,-1500000],[5,3,37,156,1,-1500000],[50,1,37,155,1,-208000],[50,1,21,155,240,1248000],[10,1,9,155,100,150000000],[92,2,74,154,15,714286],[92,2,36,154,12,977778],[5,3,37,154,1,-1500000],[5,3,37,154,1,-1500000],[5,3,5,154,2,3000000],[5,3,5,154,4,6000000],[5,3,5,154,4,6000000],[92,2,37,154,1,-348148],[150,2,26,152,120,3840000],[5,3,5,152,4,6000000],[5,3,5,152,4,6000000],[5,3,5,152,4,6000000],[5,3,5,152,2,3000000],[5,3,5,152,4,6000000],[150,2,37,152,1,-640000],[5,3,37,152,1,-1500000],[5,3,37,152,1,-1500000],[5,3,37,152,1,-1500000],[5,3,37,152,1,-1500000],[5,3,5,152,2,3000000],[76,3,5,152,18,27000000],[7,2,10,151,300,24000000],[5,3,5,151,2,3000000],[5,3,5,151,4,6000000],[5,3,37,151,1,-1500000],[5,3,37,151,1,-1500000],[52,2,37,151,1,-126364],[5,3,37,151,1,-1500000],[5,3,37,151,1,-1500000],[7,2,5,151,50,75000000],[5,3,5,151,4,6000000],[5,3,5,151,4,6000000],[5,3,5,151,4,6000000],[5,3,5,151,2,3000000],[52,2,6,151,6,758183],[167,3,42,211,2,228571],[167,3,61,211,240,1222222],[131,1,35,211,120,666667],[167,3,35,211,120,666667],[131,1,37,211,1,-111111],[167,3,37,211,1,-314815],[96,3,37,211,1,-209524],[92,2,37,211,1,-201905],[5,3,37,211,1,-1500000],[168,1,61,211,240,1222222],[168,1,37,211,1,-584259],[169,4,37,211,1,-152381],[168,1,75,211,150,1069444],[114,1,37,211,1,-640000],[92,2,19,211,24,1211429],[96,3,49,211,240,1257143],[5,3,5,211,1,1500000],[5,3,5,211,4,6000000],[168,1,23,211,24,1028571],[169,4,23,211,12,514286],[169,4,22,211,12,400000],[114,1,26,211,120,3840000],[38,3,37,210,1,-387143],[10,1,9,210,100,150000000],[71,3,23,210,12,514286],[71,3,37,210,1,-287037],[71,3,61,210,240,1222222],[38,3,24,210,90,2322857],[170,4,37,209,1,-208000],[171,4,76,209,360,1697143],[171,4,37,209,1,-282857],[5,3,5,209,4,6000000],[5,3,5,209,2,3000000],[5,3,5,209,4,6000000],[170,4,21,209,240,1248000],[96,3,37,209,1,-387143],[97,3,37,209,1,-774286],[97,3,37,209,1,-304546],[97,3,6,209,6,758183],[97,3,14,209,12,1069092],[97,3,24,209,180,4645714],[96,3,24,209,90,2322857],[5,3,37,209,1,-1500000],[5,3,37,209,1,-1500000],[90,2,77,208,84,800000],[90,2,37,208,1,-133333],[155,1,37,207,1,-293714],[96,3,37,207,1,-126364],[39,2,37,207,1,-171429],[39,2,39,207,1,42857],[128,3,6,207,12,1516367],[96,3,6,207,6,758183],[155,1,23,207,12,514286],[39,2,39,207,23,985714],[155,1,21,207,240,1248000],[128,3,37,207,1,-252728],[77,1,21,205,240,1248000],[77,1,37,205,1,-208000],[7,2,9,204,2,3000000],[1,1,2,204,100,1400000],[7,2,7,203,20,1680000],[34,3,37,203,1,-126364],[5,3,5,203,1,1500000],[34,3,6,203,6,758183],[31,2,37,202,1,-171429],[31,2,23,202,24,1028571],[7,2,7,202,20,1680000],[66,3,57,202,100000,45714300],[135,1,21,202,200,1040000],[172,4,2,202,1000,14000000],[47,2,69,202,50,4285714],[7,2,10,201,300,24000000],[124,2,37,201,1,-133333],[130,1,37,201,1,-379429],[59,1,37,201,1,-208000],[59,1,21,201,240,1248000],[146,2,37,201,1,-208000],[124,2,20,201,84,800000],[146,2,21,201,240,1248000],[130,1,21,201,240,1248000],[130,1,23,201,24,1028571],[151,0,37,201,1,-208000],[151,0,21,201,240,1248000],[65,2,41,200,1200,8571428],[5,3,5,198,4,6000000],[5,3,5,198,4,6000000],[59,1,78,198,240,720000],[5,3,5,198,4,6000000],[5,3,5,198,2,3000000],[5,3,5,198,2,3000000],[5,3,5,198,4,6000000],[5,3,37,198,1,-1500000],[5,3,37,198,1,-1500000],[59,1,37,198,1,-120000],[86,1,37,198,1,-208000],[151,0,37,198,1,-203704],[5,3,37,198,1,-1500000],[5,3,37,198,1,-1500000],[151,0,61,198,240,1222222],[86,1,21,198,240,1248000],[46,3,30,197,72,1371429],[92,2,20,197,84,800000],[77,3,6,197,6,758183],[5,3,5,197,4,6000000],[5,3,5,197,2,3000000],[5,3,5,197,4,6000000],[173,4,26,197,10,320000],[42,2,37,197,1,-504762],[92,2,37,197,1,-133333],[77,3,37,197,1,-126364],[46,3,37,197,1,-228571],[42,2,19,197,60,3028571],[5,3,37,197,1,-1500000],[5,3,37,197,1,-1500000],[174,0,45,197,20,1781815],[174,0,45,197,2,0],[10,1,9,197,100,150000000],[174,0,30,197,60,1142857],[174,0,30,197,6,0],[5,3,5,196,4,6000000],[5,3,5,196,2,3000000],[5,3,5,196,4,6000000],[175,2,12,196,12,3960000],[175,2,37,196,1,-660000],[176,2,37,196,1,-125926],[177,0,37,196,1,-590741],[5,3,37,196,1,-1500000],[5,3,37,196,1,-1500000],[177,0,70,196,240,1100000],[177,0,61,196,480,2444444],[176,2,8,196,12,755556],[5,3,5,195,3,4500000],[5,3,37,195,1,-1500000],[32,3,37,195,1,-774286],[32,3,24,195,180,4645714],[7,2,40,195,50,2000000],[23,1,18,194,200,2400000],[66,3,12,194,200,66000000],[5,3,37,194,1,-1500000],[5,3,5,194,4,6000000],[5,3,5,193,3,4500000],[23,0,12,193,30,5652000],[159,2,38,193,200,7028571],[153,3,37,191,1,-126364],[153,3,6,191,6,758183],[5,3,37,191,1,-1500000],[5,3,37,191,1,-1500000],[5,3,37,191,1,-1500000],[5,3,5,191,3,4500000],[5,3,5,191,3,4500000],[5,3,5,191,4,6000000],[5,3,5,190,4,6000000],[178,1,35,190,480,2666666],[178,1,37,190,1,-444444],[97,1,37,190,1,-162963],[97,1,36,190,12,977778],[5,3,37,190,1,-1500000],[33,3,37,189,1,-618070],[70,2,37,189,1,-140000],[5,3,37,189,1,-1500000],[17,2,37,189,1,-230927],[17,2,6,189,6,758183],[33,3,19,189,12,605714],[33,3,24,189,90,2322857],[33,3,6,189,6,758183],[70,2,2,189,60,840000],[5,3,5,189,1,1500000],[17,2,19,189,12,605714],[5,3,5,189,4,6000000],[3,1,3,188,12,1030911],[129,2,37,188,1,-208000],[129,2,21,188,240,1248000],[5,3,5,188,3,4500000],[54,1,79,188,180,766667],[54,1,37,188,1,-127778],[3,1,37,188,1,-171819],[10,1,9,188,50,75000000],[18,1,10,187,1000,80000000],[21,2,13,187,144,2057143],[5,3,5,187,3,4500000],[21,2,37,187,1,-342857],[87,2,6,186,6,758183],[77,3,14,186,12,1069089],[77,3,37,186,1,-178181],[87,2,13,186,36,514286],[87,2,37,186,1,-209697],[5,3,5,186,3,4500000],[76,3,12,186,100,33000000],[5,3,5,185,3,4500000],[5,3,37,185,1,-1500000],[5,3,37,185,1,-1500000],[5,3,37,185,1,-1500000],[5,3,37,185,1,-1500000],[5,3,37,185,1,-1500000],[5,3,5,185,3,4500000],[5,3,5,185,3,4500000],[5,3,5,185,3,4500000],[5,3,5,185,3,4500000],[5,3,5,185,3,4500000],[5,3,5,184,3,4500000],[9,1,27,184,200,9600000],[179,4,9,183,10,15000000],[92,2,37,183,1,-100952],[31,2,37,183,1,-171429],[107,3,37,183,1,-178182],[107,3,14,183,12,1069092],[92,2,19,183,12,605714],[31,2,23,183,24,1028571],[5,3,5,182,3,4500000],[5,3,5,182,3,4500000],[5,3,5,182,4,6000000],[5,3,37,182,1,-1500000],[5,3,37,182,1,-1500000],[162,3,55,182,20,2857143],[11,2,12,181,30,9900000],[11,2,12,181,2,0],[169,4,21,181,240,1248000],[170,4,41,181,240,1714286],[170,4,37,181,1,-285714],[75,2,37,181,1,-208000],[75,2,21,181,240,1248000],[169,4,37,181,1,-208000],[170,4,21,242,240,1248000],[180,4,21,242,240,1248000],[181,3,23,242,12,514286],[180,4,22,242,12,400000],[171,4,76,242,360,1697143],[171,4,37,242,1,-282857],[170,4,37,242,1,-208000],[181,3,37,242,1,-85714],[101,1,80,242,12,607089],[180,4,37,242,1,-274667],[181,3,6,242,6,758183],[5,3,5,242,4,6000000],[5,3,5,242,4,6000000],[5,3,5,242,4,6000000],[5,3,5,242,4,6000000],[5,3,5,242,2,3000000],[5,3,5,242,4,6000000],[114,1,26,242,120,3840000],[114,1,37,242,1,-640000],[5,3,37,242,1,-1500000],[5,3,37,242,1,-1500000],[5,3,37,242,1,-1500000],[5,3,37,242,1,-1500000],[5,3,37,242,1,-1500000],[181,3,37,242,1,-126364],[101,1,37,242,1,-101181],[39,2,37,240,1,-293714],[59,3,37,240,1,-126364],[39,2,21,240,240,1248000],[59,3,6,240,6,758183],[5,3,5,240,4,6000000],[5,3,5,240,4,6000000],[5,3,5,240,4,6000000],[5,3,5,240,2,3000000],[5,3,5,240,4,6000000],[5,3,5,240,2,3000000],[5,3,37,240,1,-1500000],[5,3,37,240,1,-1500000],[5,3,37,240,1,-1500000],[5,3,37,240,1,-1500000],[39,2,23,240,12,514286],[77,3,37,239,1,-133333],[77,1,21,239,240,1248000],[77,3,77,239,84,800000],[179,4,9,239,8,12000000],[5,3,5,239,2,3000000],[5,3,5,239,4,6000000],[5,3,5,239,4,6000000],[5,3,37,239,1,-1500000],[5,3,37,239,1,-1500000],[47,2,32,239,5,3809524],[77,1,37,239,1,-208000],[96,3,37,238,1,-517117],[182,4,37,238,1,-1500000],[155,1,37,238,1,-208000],[96,3,24,238,90,2322857],[182,4,81,238,3,4500000],[182,4,81,238,4,6000000],[96,3,6,238,6,758183],[51,2,2,238,60,840000],[155,1,21,238,240,1248000],[51,2,37,238,1,-140000],[10,1,9,237,170,255000000],[97,3,24,237,90,2322857],[183,0,21,237,240,1248000],[97,3,6,237,6,758183],[183,0,37,237,1,-208000],[32,3,16,237,240,1142856],[46,3,41,237,80,571429],[46,3,61,237,40,203704],[97,3,37,237,1,-517117],[46,3,35,237,40,222222],[32,3,37,237,1,-190476],[5,3,37,236,1,-1500000],[5,3,37,236,1,-1500000],[169,4,37,236,1,-152381],[5,3,37,236,1,-1500000],[5,3,5,236,4,6000000],[5,3,5,236,4,6000000],[72,2,75,236,390,2780555],[72,2,37,236,1,-1075689],[72,2,41,236,240,1714286],[72,2,6,236,6,758183],[42,2,37,236,1,-387143],[42,2,24,236,90,2322857],[169,4,23,236,12,514286],[169,4,22,236,12,400000],[5,3,5,236,3,4500000],[5,3,5,236,4,6000000],[7,2,10,236,300,24000000],[184,1,23,235,24,1028571],[50,1,21,235,240,1248000],[5,3,5,235,4,6000000],[5,3,5,235,2,3000000],[5,3,5,235,4,6000000],[77,3,6,235,6,758183],[184,1,37,235,1,-171429],[50,1,37,235,1,-208000],[77,3,37,235,1,-126364],[5,3,37,235,1,-1500000],[5,3,37,235,1,-1500000],[5,3,37,233,1,-1500000],[5,3,37,233,1,-1500000],[5,3,37,233,1,-1500000],[5,3,37,233,1,-1500000],[92,2,37,233,1,-201905],[5,3,5,233,2,3000000],[5,3,5,233,4,6000000],[5,3,5,233,4,6000000],[5,3,5,233,4,6000000],[5,3,5,233,4,6000000],[5,3,5,233,2,3000000],[92,2,19,233,24,1211429],[5,3,5,232,2,3000000],[40,2,8,232,12,755556],[40,2,37,232,1,-125926],[5,3,5,232,4,6000000],[5,3,5,232,4,6000000],[5,3,37,232,1,-1500000],[5,3,37,232,1,-1500000],[153,3,37,231,1,-126364],[153,3,6,231,6,758183],[76,3,57,231,30000,13714290],[76,3,12,231,100,33000000],[47,2,69,230,100,8571429],[7,2,10,230,200,16000000],[7,2,7,230,20,1680000],[5,3,5,230,2,3000000],[5,3,5,230,4,6000000],[5,3,5,230,4,6000000],[97,1,37,230,1,-171429],[97,1,23,230,24,1028571],[52,2,45,230,12,1069092],[52,2,6,230,6,758183],[52,2,37,230,1,-304546],[5,3,37,230,1,-1500000],[5,3,37,230,1,-1500000],[185,2,12,229,20,6600000],[185,2,12,229,2,0],[185,2,82,229,30,1514286],[185,2,82,229,3,0],[185,2,24,229,15,0],[185,2,24,229,150,3871429],[185,2,6,229,10,1263639],[185,2,6,229,1,0],[185,2,15,229,1,0],[185,2,15,229,10,890907],[186,2,12,228,200,66000000],[186,2,57,228,20000,9142860],[68,2,19,228,36,1817143],[68,2,6,228,12,1516367],[107,3,77,228,84,800000],[71,1,21,228,240,1248000],[9,1,27,228,200,9600000],[65,2,41,228,2000,14285714],[71,1,37,228,1,-208000],[107,3,37,228,1,-133333],[68,2,37,228,1,-562806],[5,3,37,226,1,-1500000],[5,3,37,226,1,-1500000],[187,3,37,226,1,-1500000],[5,3,37,226,1,-1500000],[5,3,37,226,1,-1500000],[5,3,5,226,4,6000000],[5,3,5,226,4,6000000],[5,3,5,226,2,3000000],[5,3,5,226,2,3000000],[5,3,5,226,4,6000000],[187,3,5,226,1,1500000],[187,3,5,226,4,6000000],[5,3,5,226,4,6000000],[10,1,9,225,200,300000000],[5,3,5,223,4,6000000],[5,3,5,223,2,3000000],[5,3,5,223,4,6000000],[5,3,37,223,1,-1500000],[5,3,37,223,1,-1500000],[46,3,37,222,1,-126364],[188,4,26,222,120,3840000],[188,4,37,222,1,-640000],[42,2,37,222,1,-255994],[42,2,77,222,84,800000],[42,2,6,222,6,758183],[46,3,6,222,6,758183],[73,2,21,221,240,1248000],[92,2,77,221,84,800000],[92,2,6,221,6,758183],[83,3,37,221,1,-304762],[73,2,37,221,1,-208000],[92,2,37,221,1,-255994],[83,3,13,221,72,1028571],[83,3,77,221,84,800000],[5,3,37,219,1,-1500000],[5,3,37,219,1,-1500000],[130,1,61,219,240,1222222],[130,1,37,219,1,-203704],[5,3,5,219,2,3000000],[5,3,5,219,4,6000000],[5,3,5,219,4,6000000],[5,3,5,218,2,3000000],[5,3,5,218,4,6000000],[5,3,5,218,4,6000000],[62,2,83,218,180,1250000],[62,2,37,218,1,-461061],[62,2,6,218,12,1516367],[174,0,6,218,10,1263639],[174,0,6,218,1,0],[5,3,37,218,1,-1500000],[5,3,37,218,1,-1500000],[182,4,81,217,5,7500000],[5,3,37,217,1,-1500000],[5,3,37,217,1,-1500000],[5,3,5,217,4,6000000],[182,4,37,217,1,-1500000],[107,3,37,217,1,-351415],[107,3,14,217,12,1069092],[107,3,45,217,12,1069092],[142,2,6,217,6,758183],[142,2,45,217,12,1069092],[142,2,22,217,24,800000],[142,2,61,217,480,2444444],[142,2,37,217,1,-865629],[5,3,5,217,4,6000000],[5,3,5,217,2,3000000],[47,2,12,217,100,33000000],[7,2,12,217,30,9900000],[7,2,5,217,50,75000000],[7,2,40,217,30,0],[7,2,10,217,400,32000000],[143,1,10,217,200,16000000],[5,3,5,216,4,6000000],[5,3,5,216,2,3000000],[5,3,5,216,2,3000000],[5,3,5,216,4,6000000],[5,3,37,216,1,-1500000],[5,3,37,216,1,-1500000],[5,3,37,216,1,-1500000],[5,3,37,216,1,-1500000],[5,3,5,216,4,6000000],[5,3,5,216,4,6000000],[5,3,5,215,4,6000000],[5,3,5,215,2,3000000],[5,3,5,215,4,6000000],[44,2,37,215,1,-230927],[5,3,37,215,1,-1500000],[5,3,37,215,1,-1500000],[66,3,40,215,700,28000000],[44,2,6,215,6,758183],[44,2,19,215,12,605714],[189,2,6,215,6,758183],[189,2,37,215,1,-126364],[190,1,9,215,20,30000000],[191,1,26,214,2000,64000000],[34,3,37,214,1,-356364],[34,3,45,214,24,2138184],[20,2,6,214,12,1516367],[20,2,37,214,1,-252728],[39,2,21,212,230,1196000],[39,2,21,212,10,52000],[6,2,2,212,120,1680000],[6,2,16,212,240,1142856],[39,2,37,212,1,-208000],[5,3,5,212,3,4500000],[5,3,5,212,4,6000000],[5,3,5,212,4,6000000],[5,3,5,212,4,6000000],[5,3,37,212,1,-1500000],[5,3,37,212,1,-1500000],[5,3,37,212,1,-1500000],[6,2,37,212,1,-190476],[6,2,37,212,1,-280000]]};
+</script>
+<script>
+"use strict";
+const TDV=DATA.tdv, CUST=DATA.cust, PROD=DATA.prod, FOCUS=DATA.focus, ROWS=DATA.rows;
+const BASE=new Date(DATA.base+"T00:00:00");
+const MS=86400000;
+function diToDate(di){const d=new Date(BASE.getTime()+di*MS);return d;}
+function diToMonth(di){const d=diToDate(di);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+const ASOF=diToDate(DATA.asofDi);
+const MONTHS=[...new Set(ROWS.map(r=>diToMonth(r[3])))].sort();
+const FOCUS_ORDER=Object.keys(FOCUS);
+const FOCUS_COLORS={"Atosiban":"var(--s1)","Proges sup":"var(--s2)","pH Protect":"var(--s3)","Progermila":"var(--s4)","Propofol":"var(--s5)"};
+const PID2FOCUS={}; FOCUS_ORDER.forEach(l=>FOCUS[l].forEach(p=>PID2FOCUS[p]=l));
+const FOCUS_PIDSET=new Set(Object.keys(PID2FOCUS).map(Number));
+// row cols
+const C={cid:0,tid:1,pid:2,di:3,sl:4,dt:5};
+
+const nf=new Intl.NumberFormat("vi-VN");
+function vnd(n){return nf.format(Math.round(n));}
+function compact(n){const a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(a>=1e10?1:2).replace(".",",")+" tỷ";if(a>=1e6)return Math.round(n/1e6)+" tr";if(a>=1e3)return Math.round(n/1e3)+"k";return String(Math.round(n));}
+function dstr(d){return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear();}
+function mLabel(m){const[y,mm]=m.split("-");return "T"+Number(mm)+"/"+y.slice(2);}
+function daysSince(di){return Math.round((ASOF-diToDate(di))/MS);}
+function statusOf(days){if(days<=45)return["good","Duy trì tốt"];if(days<=90)return["warn","Chú ý"];return["crit","Lâu chưa lấy"];}
+function chip(days){const[c,l]=statusOf(days);return `<span class="chip ${c}"><span class="cd"></span>${l}</span>`;}
+function momHtml(cur,prev,mom){if(cur===0&&prev===0)return '<span style="color:var(--muted)">—</span>';const cls=mom>=0?"up":"down";return `<span class="delta ${cls}">${mom>=0?"▲":"▼"} ${Math.abs(mom).toFixed(0)}%</span>`;}
+function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
+
+const state={tab:"overview",tdv:-1,tinh:"",mFrom:MONTHS[0],mTo:MONTHS[MONTHS.length-1],focusOnly:false,
+  ovMetric:"dt",selCust:null,custQuery:"",prodQuery:"",prodSort:"dt",prodDir:-1,selProd:null,mgDim:"prod",mgMetric:"dt",_activeSearch:null};
+
+const PROVINCES=[...new Set(CUST.map(c=>c[2]).filter(Boolean))].sort();
+
+function frows(){
+  return ROWS.filter(r=>{
+    if(state.tdv>=0 && r[C.tid]!==state.tdv)return false;
+    const m=diToMonth(r[C.di]); if(m<state.mFrom||m>state.mTo)return false;
+    if(state.tinh && CUST[r[C.cid]][2]!==state.tinh)return false;
+    if(state.focusOnly && !FOCUS_PIDSET.has(r[C.pid]))return false;
+    return true;
+  });
+}
+// rows for a specific customer across full history (respect tdv/focus? use full for recency)
+function custRows(cid){return ROWS.filter(r=>r[C.cid]===cid);}
+
+/* ---------- aggregation helpers ---------- */
+function sumBy(rows,keyFn,valFn){const m=new Map();for(const r of rows){const k=keyFn(r);m.set(k,(m.get(k)||0)+valFn(r));}return m;}
+function distinctCount(rows,keyFn){const s=new Set();for(const r of rows)s.add(keyFn(r));return s.size;}
+
+/* ============ CHARTS ============ */
+function barChart(items,{fmt=compact,color="var(--brand)",height=230,showVal=true}={}){
+  // items:[{label,value,tip}]
+  const W=Math.max(items.length*70,520),H=height,padL=8,padR=8,padT=22,padB=30;
+  const max=Math.max(1,...items.map(i=>i.value));
+  const bw=(W-padL-padR)/items.length, iw=Math.min(46,bw*0.62);
+  const plotH=H-padT-padB;
+  let g="";
+  for(let t=0;t<=4;t++){const y=padT+plotH*(t/4);g+=`<line class="grid-line" x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}"/>`;}
+  let bars="";
+  items.forEach((it,i)=>{
+    const x=padL+bw*i+(bw-iw)/2;
+    const h=Math.max(2,plotH*(it.value/max));
+    const y=padT+plotH-h;
+    bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${iw.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${color}" data-tip="${esc(it.tip||(it.label+': '+fmt(it.value)))}"/>`;
+    if(showVal)bars+=`<text class="bar-val" x="${(x+iw/2).toFixed(1)}" y="${(y-6).toFixed(1)}" text-anchor="middle">${fmt(it.value)}</text>`;
+    bars+=`<text class="axis-lab" x="${(x+iw/2).toFixed(1)}" y="${H-10}" text-anchor="middle">${esc(it.label)}</text>`;
+  });
+  return `<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMinYMid meet" style="min-width:${W}px">${g}${bars}</svg></div>`;
+}
+function hbar(items,{fmt=vnd,color="var(--brand)"}={}){
+  const max=Math.max(1,...items.map(i=>i.value));
+  let h="";
+  items.forEach(it=>{
+    const pct=(it.value/max*100);
+    h+=`<div class="hb" data-tip="${esc(it.tip||'')}" style="display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border-2)">
+      <div style="min-width:0"><div class="name-cell" style="white-space:normal"><span class="n1" style="font-size:13px">${esc(it.label)}</span>${it.sub?`<div class="n2">${esc(it.sub)}</div>`:""}</div></div>
+      <div class="num" style="font-weight:700;font-size:13px;text-align:right;white-space:nowrap">${fmt(it.value)}</div>
+      <div style="grid-column:1/-1;height:6px;background:var(--surface-2);border-radius:4px;overflow:hidden;margin-top:2px"><div style="height:100%;width:${pct.toFixed(1)}%;background:${color};border-radius:4px"></div></div>
+    </div>`;
+  });
+  return h||`<div class="empty">Không có dữ liệu</div>`;
+}
+function sparkline(vals,{color="var(--brand)",w=300,h=54}={}){
+  const max=Math.max(1,...vals),min=Math.min(0,...vals);
+  const n=vals.length,pad=4;
+  const xs=i=>pad+(w-2*pad)*(n<2?0.5:i/(n-1));
+  const ys=v=>pad+(h-2*pad)*(1-(v-min)/((max-min)||1));
+  let d="";vals.forEach((v,i)=>{d+=(i?"L":"M")+xs(i).toFixed(1)+" "+ys(v).toFixed(1)+" ";});
+  const area=d+`L ${xs(n-1).toFixed(1)} ${h-pad} L ${xs(0).toFixed(1)} ${h-pad} Z`;
+  const lx=xs(n-1),ly=ys(vals[n-1]);
+  return `<svg class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="height:${h}px"><path d="${area}" fill="${color}" opacity=".12"/><path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.2" fill="${color}"/></svg>`;
+}
+function multiLine(series,labels,{fmt=compact,height=250}={}){
+  // series:[{name,color,vals:[]}]
+  const W=Math.max(labels.length*70,560),H=height,padL=46,padR=14,padT=16,padB=28;
+  const all=series.flatMap(s=>s.vals);const max=Math.max(1,...all);
+  const plotH=H-padT-padB,plotW=W-padL-padR,n=labels.length;
+  const xs=i=>padL+(n<2?plotW/2:plotW*i/(n-1));
+  const ys=v=>padT+plotH*(1-v/max);
+  let g="";for(let t=0;t<=4;t++){const y=padT+plotH*(t/4);const val=max*(1-t/4);g+=`<line class="grid-line" x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}"/><text class="axis-lab" x="${padL-8}" y="${(y+4).toFixed(1)}" text-anchor="end">${compact(val)}</text>`;}
+  labels.forEach((l,i)=>{g+=`<text class="axis-lab" x="${xs(i).toFixed(1)}" y="${H-9}" text-anchor="middle">${esc(l)}</text>`;});
+  let lines="";
+  series.forEach(s=>{
+    let d="";s.vals.forEach((v,i)=>{d+=(i?"L":"M")+xs(i).toFixed(1)+" "+ys(v).toFixed(1)+" ";});
+    lines+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    s.vals.forEach((v,i)=>{lines+=`<circle cx="${xs(i).toFixed(1)}" cy="${ys(v).toFixed(1)}" r="8" fill="transparent" data-tip="${esc(s.name+' · '+labels[i]+': '+fmt(v))}"/><circle cx="${xs(i).toFixed(1)}" cy="${ys(v).toFixed(1)}" r="3" fill="${s.color}"/>`;});
+  });
+  return `<div class="chart-wrap"><svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMinYMid meet" style="min-width:${W}px">${g}${lines}</svg></div>`;
+}
+
+/* ============ TABS RENDER ============ */
+function kpiTile(lab,val,sub,dot){return `<div class="kpi"><div class="k-lab">${dot?`<span class="k-dot" style="background:${dot}"></span>`:""}${lab}</div><div class="k-val num">${val}</div>${sub?`<div class="k-sub">${sub}</div>`:""}</div>`;}
+
+function renderOverview(){
+  const R=frows();
+  const dt=R.reduce((a,r)=>a+r[C.dt],0);
+  const nKH=distinctCount(R.filter(r=>r[C.dt]>0),r=>r[C.cid]);
+  const nSP=distinctCount(R,r=>r[C.pid]);
+  const nLuot=distinctCount(R,r=>r[C.cid]+"|"+r[C.di]);
+  // monthly
+  const monthsInRange=MONTHS.filter(m=>m>=state.mFrom&&m<=state.mTo);
+  const metric=state.ovMetric;
+  const monVal=monthsInRange.map(m=>{
+    const rr=R.filter(r=>diToMonth(r[C.di])===m);
+    let v;if(metric==="dt")v=rr.reduce((a,r)=>a+r[C.dt],0);
+    else if(metric==="kh")v=distinctCount(rr.filter(r=>r[C.dt]>0),r=>r[C.cid]);
+    else v=distinctCount(rr,r=>r[C.cid]+"|"+r[C.di]);
+    return {label:mLabel(m),value:Math.max(0,v),tip:`<div class="tt-t">${mLabel(m)}</div><div class="tt-r"><span>${metric==="dt"?"Doanh thu":metric==="kh"?"Số KH":"Lượt mua"}</span><span>${metric==="dt"?vnd(v):nf.format(v)}</span></div>`};
+  });
+  const metricColor=metric==="dt"?"var(--brand)":metric==="kh"?"var(--s1)":"var(--s3)";
+  // top products
+  const spMap=sumBy(R,r=>r[C.pid],r=>r[C.dt]);
+  const topSP=[...spMap.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([pid,v])=>({label:PROD[pid][1],sub:PROD[pid][0]+(PID2FOCUS[pid]?" · ⭐ "+PID2FOCUS[pid]:""),value:v,tip:`<div class="tt-t">${esc(PROD[pid][1])}</div><div class="tt-r"><span>Doanh thu</span><span>${vnd(v)}</span></div>`}));
+  // top customers
+  const khMap=sumBy(R.filter(r=>r[C.dt]>0),r=>r[C.cid],r=>r[C.dt]);
+  const topKH=[...khMap.entries()].sort((a,b)=>b[1]-a[1]).slice(0,10).map(([cid,v])=>({label:CUST[cid][1],sub:CUST[cid][2]+" · "+CUST[cid][0],value:v,tip:`<div class="tt-t">${esc(CUST[cid][1])}</div><div class="tt-r"><span>Doanh thu</span><span>${vnd(v)}</span></div>`}));
+  const metricName=metric==="dt"?"Doanh thu (net)":metric==="kh"?"Số khách hàng có mua":"Số lượt mua (KH×ngày)";
+  return `
+  <div class="grid kpis">
+    ${kpiTile("Doanh thu (net)",compact(dt),vnd(dt)+" đ","var(--brand)")}
+    ${kpiTile("Khách hàng có mua",nf.format(nKH),"trong kỳ đã lọc","var(--s1)")}
+    ${kpiTile("Sản phẩm đã bán",nf.format(nSP),"mã sản phẩm khác nhau","var(--s3)")}
+    ${kpiTile("Lượt mua",nf.format(nLuot),"KH × ngày phát sinh","var(--s2)")}
+  </div>
+  <div class="card pad" style="margin-top:16px">
+    <div class="sec-head"><h2>Diễn biến theo tháng</h2>
+      <div class="seg" data-seg="ov"><button data-m="dt" class="${metric==="dt"?"on":""}">Doanh thu</button><button data-m="kh" class="${metric==="kh"?"on":""}">Số KH</button><button data-m="luot" class="${metric==="luot"?"on":""}">Lượt mua</button></div>
+    </div>
+    ${barChart(monVal,{fmt:metric==="dt"?compact:nf.format,color:metricColor})}
+    <div class="legend"><div class="li"><span class="lk" style="background:${metricColor}"></span>${metricName}</div></div>
+  </div>
+  <div class="grid two" style="margin-top:16px">
+    <div class="card pad"><div class="sec-head"><h2>Top sản phẩm theo doanh thu</h2><span class="hint">10 cao nhất</span></div>${hbar(topSP)}</div>
+    <div class="card pad"><div class="sec-head"><h2>Top khách hàng</h2><span class="hint">10 cao nhất</span></div>${hbar(topKH,{color:"var(--s1)"})}</div>
+  </div>`;
+}
+
+function renderCustomer(){
+  if(state.selCust!=null)return renderCustDetail(state.selCust);
+  const q=state.custQuery.trim().toLowerCase();
+  // scope customers by current tdv/tinh filter
+  const rr=frows();
+  const cids=new Set(rr.map(r=>r[C.cid]));
+  let list=[...cids].map(cid=>{
+    const crows=custRows(cid).filter(r=>state.tdv<0||r[C.tid]===state.tdv);
+    const lastDi=Math.max(...crows.map(r=>r[C.di]));
+    const dt=crows.reduce((a,r)=>a+r[C.dt],0);
+    return {cid,lastDi,dt,tenkh:CUST[cid][1],makh:CUST[cid][0],tinh:CUST[cid][2]};
+  });
+  if(q)list=list.filter(c=>c.tenkh.toLowerCase().includes(q)||c.makh.toLowerCase().includes(q));
+  list.sort((a,b)=>b.lastDi-a.lastDi);
+  const shown=list.slice(0,60);
+  const items=shown.map(c=>{
+    const days=daysSince(c.lastDi);
+    return `<button class="cust-item" data-cust="${c.cid}"><div class="ci-top"><div style="min-width:0"><div class="ci-name">${esc(c.tenkh)}</div><div class="ci-meta"><span class="mono">${esc(c.makh)}</span> · ${esc(c.tinh)}</div></div>${chip(days)}</div><div class="ci-meta" style="margin-top:8px">Mua gần nhất: <b style="color:var(--ink)">${dstr(diToDate(c.lastDi))}</b> · DT: ${vnd(c.dt)}đ</div></button>`;
+  }).join("");
+  return `
+  <div class="card pad">
+    <div class="search-row"><input type="text" id="custSearch" placeholder="🔍 Tìm khách hàng theo tên hoặc mã KH…" value="${esc(state.custQuery)}" autocomplete="off"></div>
+    <div class="ci-meta" style="margin-top:8px;color:var(--muted)">${list.length} khách hàng${q?" khớp":""}${list.length>60?" · hiển thị 60 gần nhất":""} · bấm để xem chi tiết sản phẩm đang lấy</div>
+    <div class="cust-list">${items||`<div class="empty">Không tìm thấy khách hàng phù hợp</div>`}</div>
+  </div>`;
+}
+
+function renderCustDetail(cid){
+  const crows=custRows(cid).filter(r=>state.tdv<0||r[C.tid]===state.tdv);
+  const c=CUST[cid];
+  // current tdv = most recent
+  const lastRow=crows.reduce((a,r)=>r[C.di]>a[C.di]?r:a,crows[0]);
+  const tdvName=TDV[lastRow[C.tid]];
+  const dt=crows.reduce((a,r)=>a+r[C.dt],0);
+  const lastDi=Math.max(...crows.map(r=>r[C.di]));
+  // per product
+  const byP=new Map();
+  for(const r of crows){const p=r[C.pid];if(!byP.has(p))byP.set(p,{pid:p,dt:0,sl:0,dates:new Set(),last:-1});const o=byP.get(p);o.dt+=r[C.dt];o.sl+=r[C.sl];o.dates.add(r[C.di]);if(r[C.di]>o.last)o.last=r[C.di];}
+  const prods=[...byP.values()].sort((a,b)=>b.last-a.last||b.dt-a.dt);
+  const nActive=prods.filter(p=>daysSince(p.last)<=45).length;
+  const rowsHtml=prods.map(p=>{
+    const days=daysSince(p.last);
+    return `<tr><td class="name-cell"><span class="n1">${esc(PROD[p.pid][1])}</span><div class="n2"><span class="mono">${esc(PROD[p.pid][0])}</span>${PID2FOCUS[p.pid]?` <span class="tag">⭐ ${PID2FOCUS[p.pid]}</span>`:""}</div></td>
+      <td class="r num">${p.dates.size}</td><td class="r num">${nf.format(p.sl)}</td><td class="r num">${vnd(p.dt)}</td>
+      <td class="num">${dstr(diToDate(p.last))}</td><td class="r num">${days}</td><td>${chip(days)}</td></tr>`;
+  }).join("");
+  return `
+  <button class="back" data-back="cust">← Danh sách khách hàng</button>
+  <div class="card pad">
+    <div class="dhead"><h2>${esc(c[1])}</h2><span class="tag">${esc(c[3]||"—")}</span></div>
+    <div class="dmeta"><span>Mã KH: <b class="mono">${esc(c[0])}</b></span><span>Tỉnh: <b>${esc(c[2])}</b></span><span>TDV phụ trách: <b>${esc(tdvName)}</b></span><span>Mua gần nhất: <b>${dstr(diToDate(lastDi))}</b> (${daysSince(lastDi)} ngày)</span></div>
+    <div class="mini-kpis">
+      <div class="mini"><div class="m-l">Tổng doanh thu</div><div class="m-v num">${compact(dt)}</div></div>
+      <div class="mini"><div class="m-l">SP từng lấy</div><div class="m-v num">${prods.length}</div></div>
+      <div class="mini"><div class="m-l">SP đang duy trì</div><div class="m-v num" style="color:var(--good)">${nActive}</div></div>
+      <div class="mini"><div class="m-l">SP lâu chưa lấy</div><div class="m-v num" style="color:var(--crit)">${prods.filter(p=>daysSince(p.last)>90).length}</div></div>
+    </div>
+    <div class="note" style="margin-bottom:12px">Trạng thái theo lần lấy gần nhất: <b style="color:var(--good)">Duy trì tốt</b> ≤45 ngày · <b style="color:var(--warn)">Chú ý</b> 46–90 ngày · <b style="color:var(--crit)">Lâu chưa lấy</b> &gt;90 ngày (mốc so sánh: ${dstr(ASOF)}).</div>
+    <div class="tbl-wrap"><table><thead><tr><th class="no-sort">Sản phẩm</th><th class="r no-sort">Số lần</th><th class="r no-sort">Tổng SL</th><th class="r no-sort">Doanh thu</th><th class="no-sort">Lấy gần nhất</th><th class="r no-sort">Ngày chưa lấy</th><th class="no-sort">Trạng thái</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>
+  </div>`;
+}
+
+function productAgg(rows){
+  // returns map pid-> stats
+  const m=new Map();
+  for(const r of rows){const p=r[C.pid];if(!m.has(p))m.set(p,{pid:p,dt:0,sl:0,custs:new Set(),last:-1,byMonth:{}});const o=m.get(p);o.dt+=r[C.dt];o.sl+=r[C.sl];o.custs.add(r[C.cid]);if(r[C.di]>o.last)o.last=r[C.di];const mm=diToMonth(r[C.di]);o.byMonth[mm]=(o.byMonth[mm]||0)+r[C.dt];}
+  return m;
+}
+function renderProducts(){
+  if(state.selProd!=null)return renderProdDetail(state.selProd);
+  const R=frows();
+  const totDt=R.reduce((a,r)=>a+r[C.dt],0)||1;
+  const monthsInRange=MONTHS.filter(m=>m>=state.mFrom&&m<=state.mTo);
+  const lastM=monthsInRange[monthsInRange.length-1],prevM=monthsInRange[monthsInRange.length-2];
+  const agg=productAgg(R);
+  let list=[...agg.values()].map(o=>{
+    const days=daysSince(o.last);
+    const active=[...o.custs].filter(cid=>{const cr=R.filter(r=>r[C.pid]===o.pid&&r[C.cid]===cid);const l=Math.max(...cr.map(r=>r[C.di]));return daysSince(l)<=45;}).length;
+    const cur=o.byMonth[lastM]||0,prev=prevM?(o.byMonth[prevM]||0):0;
+    const mom=prev>0?((cur-prev)/prev*100):(cur>0?100:0);
+    return {...o,days,active,mom,cur,prev,nKH:o.custs.size};
+  });
+  const pq=state.prodQuery.trim().toLowerCase();
+  if(pq)list=list.filter(o=>PROD[o.pid][1].toLowerCase().includes(pq)||PROD[o.pid][0].toLowerCase().includes(pq));
+  const dir=state.prodDir;
+  const sk=state.prodSort;
+  list.sort((a,b)=>{let av,bv;if(sk==="name"){return a===b?0:PROD[a.pid][1].localeCompare(PROD[b.pid][1])*(dir);}av=a[sk];bv=b[sk];return (av-bv)*dir;});
+  const rowsHtml=list.map(o=>{
+    const foc=PID2FOCUS[o.pid];
+    const momCls=o.mom>=0?"up":"down";
+    return `<tr class="clickable" data-prod="${o.pid}">
+      <td class="name-cell"><span class="n1">${esc(PROD[o.pid][1])}</span><div class="n2"><span class="mono">${esc(PROD[o.pid][0])}</span>${foc?` <span class="tag">⭐ ${foc}</span>`:""}</div></td>
+      <td class="r num">${vnd(o.dt)}</td><td class="r num">${(o.dt/totDt*100).toFixed(1)}%</td>
+      <td class="r num">${o.nKH}</td><td class="r num" style="color:var(--good)">${o.active}</td>
+      <td class="num">${dstr(diToDate(o.last))}</td>
+      <td class="r">${momHtml(o.cur,o.prev,o.mom)}</td>
+      <td>${chip(o.days)}</td></tr>`;
+  }).join("");
+  const arr=k=>state.prodSort===k?`<span class="arr">${state.prodDir<0?"▼":"▲"}</span>`:"";
+  return `
+  <div class="card pad">
+    <div class="sec-head"><h2>Sản phẩm — duy trì &amp; xu hướng</h2><span class="hint">${list.length} SP${pq?" khớp":""} · bấm dòng để xem số lượng theo khách hàng · ⭐ = SP trọng tâm</span></div>
+    <div class="search-row" style="margin-bottom:10px"><input type="text" id="prodSearch" placeholder="🔍 Nhập tên sản phẩm hoặc mã SP để tra cứu…" value="${esc(state.prodQuery)}" autocomplete="off"></div>
+    <div class="note" style="margin-bottom:12px"><b>KH duy trì</b> = số khách còn lấy trong 45 ngày gần nhất · <b>Xu hướng</b> = DT tháng ${lastM?mLabel(lastM):""} so với ${prevM?mLabel(prevM):"tháng trước"} · <b>Trạng thái</b> theo lần bán gần nhất của SP.</div>
+    <div class="tbl-wrap"><table><thead><tr>
+      <th data-sort="name">Sản phẩm ${arr("name")}</th>
+      <th class="r" data-sort="dt">Doanh thu ${arr("dt")}</th>
+      <th class="r no-sort">%DT</th>
+      <th class="r" data-sort="nKH">Số KH ${arr("nKH")}</th>
+      <th class="r" data-sort="active">KH duy trì ${arr("active")}</th>
+      <th class="no-sort">Bán gần nhất</th>
+      <th class="r" data-sort="mom">Xu hướng ${arr("mom")}</th>
+      <th data-sort="days">Trạng thái ${arr("days")}</th>
+    </tr></thead><tbody>${rowsHtml||`<tr><td colspan="8"><div class="empty">Không có dữ liệu</div></td></tr>`}</tbody></table></div>
+  </div>`;
+}
+
+function renderProdDetail(pid){
+  const R=frows().filter(r=>r[C.pid]===pid);
+  const monthsInRange=MONTHS.filter(m=>m>=state.mFrom&&m<=state.mTo);
+  const foc=PID2FOCUS[pid];
+  const col=foc?FOCUS_COLORS[foc]:"var(--brand)";
+  const monVals=monthsInRange.map(m=>R.filter(r=>diToMonth(r[C.di])===m).reduce((a,r)=>a+r[C.dt],0));
+  const dt=R.reduce((a,r)=>a+r[C.dt],0);
+  // customers
+  const byC=new Map();
+  for(const r of R){const cid=r[C.cid];if(!byC.has(cid))byC.set(cid,{cid,dt:0,sl:0,last:-1,dates:new Set(),m:{}});const o=byC.get(cid);o.dt+=r[C.dt];o.sl+=r[C.sl];o.dates.add(r[C.di]);if(r[C.di]>o.last)o.last=r[C.di];const mm=diToMonth(r[C.di]);o.m[mm]=(o.m[mm]||0)+r[C.sl];}
+  const custs=[...byC.values()].sort((a,b)=>b.last-a.last||b.dt-a.dt);
+  const active=custs.filter(c=>daysSince(c.last)<=45),churn=custs.filter(c=>daysSince(c.last)>90);
+  const monthCols=monthsInRange;
+  const pivotCusts=[...byC.values()].sort((a,b)=>b.sl-a.sl);
+  const monthTot=monthCols.map(m=>pivotCusts.reduce((a,c)=>a+(c.m[m]||0),0));
+  const grandSL=pivotCusts.reduce((a,c)=>a+c.sl,0);
+  return `
+  <button class="back" data-back="prod">← Danh sách sản phẩm</button>
+  <div class="card pad">
+    <div class="dhead"><h2>${esc(PROD[pid][1])}</h2>${foc?`<span class="tag">⭐ ${foc}</span>`:""}</div>
+    <div class="dmeta"><span>Mã SP: <b class="mono">${esc(PROD[pid][0])}</b></span><span>Số KH: <b>${custs.length}</b></span><span>Đang duy trì: <b style="color:var(--good)">${active.length}</b></span><span>Đã rớt (&gt;90 ngày): <b style="color:var(--crit)">${churn.length}</b></span></div>
+    <div class="mini-kpis">
+      <div class="mini"><div class="m-l">Doanh thu (kỳ lọc)</div><div class="m-v num">${compact(dt)}</div></div>
+      <div class="mini"><div class="m-l">Khách hàng</div><div class="m-v num">${custs.length}</div></div>
+      <div class="mini"><div class="m-l">Đang duy trì</div><div class="m-v num" style="color:var(--good)">${active.length}</div></div>
+      <div class="mini"><div class="m-l">Bán gần nhất</div><div class="m-v num" style="font-size:15px">${dstr(diToDate(Math.max(...R.map(r=>r[C.di]))))}</div></div>
+    </div>
+    <div class="sec-head"><h2 style="font-size:14px">Doanh thu theo tháng</h2></div>
+    ${barChart(monthsInRange.map((m,i)=>({label:mLabel(m),value:Math.max(0,monVals[i]),tip:`<div class="tt-t">${mLabel(m)}</div><div class="tt-r"><span>Doanh thu</span><span>${vnd(monVals[i])}</span></div>`})),{color:col,height:200})}
+  </div>
+  <div class="card pad" style="margin-top:16px">
+    <div class="sec-head"><h2 style="font-size:14px">Số lượng đặt theo tháng — theo khách hàng</h2><span class="hint">${pivotCusts.length} KH · số lượng đặt (ĐVT theo SP) · sắp theo tổng SL</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th class="no-sort">Mã KH</th><th class="no-sort">Tên khách hàng</th><th class="no-sort">Tỉnh</th>${monthCols.map(m=>`<th class="r no-sort">${mLabel(m)}</th>`).join("")}<th class="r no-sort">Tổng SL</th><th class="no-sort">Trạng thái</th></tr></thead><tbody>
+      ${pivotCusts.map(c=>`<tr><td class="mono">${esc(CUST[c.cid][0])}</td><td class="name-cell"><span class="n1">${esc(CUST[c.cid][1])}</span></td><td>${esc(CUST[c.cid][2])}</td>${monthCols.map(m=>`<td class="r num">${c.m[m]?nf.format(c.m[m]):'·'}</td>`).join("")}<td class="r num" style="font-weight:700">${nf.format(c.sl)}</td><td>${chip(daysSince(c.last))}</td></tr>`).join("")||`<tr><td colspan="${monthCols.length+5}"><div class="empty">Không có dữ liệu</div></td></tr>`}
+      <tr style="border-top:2px solid var(--border)"><td colspan="3" style="font-weight:700">Tổng cộng (${pivotCusts.length} KH)</td>${monthTot.map(v=>`<td class="r num" style="font-weight:700">${v?nf.format(v):'·'}</td>`).join("")}<td class="r num" style="font-weight:800;color:var(--brand-ink)">${nf.format(grandSL)}</td><td></td></tr>
+    </tbody></table></div>
+  </div>`;
+}
+
+function renderFocus(){
+  const R=frows();
+  const monthsInRange=MONTHS.filter(m=>m>=state.mFrom&&m<=state.mTo);
+  const lastM=monthsInRange[monthsInRange.length-1],prevM=monthsInRange[monthsInRange.length-2];
+  const cards=FOCUS_ORDER.map(label=>{
+    const pids=new Set(FOCUS[label]);
+    const rr=R.filter(r=>pids.has(r[C.pid]));
+    const col=FOCUS_COLORS[label];
+    const dt=rr.reduce((a,r)=>a+r[C.dt],0);
+    const monVals=monthsInRange.map(m=>rr.filter(r=>diToMonth(r[C.di])===m).reduce((a,r)=>a+r[C.dt],0));
+    const cur=lastM?monVals[monthsInRange.indexOf(lastM)]:0,prev=prevM?monVals[monthsInRange.indexOf(prevM)]:0;
+    const mom=prev>0?((cur-prev)/prev*100):(cur>0?100:0);
+    // customers
+    const custLast=new Map();for(const r of rr){const l=custLast.get(r[C.cid])||-1;if(r[C.di]>l)custLast.set(r[C.cid],r[C.di]);}
+    const nKH=custLast.size;const active=[...custLast.values()].filter(di=>daysSince(di)<=45).length;
+    // new custs last month: first purchase in lastM
+    const firstBuy=new Map();for(const r of rr){const f=firstBuy.get(r[C.cid]);if(f==null||r[C.di]<f)firstBuy.set(r[C.cid],r[C.di]);}
+    const nNew=lastM?[...firstBuy.values()].filter(di=>diToMonth(di)===lastM).length:0;
+    const churn=[...custLast.values()].filter(di=>daysSince(di)>90).length;
+    const code=FOCUS[label].map(p=>PROD[p][0]).join(", ");
+    return `<div class="card fcard">
+      <div class="f-top"><div><div class="f-name">⭐ ${label}</div><div class="f-code mono">${esc(code)}</div></div><span class="chip ${active>0?'good':'crit'}"><span class="cd"></span>${active} KH duy trì</span></div>
+      <div class="f-big num" style="color:${col}">${compact(dt)}</div>
+      <div class="f-row">
+        <div class="f-stat"><div class="fs-l">Tháng ${lastM?mLabel(lastM):"—"}</div><div class="fs-v num">${compact(cur)} ${momHtml(cur,prev,mom)}</div></div>
+        <div class="f-stat"><div class="fs-l">Số KH</div><div class="fs-v num">${nKH}</div></div>
+        <div class="f-stat"><div class="fs-l">KH mới (${lastM?mLabel(lastM):"—"})</div><div class="fs-v num" style="color:var(--good)">${nNew}</div></div>
+        <div class="f-stat"><div class="fs-l">KH rớt</div><div class="fs-v num" style="color:var(--crit)">${churn}</div></div>
+      </div>
+      <div class="spark">${sparkline(monVals,{color:col})}</div>
+    </div>`;
+  }).join("");
+  // combined multiline
+  const series=FOCUS_ORDER.map(label=>{const pids=new Set(FOCUS[label]);const rr=R.filter(r=>pids.has(r[C.pid]));return{name:label,color:FOCUS_COLORS[label],vals:monthsInRange.map(m=>rr.filter(r=>diToMonth(r[C.di])===m).reduce((a,r)=>a+r[C.dt],0))};});
+  const legend=FOCUS_ORDER.map(l=>`<div class="li"><span class="lk" style="background:${FOCUS_COLORS[l]}"></span>${l}</div>`).join("");
+  return `
+  <div class="note" style="margin-bottom:16px">5 sản phẩm trọng tâm của nhóm. <b>KH mới</b> = khách lần đầu lấy SP này trong tháng gần nhất · <b>KH rớt</b> = khách đã &gt;90 ngày không lấy lại · <b>▲/▼</b> = so tháng liền trước.</div>
+  <div class="grid focus-grid">${cards}</div>
+  <div class="card pad" style="margin-top:16px"><div class="sec-head"><h2>Doanh thu 5 SP trọng tâm theo tháng</h2></div>${multiLine(series,monthsInRange.map(mLabel))}<div class="legend">${legend}</div></div>`;
+}
+
+function renderMonthly(){
+  const R=frows();
+  const monthsInRange=MONTHS.filter(m=>m>=state.mFrom&&m<=state.mTo);
+  const dim=state.mgDim,metric=state.mgMetric;
+  // dimension key + label
+  function dimKeys(){
+    if(dim==="tdv")return TDV.map((n,i)=>[i,n]);
+    if(dim==="tinh")return PROVINCES.map(p=>[p,p]);
+    if(dim==="nhom"){const s=[...new Set(CUST.map(c=>c[3]).filter(Boolean))].sort();return s.map(x=>[x,x]);}
+    // prod: top 8 by dt in range + Khác
+    const m=sumBy(R,r=>r[C.pid],r=>r[C.dt]);const top=[...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(e=>e[0]);
+    const arr=top.map(p=>[p,PROD[p][1]]);arr.push(["__other__","Khác"]);return arr;
+  }
+  function rowDimKey(r){
+    if(dim==="tdv")return r[C.tid];
+    if(dim==="tinh")return CUST[r[C.cid]][2];
+    if(dim==="nhom")return CUST[r[C.cid]][3]||"";
+    return r[C.pid];
+  }
+  const keys=dimKeys();
+  const keyset=new Set(keys.map(k=>k[0]));
+  function cellVal(rows){
+    if(metric==="dt")return rows.reduce((a,r)=>a+r[C.dt],0);
+    if(metric==="kh")return distinctCount(rows.filter(r=>r[C.dt]>0),r=>r[C.cid]);
+    return distinctCount(rows,r=>r[C.cid]+"|"+r[C.di]);
+  }
+  // build matrix
+  const data=keys.map(([k,lab])=>{
+    const row=monthsInRange.map(m=>{
+      let rr=R.filter(r=>diToMonth(r[C.di])===m);
+      if(dim==="prod"&&k==="__other__")rr=rr.filter(r=>!keyset.has(r[C.pid]));
+      else rr=rr.filter(r=>rowDimKey(r)===k);
+      return cellVal(rr);
+    });
+    return {lab,row,total:cellVal(R.filter(r=>{if(dim==="prod"&&k==="__other__")return !keyset.has(r[C.pid]);return rowDimKey(r)===k;}))};
+  }).sort((a,b)=>b.total-a.total);
+  const totalsRow=monthsInRange.map(m=>cellVal(R.filter(r=>diToMonth(r[C.di])===m)));
+  const grand=cellVal(R);
+  const fmt=metric==="dt"?vnd:nf.format;
+  const head=`<tr><th class="no-sort">${dim==="tdv"?"TDV":dim==="tinh"?"Tỉnh":dim==="nhom"?"Nhóm KH":"Sản phẩm"}</th>${monthsInRange.map(m=>`<th class="r no-sort">${mLabel(m)}</th>`).join("")}<th class="r no-sort">Tổng</th></tr>`;
+  const body=data.map(d=>`<tr><td class="name-cell"><span class="n1">${esc(d.lab)}</span></td>${d.row.map(v=>`<td class="r num">${v?fmt(v):"·"}</td>`).join("")}<td class="r num" style="font-weight:700">${fmt(d.total)}</td></tr>`).join("");
+  const foot=`<tr style="border-top:2px solid var(--border)"><td style="font-weight:700">Tổng cộng</td>${totalsRow.map(v=>`<td class="r num" style="font-weight:700">${fmt(v)}</td>`).join("")}<td class="r num" style="font-weight:800;color:var(--brand-ink)">${fmt(grand)}</td></tr>`;
+  // chart: monthly totals
+  const chart=barChart(monthsInRange.map((m,i)=>({label:mLabel(m),value:Math.max(0,totalsRow[i]),tip:`<div class="tt-t">${mLabel(m)}</div><div class="tt-r"><span>${metric==="dt"?"Doanh thu":metric==="kh"?"Số KH":"Lượt mua"}</span><span>${fmt(totalsRow[i])}</span></div>`})),{fmt:metric==="dt"?compact:nf.format,color:"var(--brand)"});
+  return `
+  <div class="card pad">
+    <div class="sec-head"><h2>Thống kê theo tháng</h2>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div class="seg" data-seg="mgdim"><button data-d="prod" class="${dim==="prod"?"on":""}">Sản phẩm</button><button data-d="tdv" class="${dim==="tdv"?"on":""}">TDV</button><button data-d="tinh" class="${dim==="tinh"?"on":""}">Tỉnh</button><button data-d="nhom" class="${dim==="nhom"?"on":""}">Nhóm KH</button></div>
+        <div class="seg" data-seg="mgmet"><button data-m="dt" class="${metric==="dt"?"on":""}">Doanh thu</button><button data-m="kh" class="${metric==="kh"?"on":""}">Số KH</button><button data-m="luot" class="${metric==="luot"?"on":""}">Lượt mua</button></div>
+      </div>
+    </div>
+    ${chart}
+  </div>
+  <div class="card pad" style="margin-top:16px">
+    <div class="sec-head"><h2 style="font-size:14px">Bảng chi tiết ${dim==="prod"?"theo sản phẩm (top 8 + Khác)":dim==="tdv"?"theo TDV":dim==="tinh"?"theo tỉnh":"theo nhóm KH"}</h2></div>
+    <div class="tbl-wrap"><table><thead>${head}</thead><tbody>${body}${foot}</tbody></table></div>
+  </div>`;
+}
+
+const TABS=[["overview","Tổng quan"],["customer","Tra cứu khách hàng"],["products","Sản phẩm"],["focus","Trọng tâm"],["monthly","Thống kê tháng"]];
+function render(){
+  document.getElementById("app").innerHTML=
+    state.tab==="overview"?renderOverview():
+    state.tab==="customer"?renderCustomer():
+    state.tab==="products"?renderProducts():
+    state.tab==="focus"?renderFocus():renderMonthly();
+  // keep search focus
+  const sid=state._activeSearch==="cust"?"custSearch":state._activeSearch==="prod"?"prodSearch":null;
+  if(sid){const cs=document.getElementById(sid);if(cs&&document.activeElement!==cs){cs.focus();cs.setSelectionRange(cs.value.length,cs.value.length);}}
+}
+function renderTabs(){
+  document.getElementById("tabs").innerHTML=TABS.map(([k,l])=>`<button class="tab ${state.tab===k?"on":""}" data-tab="${k}">${l}</button>`).join("");
+}
+function renderFilters(){
+  const tdvOpts=`<option value="-1">Tất cả TDV nhóm</option>`+TDV.map((n,i)=>`<option value="${i}" ${state.tdv==i?"selected":""}>${esc(n)}</option>`).join("");
+  const tinhOpts=`<option value="">Tất cả tỉnh</option>`+PROVINCES.map(p=>`<option value="${esc(p)}" ${state.tinh===p?"selected":""}>${esc(p)}</option>`).join("");
+  const mOpts=(sel)=>MONTHS.map(m=>`<option value="${m}" ${sel===m?"selected":""}>${mLabel(m)}</option>`).join("");
+  document.getElementById("filters").innerHTML=`
+    <div class="field"><label>Trình dược viên</label><select id="fTdv">${tdvOpts}</select></div>
+    <div class="field"><label>Tỉnh</label><select id="fTinh">${tinhOpts}</select></div>
+    <div class="field"><label>Từ tháng</label><select id="fFrom">${mOpts(state.mFrom)}</select></div>
+    <div class="field"><label>Đến tháng</label><select id="fTo">${mOpts(state.mTo)}</select></div>
+    <label class="chk ${state.focusOnly?"on":""}"><input type="checkbox" id="fFocus" ${state.focusOnly?"checked":""}>Chỉ SP trọng tâm</label>`;
+}
+
+/* ============ EVENTS ============ */
+document.getElementById("asof").textContent="Số liệu đến "+dstr(ASOF);
+document.getElementById("foot").innerHTML=`Nguồn: file chuẩn PS Tây Bắc · ${ROWS.length} dòng bán · ${CUST.length} khách hàng · ${PROD.length} sản phẩm · ${TDV.length} TDV nhóm Hà Trọng Thủy. Doanh thu là net (đã trừ trả hàng). Trang tra cứu nội bộ — không chia sẻ ra ngoài.`;
+
+document.addEventListener("click",e=>{
+  const tab=e.target.closest("[data-tab]");if(tab){state.tab=tab.dataset.tab;state.selCust=null;state.selProd=null;state._activeSearch=null;renderTabs();render();window.scrollTo({top:0});return;}
+  const seg=e.target.closest(".seg button");if(seg){const s=seg.parentElement.dataset.seg;
+    if(s==="ov"){state.ovMetric=seg.dataset.m;}
+    else if(s==="mgdim"){state.mgDim=seg.dataset.d;}
+    else if(s==="mgmet"){state.mgMetric=seg.dataset.m;}
+    render();return;}
+  const cust=e.target.closest("[data-cust]");if(cust){state.selCust=+cust.dataset.cust;state._activeSearch=null;render();window.scrollTo({top:0});return;}
+  const prod=e.target.closest("[data-prod]");if(prod){state.selProd=+prod.dataset.prod;state._activeSearch=null;render();window.scrollTo({top:0});return;}
+  const back=e.target.closest("[data-back]");if(back){if(back.dataset.back==="cust")state.selCust=null;else state.selProd=null;render();return;}
+  const th=e.target.closest("th[data-sort]");if(th){const k=th.dataset.sort;if(state.prodSort===k)state.prodDir*=-1;else{state.prodSort=k;state.prodDir=(k==="name")?1:-1;}render();return;}
+});
+document.addEventListener("input",e=>{
+  if(e.target.id==="custSearch"){state.custQuery=e.target.value;state._activeSearch="cust";render();}
+  else if(e.target.id==="prodSearch"){state.prodQuery=e.target.value;state._activeSearch="prod";render();}
+});
+document.addEventListener("change",e=>{
+  if(e.target.id==="fTdv"){state.tdv=+e.target.value;state.selCust=null;}
+  else if(e.target.id==="fTinh"){state.tinh=e.target.value;state.selCust=null;}
+  else if(e.target.id==="fFrom"){state.mFrom=e.target.value;if(state.mFrom>state.mTo)state.mTo=state.mFrom;}
+  else if(e.target.id==="fTo"){state.mTo=e.target.value;if(state.mTo<state.mFrom)state.mFrom=state.mTo;}
+  else if(e.target.id==="fFocus"){state.focusOnly=e.target.checked;}
+  else return;
+  renderFilters();render();
+});
+
+/* tooltip */
+const tip=document.getElementById("tip");
+document.addEventListener("mousemove",e=>{
+  const el=e.target.closest("[data-tip]");
+  if(el&&el.getAttribute("data-tip")){
+    tip.innerHTML=el.getAttribute("data-tip");
+    tip.style.opacity="1";
+    let x=e.clientX+14,y=e.clientY+14;
+    const r=tip.getBoundingClientRect();
+    if(x+r.width>window.innerWidth-8)x=e.clientX-r.width-14;
+    if(y+r.height>window.innerHeight-8)y=e.clientY-r.height-14;
+    tip.style.left=x+"px";tip.style.top=y+"px";
+  }else{tip.style.opacity="0";}
+},{passive:true});
+document.addEventListener("mouseleave",()=>{tip.style.opacity="0";});
+
+/* theme */
+const themeBtn=document.getElementById("theme");
+let stored=null;try{stored=localStorage.getItem("ps_theme");}catch(_){}
+if(stored)document.documentElement.setAttribute("data-theme",stored);
+themeBtn.addEventListener("click",()=>{
+  const cur=document.documentElement.getAttribute("data-theme");
+  const isDark=cur?cur==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+  const next=isDark?"light":"dark";
+  document.documentElement.setAttribute("data-theme",next);
+  try{localStorage.setItem("ps_theme",next);}catch(_){}
+});
+
+try{if(new URLSearchParams(location.search).has("embed"))document.body.classList.add("embed");}catch(_){}
+renderFilters();renderTabs();render();
+</script>
+</body>
+</html>
