@@ -15,6 +15,7 @@ export type NavKey =
   | "bao-cao-thau"
   | "kpi"
   | "doanh-so"
+  | "tra-cuu-sale"
   | "tro-chuyen"
   | "dang-nhap";
 
@@ -25,6 +26,7 @@ const NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "bao-cao-thau", label: "Báo cáo thầu", href: "/quan-ly/bao-cao-thau" },
   { key: "kpi", label: "KPI", href: "/quan-ly/kpi" },
   { key: "doanh-so", label: "Doanh số", href: "/quan-ly/doanh-so" },
+  { key: "tra-cuu-sale", label: "Tra cứu Sale", href: "/quan-ly/tra-cuu-sale" },
   { key: "tro-chuyen", label: "Trò chuyện", href: "/quan-ly/tro-chuyen" },
   { key: "dang-nhap", label: "Đăng nhập", href: "/quan-ly/thong-ke-dang-nhap" },
 ];
