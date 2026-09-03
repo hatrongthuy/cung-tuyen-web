@@ -67,6 +67,7 @@ select:focus,input[type=text]:focus{border-color:var(--brand);box-shadow:0 0 0 3
 .chk{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:var(--ink-2);background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 12px;min-height:38px;cursor:pointer;user-select:none}
 .chk input{accent-color:var(--brand);width:15px;height:15px}
 .chk.on{color:var(--brand-ink);border-color:var(--brand);background:var(--brand-soft)}
+.lockedtdv{font-size:13.5px;font-weight:600;color:var(--brand-ink);background:var(--brand-soft);border:1px solid var(--brand);border-radius:var(--r-sm);padding:8px 12px;min-height:38px;display:flex;align-items:center;white-space:nowrap}
 
 /* tabs */
 .tabs{max-width:1240px;margin:14px auto 0;padding:0 20px;display:flex;gap:3px;border-bottom:1px solid var(--border);overflow-x:auto}
@@ -238,7 +239,7 @@ function momHtml(cur,prev,mom){if(cur===0&&prev===0)return '<span style="color:v
 function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
 
 const state={tab:"overview",tdv:-1,tinh:"",mFrom:MONTHS[0],mTo:MONTHS[MONTHS.length-1],focusOnly:false,
-  ovMetric:"dt",selCust:null,custQuery:"",prodQuery:"",prodSort:"dt",prodDir:-1,selProd:null,mgDim:"prod",mgMetric:"dt",_activeSearch:null};
+  ovMetric:"dt",selCust:null,custQuery:"",prodQuery:"",prodSort:"dt",prodDir:-1,selProd:null,mgDim:"prod",mgMetric:"dt",_activeSearch:null,lockTdv:false};
 
 const PROVINCES=[...new Set(CUST.map(c=>c[2]).filter(Boolean))].sort();
 
@@ -642,7 +643,7 @@ function renderFilters(){
   const tinhOpts=`<option value="">Tất cả tỉnh</option>`+PROVINCES.map(p=>`<option value="${esc(p)}" ${state.tinh===p?"selected":""}>${esc(p)}</option>`).join("");
   const mOpts=(sel)=>MONTHS.map(m=>`<option value="${m}" ${sel===m?"selected":""}>${mLabel(m)}</option>`).join("");
   document.getElementById("filters").innerHTML=`
-    <div class="field"><label>Trình dược viên</label><select id="fTdv">${tdvOpts}</select></div>
+    ${state.lockTdv?`<div class="field"><label>Trình dược viên</label><div class="lockedtdv">${esc(TDV[state.tdv]||"")}</div></div>`:`<div class="field"><label>Trình dược viên</label><select id="fTdv">${tdvOpts}</select></div>`}
     <div class="field"><label>Tỉnh</label><select id="fTinh">${tinhOpts}</select></div>
     <div class="field"><label>Từ tháng</label><select id="fFrom">${mOpts(state.mFrom)}</select></div>
     <div class="field"><label>Đến tháng</label><select id="fTo">${mOpts(state.mTo)}</select></div>
@@ -707,7 +708,11 @@ themeBtn.addEventListener("click",()=>{
   try{localStorage.setItem("ps_theme",next);}catch(_){}
 });
 
-try{if(new URLSearchParams(location.search).has("embed"))document.body.classList.add("embed");}catch(_){}
+try{const q=new URLSearchParams(location.search);
+  if(q.has("embed"))document.body.classList.add("embed");
+  const me=q.get("me");
+  if(me){const i=TDV.findIndex(t=>t.trim().toLowerCase()===me.trim().toLowerCase());if(i>=0){state.tdv=i;state.lockTdv=true;}}
+}catch(_){}
 renderFilters();renderTabs();render();
 </script>
 </body>
