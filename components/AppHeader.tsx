@@ -17,6 +17,7 @@ export type NavKey =
   | "doanh-so"
   | "tra-cuu-sale"
   | "tro-chuyen"
+  | "bao-gia"
   | "dang-nhap";
 
 const NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
@@ -28,6 +29,7 @@ const NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "doanh-so", label: "Doanh số", href: "/quan-ly/doanh-so" },
   { key: "tra-cuu-sale", label: "Tra cứu Sale", href: "/quan-ly/tra-cuu-sale" },
   { key: "tro-chuyen", label: "Trò chuyện", href: "/quan-ly/tro-chuyen" },
+  { key: "bao-gia", label: "Báo giá", href: "/bao-gia" },
   { key: "dang-nhap", label: "Đăng nhập", href: "/quan-ly/thong-ke-dang-nhap" },
 ];
 
@@ -37,6 +39,7 @@ const EMP_NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "tra-cuu-sale", label: "Tra cứu Sale", href: "/nhan-vien/tra-cuu-sale" },
   { key: "kpi", label: "KPI", href: "/nhan-vien/kpi" },
   { key: "doanh-so", label: "Doanh số", href: "/nhan-vien/doanh-so" },
+  { key: "bao-gia", label: "Báo giá", href: "/bao-gia" },
 ];
 
 export default function AppHeader({
