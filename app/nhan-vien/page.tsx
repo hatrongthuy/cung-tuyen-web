@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import StatCard from "@/components/StatCard";
@@ -91,14 +90,8 @@ export default async function NhanVienPage() {
 
   return (
     <>
-      <AppHeader hoTen={hoTen} role="employee" weekLabel={weekLabel} />
+      <AppHeader hoTen={hoTen} role="employee" weekLabel={weekLabel} active="cung-tuyen" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <Link
-          href="/nhan-vien/tra-cuu-sale"
-          className="mb-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
-        >
-          📊 Tra cứu Sale của tôi
-        </Link>
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard label="Khách cần gặp tuần này" value={goiYCuaToi.length} accentColor="#2a78d6" />
           <StatCard
