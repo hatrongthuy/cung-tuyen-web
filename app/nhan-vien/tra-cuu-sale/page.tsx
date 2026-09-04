@@ -12,7 +12,7 @@ export default async function TraCuuSaleNhanVienPage() {
 
   return (
     <>
-      <AppHeader hoTen={user.name ?? ""} role="employee" />
+      <AppHeader hoTen={user.name ?? ""} role="employee" active="tra-cuu-sale" />
       <main className="flex-1">
         <div className="mx-auto w-full max-w-6xl px-4 pt-4">
           <a
