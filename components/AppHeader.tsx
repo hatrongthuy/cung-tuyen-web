@@ -31,6 +31,14 @@ const NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "dang-nhap", label: "Đăng nhập", href: "/quan-ly/thong-ke-dang-nhap" },
 ];
 
+// Menu cho khu nhân viên — mỗi nhân viên chỉ xem dữ liệu cá nhân của mình.
+const EMP_NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
+  { key: "cung-tuyen", label: "Cung tuyến", href: "/nhan-vien" },
+  { key: "tra-cuu-sale", label: "Tra cứu Sale", href: "/nhan-vien/tra-cuu-sale" },
+  { key: "kpi", label: "KPI", href: "/nhan-vien/kpi" },
+  { key: "doanh-so", label: "Doanh số", href: "/nhan-vien/doanh-so" },
+];
+
 export default function AppHeader({
   hoTen,
   role,
@@ -70,9 +78,9 @@ export default function AppHeader({
         </form>
       </div>
 
-      {role === "manager" && active ? (
+      {(role === "manager" || role === "employee") && active ? (
         <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2">
-          {NAV_ITEMS.map((item) => (
+          {(role === "manager" ? NAV_ITEMS : EMP_NAV_ITEMS).map((item) => (
             <Link
               key={item.key}
               href={item.href}
