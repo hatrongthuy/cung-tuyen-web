@@ -46,7 +46,7 @@ export default function KpiView({
 
   const current = dataByTab[active] ?? { columns: [], rows: [] };
 
-  // Trong tab "Doanh số" (Doanh so T8): điền cột "kê đơn (Thực hiện)" bằng doanh số thực hiện
+  // Trong tab "Doanh số" (Doanh so T9): điền cột "kê đơn (Thực hiện)" bằng doanh số thực hiện
   // thật (từ file Sale), khớp theo mã nhân viên — thay cho số 0 trống trong sheet KPI.
   const dsOverride = useMemo(() => {
     if (active !== "doanh-so") return null;
@@ -132,7 +132,7 @@ export default function KpiView({
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">KPI</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Dữ liệu đọc trực tiếp từ file &quot;Kpis T8&quot; theo từng hạng mục (Coaching call, Code mới, SPTT,
+            Dữ liệu đọc trực tiếp từ file &quot;Kpis T9&quot; theo từng hạng mục (Coaching call, Code mới, SPTT,
             Miniapp...).
           </p>
         </div>

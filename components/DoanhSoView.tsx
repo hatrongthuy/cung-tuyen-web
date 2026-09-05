@@ -136,7 +136,7 @@ export default function DoanhSoView({
         <div>
           <h1 className="text-base font-semibold text-slate-900">Doanh số — Nhóm {teamName}</h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Kế hoạch lấy từ file KPI (tab &quot;Doanh so T8&quot;); Thực hiện là tổng doanh thu
+            Kế hoạch lấy từ file KPI (tab &quot;Doanh so T9&quot;); Thực hiện là tổng doanh thu
             {actualMonthLabel ? ` tháng ${actualMonthLabel}` : ""} từ file dữ liệu Sale.
           </p>
         </div>
@@ -154,7 +154,7 @@ export default function DoanhSoView({
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-slate-700">Chưa có dữ liệu doanh số cho nhóm này</p>
           <p className="mt-1 text-xs text-slate-400">
-            Kiểm tra lại cột &quot;SS&quot; trong tab &quot;Doanh so T8&quot; có giá trị &quot;{teamName}&quot; không.
+            Kiểm tra lại cột &quot;SS&quot; trong tab &quot;Doanh so T9&quot; có giá trị &quot;{teamName}&quot; không.
           </p>
         </div>
       )}

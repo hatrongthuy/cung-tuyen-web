@@ -362,7 +362,7 @@ export default function MonthlyReportView({
           <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-900">B. Doanh số — Kế hoạch vs Thực hiện</h2>
             <p className="mt-0.5 text-xs text-slate-400">
-              Kế hoạch: file KPI (tab &quot;Doanh so T8&quot;). Thực hiện: doanh thu tháng {month} từ file Sale, tách kê đơn / thầu.
+              Kế hoạch: file KPI (tab &quot;Doanh so T9&quot;). Thực hiện: doanh thu tháng {month} từ file Sale, tách kê đơn / thầu.
             </p>
             {salesError && (
               <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
