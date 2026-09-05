@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { allEmployees } from "@/lib/allowlist";
 import { formatShortVnd, formatVnd, pct, parseMoney } from "@/lib/format";
 import {
@@ -221,8 +221,68 @@ export default function DailyProgressView({
     } finally { setAiLoading(false); }
   }
 
+  // ---- Tải ảnh PNG / In PDF ----
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [dangTaiAnh, setDangTaiAnh] = useState(false);
+  const tenFile = `bao-cao-tien-do_${ctx.ngay}-${ctx.thang}-${ctx.nam}`;
+  async function taiAnh() {
+    const node = reportRef.current;
+    if (!node) return;
+    setDangTaiAnh(true);
+    try {
+      const w = window as unknown as { htmlToImage?: { toPng: (n: HTMLElement, o?: Record<string, unknown>) => Promise<string> } };
+      if (!w.htmlToImage) {
+        await new Promise<void>((resolve, reject) => {
+          const s = document.createElement("script");
+          s.src = "https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.js";
+          s.onload = () => resolve();
+          s.onerror = () => reject(new Error("Không tải được thư viện tạo ảnh."));
+          document.head.appendChild(s);
+        });
+      }
+      const bg = getComputedStyle(node).backgroundColor || "#ffffff";
+      const dataUrl = await w.htmlToImage!.toPng(node, { pixelRatio: 2, backgroundColor: bg, cacheBust: true });
+      const a = document.createElement("a");
+      a.href = dataUrl;
+      a.download = `${tenFile}.png`;
+      a.click();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Không tạo được ảnh. Bạn có thể dùng nút In / Lưu PDF.");
+    } finally {
+      setDangTaiAnh(false);
+    }
+  }
+  function inPdf() {
+    window.print();
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Thanh công cụ — KHÔNG nằm trong ảnh chụp */}
+      <div className="no-print flex flex-wrap items-center justify-end gap-2">
+        <button
+          onClick={taiAnh}
+          disabled={dangTaiAnh}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        >
+          {dangTaiAnh ? "Đang tạo ảnh…" : "📷 Tải ảnh (PNG)"}
+        </button>
+        <button
+          onClick={inPdf}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          🖨️ In / Lưu PDF
+        </button>
+        <button
+          onClick={phanTichAI}
+          disabled={aiLoading}
+          className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+        >
+          {aiLoading ? "Đang phân tích…" : "Phân tích AI (Gemini) — thứ 7"}
+        </button>
+      </div>
+
+      <div ref={reportRef} className="space-y-6 rounded-2xl bg-slate-50 p-3">
       <div>
         <h1 className="text-lg font-semibold text-slate-900">Báo cáo tiến độ — tháng {String(ctx.thang).padStart(2, "0")}/{ctx.nam}</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -262,18 +322,9 @@ export default function DailyProgressView({
 
       {/* ===== Theo từng nhân viên ===== */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-900">👤 Tiến độ theo từng nhân viên</h2>
-            <p className="mt-0.5 text-xs text-slate-400">Sắp xếp theo mức cần chú ý — cần xử lý gấp lên trước</p>
-          </div>
-          <button
-            onClick={phanTichAI}
-            disabled={aiLoading}
-            className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-          >
-            {aiLoading ? "Đang phân tích…" : "Phân tích AI (Gemini) — dùng thứ 7"}
-          </button>
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">👤 Tiến độ theo từng nhân viên</h2>
+          <p className="mt-0.5 text-xs text-slate-400">Sắp xếp theo mức cần chú ý — cần xử lý gấp lên trước</p>
         </div>
 
         {aiError && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{aiError}</p>}
@@ -287,6 +338,7 @@ export default function DailyProgressView({
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

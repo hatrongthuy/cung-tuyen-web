@@ -39,6 +39,8 @@ const EMP_NAV_ITEMS: { key: NavKey; label: string; href: string }[] = [
   { key: "tra-cuu-sale", label: "Tra cứu Sale", href: "/nhan-vien/tra-cuu-sale" },
   { key: "kpi", label: "KPI", href: "/nhan-vien/kpi" },
   { key: "doanh-so", label: "Doanh số", href: "/nhan-vien/doanh-so" },
+  { key: "bao-cao-tuan", label: "Báo cáo tuần", href: "/nhan-vien/bao-cao-tuan" },
+  { key: "bao-cao-thang", label: "Báo cáo tháng", href: "/nhan-vien/bao-cao-thang" },
   { key: "bao-gia", label: "Báo giá", href: "/bao-gia" },
 ];
 
