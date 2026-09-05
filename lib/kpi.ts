@@ -8,7 +8,7 @@ import { google } from "googleapis";
 // mọi tab KPI + Doanh số sẽ trống (không đọc được). Có thể đổi ID qua biến môi trường
 // GOOGLE_SHEETS_KPI_SPREADSHEET_ID; nếu không đặt sẽ dùng giá trị mặc định dưới đây.
 const KPI_SPREADSHEET_ID =
-  process.env.GOOGLE_SHEETS_KPI_SPREADSHEET_ID || "1Yd2bHhWEbEKh68PFuL7GqPGD1pAW14SxkGZNp5lELD4";
+  process.env.GOOGLE_SHEETS_KPI_SPREADSHEET_ID || "1dv0q_SpajvhbaOtNu43ctwetjXhBUURRIaDVv39W5bw";
 
 export function getKpiServiceAccountEmail(): string {
   return process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "(chưa đặt GOOGLE_SERVICE_ACCOUNT_EMAIL)";
@@ -49,7 +49,7 @@ async function getRawValues(sheetName: string): Promise<string[][]> {
   return (res.data.values as string[][] | undefined) ?? [];
 }
 
-/** Một số tab (vd "Doanh so T8") có kèm theo các cột tổng hợp/tham chiếu đã bị ẩn (hidden columns)
+/** Một số tab (vd "Doanh so T9") có kèm theo các cột tổng hợp/tham chiếu đã bị ẩn (hidden columns)
  * dùng nội bộ trong sheet — không nên hiển thị lẫn với dữ liệu chính cho người dùng. Hàm này lấy
  * danh sách chỉ số cột đang bị ẩn (ẩn tay) để loại ra khi build bảng hiển thị. */
 async function getHiddenColumnIndexes(sheetName: string): Promise<Set<number>> {
@@ -80,13 +80,13 @@ export interface KpiTabConfig {
   headerRowIndex: number;
   /** Vị trí dòng dữ liệu đầu tiên, 0-based */
   dataStartIndex: number;
-  /** Tên cột dùng để lọc theo Nhóm SS — hầu hết là "Nhóm SS", riêng "Doanh so T8" là "SS" */
+  /** Tên cột dùng để lọc theo Nhóm SS — hầu hết là "Nhóm SS", riêng "Doanh so T9" là "SS" */
   teamColumn: string;
 }
 
 export const KPI_TABS: KpiTabConfig[] = [
-  { key: "kpis", label: "KPIs T08.26 (new)", sheetName: "KPIs T08.26 (new)", headerRowIndex: 0, dataStartIndex: 2, teamColumn: "Nhóm SS" },
-  { key: "doanh-so", label: "Doanh so T8", sheetName: "Doanh so T8", headerRowIndex: 2, dataStartIndex: 3, teamColumn: "SS" },
+  { key: "kpis", label: "KPIs T09.26 (new)", sheetName: "KPIs T09.26 (new)", headerRowIndex: 0, dataStartIndex: 2, teamColumn: "Nhóm SS" },
+  { key: "doanh-so", label: "Doanh so T9", sheetName: "Doanh so T9", headerRowIndex: 2, dataStartIndex: 3, teamColumn: "SS" },
   { key: "code-moi", label: "Code mới", sheetName: "Code mới", headerRowIndex: 0, dataStartIndex: 1, teamColumn: "Nhóm SS" },
   { key: "miniapp", label: "Miniapp", sheetName: "Miniapp", headerRowIndex: 0, dataStartIndex: 1, teamColumn: "Nhóm SS" },
   { key: "mo-moi-sptt", label: "Mở mới SPTT", sheetName: "Mở mới SPTT", headerRowIndex: 1, dataStartIndex: 2, teamColumn: "Nhóm SS" },
