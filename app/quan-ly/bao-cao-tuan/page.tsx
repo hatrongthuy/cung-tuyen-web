@@ -2,11 +2,19 @@ import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import WeeklyReportView from "@/components/WeeklyReportView";
 import DailyProgressView from "@/components/DailyProgressView";
-import { getDanhGiaCungTuyen, getGoiYTapTrung, getXacNhanGoiY, getLichSuGoiY } from "@/lib/data";
+import {
+  getDanhGiaCungTuyen,
+  getGoiYTapTrung,
+  getXacNhanGoiY,
+  getLichSuGoiY,
+  getCanhBaoChuaViengTham,
+  getCanhBaoKhachChet,
+  getCanhBaoSanPhamNghi,
+} from "@/lib/data";
 import { buildEmployeeWeekSummaries, buildTonDongTuanTruoc } from "@/lib/aggregate";
 import { getTeamSales } from "@/lib/sales";
 import { getKpiTabData } from "@/lib/kpi";
-import { currentWeekLabel as computeCurrentWeek, todayInVN } from "@/lib/report-utils";
+import { currentWeekLabel as computeCurrentWeek, todayInVN, buildCareByEmp } from "@/lib/report-utils";
 
 const TEN_NHOM = "Hà Trọng Thủy";
 
@@ -17,16 +25,20 @@ export default async function BaoCaoTuanPage() {
   const session = await auth();
   const user = session!.user!;
 
-  const [danhGia, goiY, xacNhan, lichSu, sales, kpiDoanhSo] = await Promise.all([
+  const [danhGia, goiY, xacNhan, lichSu, sales, kpiDoanhSo, chuaVT, khChet, spNghi] = await Promise.all([
     getDanhGiaCungTuyen(),
     getGoiYTapTrung(),
     getXacNhanGoiY(),
     getLichSuGoiY(),
     getTeamSales(),
     getKpiTabData("doanh-so", TEN_NHOM),
+    getCanhBaoChuaViengTham(),
+    getCanhBaoKhachChet(),
+    getCanhBaoSanPhamNghi(),
   ]);
   const { weekLabel, summaries } = buildEmployeeWeekSummaries(goiY, xacNhan, danhGia);
   const tonDongTuanTruoc = buildTonDongTuanTruoc(lichSu, xacNhan);
+  const careByEmp = buildCareByEmp(chuaVT, khChet, spNghi);
   const todayWeekLabel = computeCurrentWeek(weekLabel, todayInVN());
 
   // Bối cảnh ngày (giờ VN) cho báo cáo tiến độ lũy kế tới hôm nay.
@@ -57,6 +69,7 @@ export default async function BaoCaoTuanPage() {
           kpiRows={kpiDoanhSo.rows}
           kpiError={kpiDoanhSo.error}
           summaries={summaries}
+          careByEmp={careByEmp}
           ctx={ctx}
         />
 
