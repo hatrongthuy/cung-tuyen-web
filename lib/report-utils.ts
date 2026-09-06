@@ -189,6 +189,24 @@ export interface CareItem {
   soNgay: number; // số ngày chưa phát sinh / chưa viếng thăm / chưa mua lại
   doanhThu12T: number; // doanh thu 12 tháng (hoặc lũy kế) — dùng để xếp ưu tiên
   chiTiet: string; // mô tả ngắn để hiển thị
+  deXuatLan: number; // đề xuất số lần gặp thêm để chốt đơn
+  deXuatTuan: number; // trong bao nhiêu tuần
+  caoGiaTri: boolean; // khách giá trị cao / hạng A -> ưu tiên gặp dày
+}
+
+/** Đề xuất số lần gặp thêm để chốt lại đơn (quy tắc, luôn hiển thị — không cần AI).
+ * Nguyên tắc: khách "chết" cần nhiều lần chạm để tái kích hoạt hơn khách chỉ chưa thăm; để càng
+ * lâu càng cần thêm 1–2 lần; khách giá trị cao thì gặp DÀY hơn (2 buổi/tuần) để chốt nhanh. */
+function deXuatGap(loai: LoaiChamSoc, soNgay: number, doanhThu12T: number, hang: string) {
+  let soLan = loai === "chet" ? 3 : 2; // chưa thăm & SP nghỉ: 2; KH chết: 3
+  const nguongLau = loai === "chet" ? 180 : loai === "chua-tham" ? 30 : 90;
+  if (soNgay >= nguongLau) soLan += 1;
+  if (soNgay >= nguongLau * 2) soLan += 1;
+  soLan = Math.min(soLan, 5);
+  const caoGiaTri = doanhThu12T >= 50_000_000 || /^\s*a/i.test(hang || "");
+  // Cao giá trị: gặp dày ~2 buổi/tuần (rút ngắn còn nửa số tuần); còn lại ~1 buổi/tuần.
+  const soTuan = caoGiaTri ? Math.max(2, Math.ceil(soLan / 2)) : soLan;
+  return { soLan, soTuan, caoGiaTri };
 }
 
 function moneyNum(v: unknown): number {
@@ -210,10 +228,11 @@ export function buildCareByEmp(
   spNghi: Record<string, string>[]
 ): Record<string, CareItem[]> {
   const map: Record<string, CareItem[]> = {};
-  const push = (ten: string, it: CareItem) => {
+  const push = (ten: string, it: Omit<CareItem, "deXuatLan" | "deXuatTuan" | "caoGiaTri">) => {
     const key = (ten || "").trim();
     if (!key) return;
-    (map[key] ||= []).push(it);
+    const { soLan, soTuan, caoGiaTri } = deXuatGap(it.loai, it.soNgay, it.doanhThu12T, it.hang);
+    (map[key] ||= []).push({ ...it, deXuatLan: soLan, deXuatTuan: soTuan, caoGiaTri });
   };
 
   for (const r of khChet) {
