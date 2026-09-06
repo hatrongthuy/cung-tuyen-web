@@ -221,3 +221,156 @@ export function distinctTinh(rows: ThauRow[]): string[] {
   }
   return [...set].sort();
 }
+
+// ---------- Bài 2: Tiến độ thầu theo BỆNH VIỆN và theo NHÓM phụ trách ----------
+// Đề bài yêu cầu tách tiến độ theo nhân sự – bệnh viện. Sheet nguồn hiện có cột "Nhóm phụ trách"
+// (theo nhóm SS) + "Tên khách" (bệnh viện). Ta gom tiến độ theo từng bệnh viện, rồi tổng hợp
+// theo nhóm phụ trách. Khi có mapping bệnh viện→nhân viên (từ admin) sẽ tách sâu tới nhân viên.
+
+export interface ThauBenhVien {
+  maKhach: string;
+  tenKhach: string;
+  tinh: string;
+  mien: string;
+  nhomPhuTrach: string;
+  slKeHoach: number;
+  slThucHien: number;
+  tyLeSL: number; // 0..1 (SL thực hiện / SL kế hoạch)
+  doanhSo2026: number; // đã thực hiện trong năm
+  dsYeuCau: number; // DS 2026 yêu cầu thực hiện (lũy tiến tới thời điểm)
+  tyLeLuyTien: number | null; // doanhSo2026 / dsYeuCau (0..1), null nếu không có yêu cầu
+  doanhSoConLai: number;
+  soSanPham: number;
+  chamTre: boolean; // lũy tiến chưa đạt yêu cầu
+}
+
+/** Gom toàn bộ dòng sản phẩm thầu về mức BỆNH VIỆN (khách). */
+export function thauTheoBenhVien(rows: ThauRow[]): ThauBenhVien[] {
+  const map = new Map<string, ThauBenhVien>();
+  for (const r of rows) {
+    const maKhach = (r["Mã khách"] || "").trim();
+    if (!maKhach) continue;
+    let bv = map.get(maKhach);
+    if (!bv) {
+      bv = {
+        maKhach,
+        tenKhach: r["Tên khách"] || "",
+        tinh: r["Tỉnh"] || "",
+        mien: r["Miền"] || "",
+        nhomPhuTrach: r["Nhóm phụ trách"] || "",
+        slKeHoach: 0,
+        slThucHien: 0,
+        tyLeSL: 0,
+        doanhSo2026: 0,
+        dsYeuCau: 0,
+        tyLeLuyTien: null,
+        doanhSoConLai: 0,
+        soSanPham: 0,
+        chamTre: false,
+      };
+      map.set(maKhach, bv);
+    }
+    bv.slKeHoach += parseNum(r["SL kế hoạch"]);
+    bv.slThucHien += parseNum(r["SL thực hiện"]);
+    bv.doanhSo2026 += parseNum(r["Doanh số 2026"]);
+    bv.dsYeuCau += parseNum(r["DS 2026_YC thực hiện"]);
+    bv.doanhSoConLai += parseNum(r["Doanh số còn lại"]);
+    bv.soSanPham += 1;
+    if (!bv.nhomPhuTrach && r["Nhóm phụ trách"]) bv.nhomPhuTrach = r["Nhóm phụ trách"];
+  }
+  const arr = [...map.values()];
+  for (const bv of arr) {
+    bv.tyLeSL = bv.slKeHoach > 0 ? bv.slThucHien / bv.slKeHoach : 0;
+    bv.tyLeLuyTien = bv.dsYeuCau > 0 ? bv.doanhSo2026 / bv.dsYeuCau : null;
+    // Chậm tiến độ: có yêu cầu lũy tiến nhưng thực hiện mới dưới 95% yêu cầu.
+    bv.chamTre = bv.dsYeuCau > 0 && bv.doanhSo2026 < bv.dsYeuCau * 0.95;
+  }
+  // Ưu tiên hiển thị: bệnh viện chậm & còn nhiều doanh số lên đầu.
+  return arr.sort((a, b) => Number(b.chamTre) - Number(a.chamTre) || b.doanhSoConLai - a.doanhSoConLai);
+}
+
+export interface ThauNhomStat {
+  nhom: string;
+  slKeHoach: number;
+  slThucHien: number;
+  tyLeSL: number;
+  doanhSo2026: number;
+  dsYeuCau: number;
+  tyLeLuyTien: number | null;
+  doanhSoConLai: number;
+  soBenhVien: number;
+  soCham: number;
+}
+
+/** Tổng hợp tiến độ thầu theo NHÓM phụ trách (từ danh sách bệnh viện). */
+export function thauTheoNhom(bvs: ThauBenhVien[]): ThauNhomStat[] {
+  const map = new Map<string, ThauNhomStat>();
+  for (const bv of bvs) {
+    const nhom = bv.nhomPhuTrach || "(Chưa gán nhóm)";
+    let n = map.get(nhom);
+    if (!n) {
+      n = {
+        nhom,
+        slKeHoach: 0,
+        slThucHien: 0,
+        tyLeSL: 0,
+        doanhSo2026: 0,
+        dsYeuCau: 0,
+        tyLeLuyTien: null,
+        doanhSoConLai: 0,
+        soBenhVien: 0,
+        soCham: 0,
+      };
+      map.set(nhom, n);
+    }
+    n.slKeHoach += bv.slKeHoach;
+    n.slThucHien += bv.slThucHien;
+    n.doanhSo2026 += bv.doanhSo2026;
+    n.dsYeuCau += bv.dsYeuCau;
+    n.doanhSoConLai += bv.doanhSoConLai;
+    n.soBenhVien += 1;
+    if (bv.chamTre) n.soCham += 1;
+  }
+  const arr = [...map.values()];
+  for (const n of arr) {
+    n.tyLeSL = n.slKeHoach > 0 ? n.slThucHien / n.slKeHoach : 0;
+    n.tyLeLuyTien = n.dsYeuCau > 0 ? n.doanhSo2026 / n.dsYeuCau : null;
+  }
+  return arr.sort((a, b) => b.doanhSoConLai - a.doanhSoConLai);
+}
+
+export interface ThauTongQuan {
+  soBenhVien: number;
+  soCham: number;
+  slKeHoach: number;
+  slThucHien: number;
+  tyLeSL: number;
+  doanhSo2026: number;
+  dsYeuCau: number;
+  tyLeLuyTien: number | null;
+  doanhSoConLai: number;
+}
+
+export function thauTongQuan(bvs: ThauBenhVien[]): ThauTongQuan {
+  const t: ThauTongQuan = {
+    soBenhVien: bvs.length,
+    soCham: bvs.filter((b) => b.chamTre).length,
+    slKeHoach: 0,
+    slThucHien: 0,
+    tyLeSL: 0,
+    doanhSo2026: 0,
+    dsYeuCau: 0,
+    tyLeLuyTien: null,
+    doanhSoConLai: 0,
+  };
+  for (const b of bvs) {
+    t.slKeHoach += b.slKeHoach;
+    t.slThucHien += b.slThucHien;
+    t.doanhSo2026 += b.doanhSo2026;
+    t.dsYeuCau += b.dsYeuCau;
+    t.doanhSoConLai += b.doanhSoConLai;
+  }
+  t.tyLeSL = t.slKeHoach > 0 ? t.slThucHien / t.slKeHoach : 0;
+  t.tyLeLuyTien = t.dsYeuCau > 0 ? t.doanhSo2026 / t.dsYeuCau : null;
+  return t;
+}
