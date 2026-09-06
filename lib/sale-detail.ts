@@ -183,3 +183,102 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
 
   return { base: BASE_DATE, asofDi: maxDi, tdv, cust, prod, focus, rows, error: null };
 }
+
+// ---------- Bài 3: Triển khai SẢN PHẨM TRỌNG TÂM ----------
+// Tính cho từng SP trọng tâm (focus): sản lượng, số điểm bán (khách khác nhau), doanh thu —
+// kỳ này so với cùng kỳ tháng trước — và tách theo từng nhân viên.
+
+export interface SpttMetric {
+  sl: number;
+  dt: number;
+  diemBan: number;
+}
+export interface SpttNv {
+  ten: string;
+  sl: number;
+  dt: number;
+  diemBan: number;
+}
+export interface SpttProduct {
+  label: string;
+  prodNames: string[];
+  now: SpttMetric;
+  prev: SpttMetric;
+  byNv: SpttNv[];
+}
+export interface SpttResult {
+  products: SpttProduct[];
+  tong: { now: SpttMetric; prev: SpttMetric };
+  error?: string | null;
+}
+
+function msToDi(ms: number): number {
+  const baseMs = new Date(BASE_DATE + "T00:00:00").getTime();
+  return Math.round((ms - baseMs) / 86400000);
+}
+
+/** Tính chỉ số SP trọng tâm cho 2 cửa sổ thời gian (kỳ này & cùng kỳ), theo mốc ms. */
+export function buildSptt(
+  data: SaleDetailData,
+  nowFromMs: number,
+  nowToMs: number,
+  prevFromMs: number,
+  prevToMs: number
+): SpttResult {
+  if (data.error) return { products: [], tong: { now: { sl: 0, dt: 0, diemBan: 0 }, prev: { sl: 0, dt: 0, diemBan: 0 } }, error: data.error };
+  const nf = msToDi(nowFromMs), nt = msToDi(nowToMs);
+  const pf = msToDi(prevFromMs), pt = msToDi(prevToMs);
+  const inNow = (di: number) => di >= nf && di <= nt;
+  const inPrev = (di: number) => di >= pf && di <= pt;
+
+  const C = { cid: 0, tid: 1, pid: 2, di: 3, sl: 4, dt: 5 };
+  const allFocusPids = new Set<number>(Object.values(data.focus).flat());
+
+  const products: SpttProduct[] = Object.entries(data.focus).map(([label, pids]) => {
+    const pidSet = new Set(pids);
+    const now: SpttMetric = { sl: 0, dt: 0, diemBan: 0 };
+    const prev: SpttMetric = { sl: 0, dt: 0, diemBan: 0 };
+    const nowCusts = new Set<number>();
+    const prevCusts = new Set<number>();
+    const nvMap = new Map<number, { sl: number; dt: number; custs: Set<number> }>();
+
+    for (const r of data.rows) {
+      if (!pidSet.has(r[C.pid])) continue;
+      if (inNow(r[C.di])) {
+        now.sl += r[C.sl];
+        now.dt += r[C.dt];
+        nowCusts.add(r[C.cid]);
+        let nv = nvMap.get(r[C.tid]);
+        if (!nv) { nv = { sl: 0, dt: 0, custs: new Set() }; nvMap.set(r[C.tid], nv); }
+        nv.sl += r[C.sl];
+        nv.dt += r[C.dt];
+        nv.custs.add(r[C.cid]);
+      } else if (inPrev(r[C.di])) {
+        prev.sl += r[C.sl];
+        prev.dt += r[C.dt];
+        prevCusts.add(r[C.cid]);
+      }
+    }
+    now.diemBan = nowCusts.size;
+    prev.diemBan = prevCusts.size;
+    const byNv: SpttNv[] = [...nvMap.entries()]
+      .map(([tid, v]) => ({ ten: data.tdv[tid] ?? `NV${tid}`, sl: v.sl, dt: v.dt, diemBan: v.custs.size }))
+      .filter((x) => x.sl > 0 || x.dt > 0)
+      .sort((a, b) => b.dt - a.dt);
+
+    return { label, prodNames: pids.map((pid) => data.prod[pid]?.[1] ?? "").filter(Boolean), now, prev, byNv };
+  });
+
+  // Tổng nhóm (điểm bán = số khách khác nhau mua BẤT KỲ SP trọng tâm nào).
+  const tNow: SpttMetric = { sl: 0, dt: 0, diemBan: 0 };
+  const tPrev: SpttMetric = { sl: 0, dt: 0, diemBan: 0 };
+  const tNowC = new Set<number>(), tPrevC = new Set<number>();
+  for (const r of data.rows) {
+    if (!allFocusPids.has(r[C.pid])) continue;
+    if (inNow(r[C.di])) { tNow.sl += r[C.sl]; tNow.dt += r[C.dt]; tNowC.add(r[C.cid]); }
+    else if (inPrev(r[C.di])) { tPrev.sl += r[C.sl]; tPrev.dt += r[C.dt]; tPrevC.add(r[C.cid]); }
+  }
+  tNow.diemBan = tNowC.size; tPrev.diemBan = tPrevC.size;
+
+  return { products: products.sort((a, b) => b.now.dt - a.now.dt), tong: { now: tNow, prev: tPrev }, error: null };
+}
