@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import StatCard from "@/components/StatCard";
 import ThauCustomerList from "@/components/ThauCustomerList";
+import ThauProgressView from "@/components/ThauProgressView";
 import {
   getBaoCaoThau,
   groupByCustomer,
@@ -9,10 +10,16 @@ import {
   getCanhBaoLauChuaGoiThau,
   distinctTinh,
   formatDate,
+  thauTheoBenhVien,
+  thauTheoNhom,
+  thauTongQuan,
 } from "@/lib/thau-data";
+import { todayInVN } from "@/lib/report-utils";
 
 const NGUONG_SAP_HET_HAN_THANG = 6;
 const NGUONG_LAU_CHUA_GOI_THANG = 6;
+
+export const dynamic = "force-dynamic";
 
 export default async function BaoCaoThauPage() {
   const session = await auth();
@@ -23,6 +30,12 @@ export default async function BaoCaoThauPage() {
   const tinhOptions = distinctTinh(rows);
   const canhBaoHetHan = getCanhBaoHetHanThau(rows, NGUONG_SAP_HET_HAN_THANG);
   const canhBaoLauChuaGoi = getCanhBaoLauChuaGoiThau(rows, NGUONG_LAU_CHUA_GOI_THANG);
+
+  const benhViens = thauTheoBenhVien(rows);
+  const nhomStats = thauTheoNhom(benhViens);
+  const tongQuan = thauTongQuan(benhViens);
+  const today = todayInVN();
+  const ngayLabel = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
 
   const tongDoanhSoConLai = khachs.reduce((s, k) => s + k.tongDoanhSoConLai, 0);
 
@@ -37,7 +50,17 @@ export default async function BaoCaoThauPage() {
           </p>
         </div>
 
-        <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Bài 2: Tiến độ thực hiện thầu theo bệnh viện & nhóm + cảnh báo chậm + AI */}
+        <div className="mt-4">
+          <ThauProgressView
+            tongQuan={tongQuan}
+            nhomStats={nhomStats}
+            benhViens={benhViens}
+            ngayLabel={ngayLabel}
+          />
+        </div>
+
+        <section className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard label="Số khách hàng" value={khachs.length} accentColor="#2a78d6" />
           <StatCard
             label="Tổng doanh số còn lại"
