@@ -8,6 +8,7 @@ import {
   normalizeMaNV,
   findColumn,
   type SaleTxnLite,
+  type CareItem,
 } from "@/lib/report-utils";
 import type { EmployeeWeekSummary } from "@/lib/aggregate";
 
@@ -39,6 +40,7 @@ interface EmpRow {
   banner: string;
   bannerColor: "red" | "amber" | "green";
   alerts: { txt: string; type: "bad" | "warn" | "good" }[];
+  care: CareItem[]; // khách cần chăm sóc (Bài 1 - mức TỐT)
 }
 
 const ACCENT = { kd: "#2a78d6", thau: "#eda100", cov: "#1baf7a" };
@@ -60,6 +62,7 @@ export default function DailyProgressView({
   kpiRows = [],
   kpiError,
   summaries = [],
+  careByEmp = {},
   ctx,
 }: {
   teamName: string;
@@ -69,6 +72,7 @@ export default function DailyProgressView({
   kpiRows?: Record<string, string>[];
   kpiError?: string | null;
   summaries?: EmployeeWeekSummary[];
+  careByEmp?: Record<string, CareItem[]>;
   ctx: DateCtx;
 }) {
   const pctThoiGian = (ctx.ngay / ctx.soNgayThang) * 100;
@@ -159,11 +163,12 @@ export default function DailyProgressView({
         ma, ten: e.hoTen, diaBan: plan.dia,
         kdTH, kdKH, kdPct, kdPctTruoc, thauTH, thauKH, thauPct,
         coverage, soGoiY, soChuaGap, severity, banner, bannerColor, alerts,
+        care: careByEmp[e.hoTen] ?? [],
       };
     });
 
     return out.sort((a, b) => b.severity - a.severity || a.kdPct - b.kdPct);
-  }, [salesTxns, kpiCols, kpiRows, summaries, ctx, pctThoiGian]);
+  }, [salesTxns, kpiCols, kpiRows, summaries, careByEmp, ctx, pctThoiGian]);
 
   // ---- Tổng nhóm ----
   const g = useMemo(() => {
@@ -204,7 +209,13 @@ export default function DailyProgressView({
     L.push("THEO NHÂN VIÊN:");
     for (const e of emps) {
       L.push(`- ${e.ten} (${e.diaBan}): KĐ ${pctStr(e.kdPct)} (${formatVnd(e.kdTH)}/${formatVnd(e.kdKH)}), Thầu ${pctStr(e.thauPct)}, Coverage ${e.coverage !== null ? pctStr(e.coverage * 100) : "—"}, chưa gặp ${e.soChuaGap} khách. Cảnh báo: ${e.alerts.map((a) => a.txt).join("; ")}.`);
+      if (e.care.length) {
+        const top = e.care.slice(0, 5).map((c) => `${c.tenKhach}${c.hang ? ` (hạng ${c.hang})` : ""} — ${c.chiTiet}, DT12T ${formatShortVnd(c.doanhThu12T)}`);
+        L.push(`  Khách cần chăm sóc (${e.care.length}): ${top.join(" | ")}`);
+      }
     }
+    L.push("");
+    L.push("YÊU CẦU THÊM: Với mỗi nhân viên có khách cần chăm sóc, hãy vẽ NHANH bức tranh khách hàng (dựa trên lịch sử viếng thăm & mua hàng ở trên) và ĐỀ XUẤT SỐ LẦN GẶP THÊM cụ thể (ví dụ 2–3 lần trong 2 tuần) để chốt lại đơn cho 1–2 khách ưu tiên nhất của họ.");
     return L.join("\n");
   }
   async function phanTichAI() {
@@ -386,6 +397,48 @@ function EmpCard({ e, pctThoiGian }: { e: EmpRow; pctThoiGian: number }) {
           </li>
         ))}
       </ul>
+
+      {e.care.length > 0 && <CareList care={e.care} />}
+    </div>
+  );
+}
+
+const CARE_META: Record<CareItem["loai"], { label: string; cls: string; dot: string }> = {
+  chet: { label: "KH chết", cls: "bg-red-50 text-red-700 border-red-200", dot: "#e34948" },
+  "chua-tham": { label: "Chưa thăm", cls: "bg-amber-50 text-amber-800 border-amber-200", dot: "#eda100" },
+  "sp-nghi": { label: "SP nghỉ", cls: "bg-sky-50 text-sky-700 border-sky-200", dot: "#2a78d6" },
+};
+
+function CareList({ care }: { care: CareItem[] }) {
+  const top = care.slice(0, 5);
+  return (
+    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+      <p className="text-xs font-semibold text-slate-700">
+        🎯 Khách cần chăm sóc để ra đơn <span className="font-normal text-slate-400">({care.length})</span>
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {top.map((c, i) => {
+          const meta = CARE_META[c.loai];
+          return (
+            <li key={i} className="flex items-start gap-2 text-xs">
+              <span className={`mt-0.5 shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}>
+                {meta.label}
+              </span>
+              <span className="min-w-0">
+                <span className="font-medium text-slate-800">{c.tenKhach}</span>
+                {c.tinh ? <span className="text-slate-400"> · {c.tinh}</span> : null}
+                <span className="block text-slate-500">{c.chiTiet}</span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {care.length > top.length && (
+        <p className="mt-1.5 text-[11px] text-slate-400">… và {care.length - top.length} khách khác</p>
+      )}
+      <p className="mt-2 text-[11px] italic text-slate-400">
+        Bấm “Phân tích AI” để nhận đề xuất số lần gặp thêm nhằm chốt đơn cho nhóm khách này.
+      </p>
     </div>
   );
 }
