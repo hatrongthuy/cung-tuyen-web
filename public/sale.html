@@ -427,6 +427,7 @@ function renderCustDetail(cid){
     </div>
     <div class="note" style="margin-bottom:12px">Trạng thái theo lần lấy gần nhất: <b style="color:var(--good)">Duy trì tốt</b> ≤45 ngày · <b style="color:var(--warn)">Chú ý</b> 46–90 ngày · <b style="color:var(--crit)">Lâu chưa lấy</b> &gt;90 ngày (mốc so sánh: ${dstr(ASOF)}).</div>
     <div class="tbl-wrap"><table><thead><tr><th class="no-sort">Sản phẩm</th><th class="r no-sort">Số lần</th><th class="r no-sort">Tổng SL</th><th class="r no-sort">Doanh thu</th><th class="no-sort">Lấy gần nhất</th><th class="r no-sort">Ngày chưa lấy</th><th class="no-sort">Trạng thái</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"><button class="ai-btn" data-ai-cust="${cid}" style="cursor:pointer;border:none;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13px;background:var(--brand);color:#fff;font-family:inherit">🤖 Phân tích AI khách hàng</button><div class="ai-hint" style="margin-top:6px;font-size:12px;color:var(--muted)">Gợi ý sản phẩm tiềm năng nên chào lại &amp; hành động cho lần gặp tới.</div><div data-ai-out="${cid}" style="margin-top:12px"></div></div>
   </div>`;
 }
 
@@ -655,7 +656,41 @@ function renderFilters(){
 document.getElementById("asof").textContent="Số liệu đến "+dstr(ASOF);
 document.getElementById("foot").innerHTML=`Nguồn: file chuẩn PS Tây Bắc · ${ROWS.length} dòng bán · ${CUST.length} khách hàng · ${PROD.length} sản phẩm · ${TDV.length} TDV nhóm Hà Trọng Thủy. Doanh thu là net (đã trừ trả hàng). Trang tra cứu nội bộ — không chia sẻ ra ngoài.`;
 
+function custAiSummary(cid){
+  const c=CUST[cid];
+  const crows=custRows(cid).filter(r=>state.tdv<0||r[C.tid]===state.tdv);
+  if(!crows.length)return "";
+  const dt=crows.reduce((a,r)=>a+r[C.dt],0);
+  const byP=new Map();
+  for(const r of crows){const p=r[C.pid];if(!byP.has(p))byP.set(p,{pid:p,dt:0,sl:0,dates:new Set(),last:-1});const o=byP.get(p);o.dt+=r[C.dt];o.sl+=r[C.sl];o.dates.add(r[C.di]);if(r[C.di]>o.last)o.last=r[C.di];}
+  const prods=[...byP.values()].sort((a,b)=>b.last-a.last||b.dt-a.dt);
+  const lastDi=Math.max(...crows.map(r=>r[C.di]));
+  const tdvName=TDV[crows.reduce((a,r)=>r[C.di]>a[C.di]?r:a,crows[0])[C.tid]];
+  const L=[];
+  L.push("Khách hàng: "+c[1]+" (mã "+c[0]+", "+c[2]+", nhóm "+(c[3]||"—")+"). TDV phụ trách: "+tdvName+".");
+  L.push("Tổng doanh thu lũy kế: "+vnd(dt)+"đ. Mua gần nhất: "+dstr(diToDate(lastDi))+" ("+daysSince(lastDi)+" ngày trước). Mốc số liệu: "+dstr(ASOF)+".");
+  L.push("Đã mua "+prods.length+" sản phẩm:");
+  for(const p of prods){const days=daysSince(p.last);const st=days<=45?"đang duy trì":days<=90?"chú ý":"lâu chưa lấy";
+    L.push("- "+PROD[p.pid][1]+(PID2FOCUS[p.pid]?" [SP trọng tâm "+PID2FOCUS[p.pid]+"]":"")+": "+p.dates.size+" lần, tổng SL "+nf.format(p.sl)+", DT "+vnd(p.dt)+"đ, lấy gần nhất "+dstr(diToDate(p.last))+" ("+days+" ngày trước — "+st+").");}
+  L.push("");
+  L.push("Danh mục sản phẩm công ty đang có (để gợi ý sản phẩm khách CHƯA mua nếu phù hợp): "+PROD.map(x=>x[1]).join("; ")+".");
+  return L.join("\n");
+}
+async function runCustAI(cid,btn){
+  const out=document.querySelector('[data-ai-out="'+cid+'"]');
+  if(!out)return;
+  const old=btn.textContent;btn.disabled=true;btn.textContent="Đang phân tích…";
+  out.innerHTML='<div style="color:var(--muted);font-size:13px">Đang gọi AI…</div>';
+  try{
+    const res=await fetch("/api/phan-tich-tuan",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({linhVuc:"khach-hang",tomTat:custAiSummary(cid)})});
+    const data=await res.json();
+    if(!res.ok)out.innerHTML='<div style="color:var(--crit);font-size:13px">'+esc(data.error||"Lỗi phân tích.")+'</div>';
+    else out.innerHTML='<div style="white-space:pre-wrap;font-size:13px;line-height:1.55;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px">'+esc(data.text||"(không có nội dung)")+'</div>';
+  }catch(e){out.innerHTML='<div style="color:var(--crit);font-size:13px">'+esc(String(e&&e.message||e))+'</div>';}
+  finally{btn.disabled=false;btn.textContent=old;}
+}
 document.addEventListener("click",e=>{
+  const aiBtn=e.target.closest("[data-ai-cust]");if(aiBtn){runCustAI(+aiBtn.dataset.aiCust,aiBtn);return;}
   const tab=e.target.closest("[data-tab]");if(tab){state.tab=tab.dataset.tab;state.selCust=null;state.selProd=null;state._activeSearch=null;renderTabs();render();window.scrollTo({top:0});return;}
   const seg=e.target.closest(".seg button");if(seg){const s=seg.parentElement.dataset.seg;
     if(s==="ov"){state.ovMetric=seg.dataset.m;}
