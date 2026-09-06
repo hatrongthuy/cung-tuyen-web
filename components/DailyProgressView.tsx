@@ -410,7 +410,8 @@ const CARE_META: Record<CareItem["loai"], { label: string; cls: string; dot: str
 };
 
 function CareList({ care }: { care: CareItem[] }) {
-  const top = care.slice(0, 5);
+  const [xemTatCa, setXemTatCa] = useState(false);
+  const top = xemTatCa ? care : care.slice(0, 5);
   const tongLanGap = care.reduce((s, c) => s + c.deXuatLan, 0);
   const soCaoGiaTri = care.filter((c) => c.caoGiaTri).length;
   return (
@@ -444,8 +445,13 @@ function CareList({ care }: { care: CareItem[] }) {
           );
         })}
       </ul>
-      {care.length > top.length && (
-        <p className="mt-1.5 text-[11px] text-slate-400">… và {care.length - top.length} khách khác</p>
+      {care.length > 5 && (
+        <button
+          onClick={() => setXemTatCa((v) => !v)}
+          className="no-print mt-2 rounded-md border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50"
+        >
+          {xemTatCa ? "Thu gọn" : `Xem tất cả ${care.length} khách`}
+        </button>
       )}
       <p className="mt-2 text-[11px] italic text-slate-400">
         Bấm nút “Phân tích AI (Gemini)” ở đầu báo cáo để có phân tích sâu &amp; kịch bản gặp cho từng khách.
