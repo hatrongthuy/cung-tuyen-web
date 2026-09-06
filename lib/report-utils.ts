@@ -173,3 +173,88 @@ export function deltaLabel(cur: number, prev: number, asPercent = true): string 
   }
   return `${arrow} ${diff > 0 ? "+" : ""}${diff} so với kỳ trước`;
 }
+
+// ---------- Bài 1 (mức TỐT): Khách hàng cần chăm sóc theo từng nhân viên ----------
+// Gom 3 nguồn cảnh báo (chưa viếng thăm, KH "chết", SP nghỉ) thành 1 danh sách khách cần
+// chăm sóc, nhóm theo TÊN nhân viên. Dùng để hiển thị "bức tranh khách hàng" trên báo cáo
+// tiến độ và nạp vào phần phân tích AI (đề xuất số lần gặp để chốt đơn).
+
+export type LoaiChamSoc = "chet" | "chua-tham" | "sp-nghi";
+
+export interface CareItem {
+  tenKhach: string;
+  tinh: string;
+  hang: string;
+  loai: LoaiChamSoc;
+  soNgay: number; // số ngày chưa phát sinh / chưa viếng thăm / chưa mua lại
+  doanhThu12T: number; // doanh thu 12 tháng (hoặc lũy kế) — dùng để xếp ưu tiên
+  chiTiet: string; // mô tả ngắn để hiển thị
+}
+
+function moneyNum(v: unknown): number {
+  const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Trọng số ưu tiên: KH "chết" > chưa viếng thăm > SP nghỉ; trong cùng loại, doanh thu 12T cao
+ * và số ngày lớn thì lên trước (khách giá trị + để lâu = mất đơn nặng nhất). */
+function careWeight(it: CareItem): number {
+  const base = it.loai === "chet" ? 3 : it.loai === "chua-tham" ? 2 : 1;
+  return base * 1e15 + it.doanhThu12T + it.soNgay * 1e6;
+}
+
+/** Gom khách cần chăm sóc theo TÊN nhân viên từ 3 sheet cảnh báo. */
+export function buildCareByEmp(
+  chuaVT: Record<string, string>[],
+  khChet: Record<string, string>[],
+  spNghi: Record<string, string>[]
+): Record<string, CareItem[]> {
+  const map: Record<string, CareItem[]> = {};
+  const push = (ten: string, it: CareItem) => {
+    const key = (ten || "").trim();
+    if (!key) return;
+    (map[key] ||= []).push(it);
+  };
+
+  for (const r of khChet) {
+    const soNgay = moneyNum(r["Số ngày chưa phát sinh"]);
+    push(r["Tên nhân viên"], {
+      tenKhach: r["Tên khách hàng"] || "",
+      tinh: r["Tỉnh"] || "",
+      hang: r["Hạng"] || "",
+      loai: "chet",
+      soNgay,
+      doanhThu12T: moneyNum(r["Doanh thu 12T"]) || moneyNum(r["Doanh thu lũy kế"]),
+      chiTiet: `${soNgay} ngày chưa phát sinh sale`,
+    });
+  }
+  for (const r of chuaVT) {
+    const soNgay = moneyNum(r["Số ngày chưa có lượt viếng thăm/call"]);
+    push(r["Tên nhân viên"], {
+      tenKhach: r["Tên khách hàng"] || "",
+      tinh: r["Tỉnh"] || "",
+      hang: r["Hạng"] || "",
+      loai: "chua-tham",
+      soNgay,
+      doanhThu12T: moneyNum(r["Doanh thu 12T"]),
+      chiTiet: `${soNgay} ngày chưa viếng thăm/call`,
+    });
+  }
+  for (const r of spNghi) {
+    const soNgay = moneyNum(r["Số ngày chưa mua lại"]);
+    push(r["Tên nhân viên"], {
+      tenKhach: r["Tên khách hàng"] || "",
+      tinh: r["Tỉnh"] || "",
+      hang: r["Hạng KH"] || "",
+      loai: "sp-nghi",
+      soNgay,
+      doanhThu12T: moneyNum(r["Doanh thu lũy kế"]),
+      chiTiet: `SP "${r["Tên sản phẩm"] || ""}" — ${soNgay} ngày chưa mua lại`,
+    });
+  }
+
+  for (const ten of Object.keys(map)) {
+    map[ten].sort((a, b) => careWeight(b) - careWeight(a));
+  }
+  return map;
+}
