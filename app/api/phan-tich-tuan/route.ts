@@ -93,13 +93,51 @@ export async function POST(req: Request) {
   const kyHoaThuong = isThang ? "tháng" : "tuần";
   const kyHoa = isThang ? "THÁNG" : "TUẦN";
 
-  const prompt = `Bạn là trợ lý phân tích cho quản lý nhóm trình dược viên (ngành dược). Dưới đây là số liệu BÁO CÁO CUNG TUYẾN ${kyHoa} của nhóm.
+  // Lĩnh vực phân tích — cho phép dùng chung 1 endpoint AI cho nhiều loại báo cáo.
+  const linhVuc = String((body as { linhVuc?: string })?.linhVuc ?? "cung-tuyen").toLowerCase();
+
+  const PROMPTS: Record<string, string> = {
+    "cung-tuyen": `Bạn là trợ lý phân tích cho quản lý nhóm trình dược viên (ngành dược). Dưới đây là số liệu BÁO CÁO CUNG TUYẾN ${kyHoa} của nhóm.
 Hãy phân tích NGẮN GỌN bằng tiếng Việt, trình bày theo các mục có tiêu đề rõ ràng và gạch đầu dòng:
 1. Tổng quan ${kyHoaThuong} này & so sánh với ${kyHoaThuong} trước (doanh số, gặp khách, phản hồi, điểm — nêu tăng/giảm).
 2. Nhân viên nổi bật và nhân viên cần cải thiện (kèm lý do từ số liệu).
 3. Tồn đọng cần xử lý (khách/chỉ tiêu chưa đạt).
 4. 3–5 đề xuất hành động cụ thể cho ${kyHoaThuong} tới.
-Không bịa số liệu ngoài dữ liệu cho sẵn. Không dài dòng.
+Không bịa số liệu ngoài dữ liệu cho sẵn. Không dài dòng.`,
+
+    thau: `Bạn là trợ lý phân tích TIẾN ĐỘ THẦU (ngành dược) cho quản lý. Dưới đây là số liệu thực hiện thầu theo bệnh viện và nhóm phụ trách.
+Hãy phân tích NGẮN GỌN bằng tiếng Việt, có tiêu đề mục và gạch đầu dòng:
+1. Tổng quan tiến độ thầu toàn nhóm (tỷ lệ thực hiện, lũy tiến so với yêu cầu, doanh số còn lại).
+2. Nhóm/bệnh viện làm tốt và nhóm/bệnh viện THẦU CHẬM cần thúc (nêu rõ lý do từ số liệu, đặc biệt gói sắp/đã hết hạn còn nhiều doanh số).
+3. Rủi ro mất số cần xử lý gấp.
+4. 3–5 đề xuất hành động cụ thể để đẩy tiến độ thầu.
+Không bịa số liệu ngoài dữ liệu cho sẵn. Không dài dòng.`,
+
+    sptt: `Bạn là trợ lý phân tích TRIỂN KHAI SẢN PHẨM TRỌNG TÂM (ngành dược) cho quản lý. Dưới đây là số liệu OKR sản phẩm trọng tâm (mở mới/duy trì) theo nhân viên & sản phẩm.
+Hãy phân tích NGẮN GỌN bằng tiếng Việt, có tiêu đề mục và gạch đầu dòng:
+1. Tổng quan tỷ lệ đạt OKR sản phẩm trọng tâm & so sánh với kỳ trước (nếu có).
+2. Sản phẩm/nhân viên đạt tốt và chưa đạt (số điểm bán, sản lượng — nêu lý do).
+3. Sản phẩm cần đẩy điểm bán / mở mới.
+4. 3–5 đề xuất hành động cụ thể.
+Không bịa số liệu ngoài dữ liệu cho sẵn. Không dài dòng.`,
+
+    "khach-hang": `Bạn là trợ lý bán hàng ngành dược. Dưới đây là dữ liệu lịch sử của MỘT khách hàng (nhà thuốc/phòng khám/bệnh viện): lịch sử mua, sản phẩm đã mua, tần suất, sản phẩm đã ngừng.
+Hãy phân tích NGẮN GỌN bằng tiếng Việt, có tiêu đề mục và gạch đầu dòng:
+1. Bức tranh khách hàng (giá trị, độ trung thành, xu hướng gần đây).
+2. Sản phẩm TIỀM NĂNG nên chào lại/chào mới (dựa trên sản phẩm đã mua & đã ngừng).
+3. Đề xuất HÀNH ĐỘNG cho lần gặp tiếp theo (nói gì, chào gì, mục tiêu số lần gặp để chốt đơn).
+Không bịa số liệu ngoài dữ liệu cho sẵn. Không dài dòng.`,
+
+    "ca-nhan": `Bạn là trợ lý phát triển năng lực cho quản lý mầm (ngành dược). Dưới đây là OKR cá nhân (Doanh số, Kĩ năng, Kiến thức) và kết quả thực hiện.
+Hãy phân tích NGẮN GỌN bằng tiếng Việt, có tiêu đề mục và gạch đầu dòng:
+1. Tổng quan mức đạt OKR từng mảng.
+2. Điểm MẠNH và điểm YẾU (kèm lý do từ số liệu).
+3. Đề xuất chỉ tiêu & lộ trình học tập/cải thiện cho kỳ tới.
+Không bịa số liệu ngoài dữ liệu cho sẵn. Không dài dòng.`,
+  };
+
+  const huongDan = PROMPTS[linhVuc] ?? PROMPTS["cung-tuyen"];
+  const prompt = `${huongDan}
 
 SỐ LIỆU:
 ${tomTat}`;
