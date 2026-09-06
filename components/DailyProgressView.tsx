@@ -210,7 +210,7 @@ export default function DailyProgressView({
     for (const e of emps) {
       L.push(`- ${e.ten} (${e.diaBan}): KĐ ${pctStr(e.kdPct)} (${formatVnd(e.kdTH)}/${formatVnd(e.kdKH)}), Thầu ${pctStr(e.thauPct)}, Coverage ${e.coverage !== null ? pctStr(e.coverage * 100) : "—"}, chưa gặp ${e.soChuaGap} khách. Cảnh báo: ${e.alerts.map((a) => a.txt).join("; ")}.`);
       if (e.care.length) {
-        const top = e.care.slice(0, 5).map((c) => `${c.tenKhach}${c.hang ? ` (hạng ${c.hang})` : ""} — ${c.chiTiet}, DT12T ${formatShortVnd(c.doanhThu12T)}`);
+        const top = e.care.slice(0, 5).map((c) => `${c.tenKhach}${c.hang ? ` (hạng ${c.hang})` : ""} — ${c.chiTiet}, DT12T ${formatShortVnd(c.doanhThu12T)}, đề xuất gặp ~${c.deXuatLan} lần/${c.deXuatTuan} tuần`);
         L.push(`  Khách cần chăm sóc (${e.care.length}): ${top.join(" | ")}`);
       }
     }
@@ -289,7 +289,7 @@ export default function DailyProgressView({
           disabled={aiLoading}
           className="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60"
         >
-          {aiLoading ? "Đang phân tích…" : "Phân tích AI (Gemini) — thứ 7"}
+          {aiLoading ? "Đang phân tích…" : "🤖 Phân tích AI (Gemini)"}
         </button>
       </div>
 
@@ -411,10 +411,17 @@ const CARE_META: Record<CareItem["loai"], { label: string; cls: string; dot: str
 
 function CareList({ care }: { care: CareItem[] }) {
   const top = care.slice(0, 5);
+  const tongLanGap = care.reduce((s, c) => s + c.deXuatLan, 0);
+  const soCaoGiaTri = care.filter((c) => c.caoGiaTri).length;
   return (
     <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
       <p className="text-xs font-semibold text-slate-700">
         🎯 Khách cần chăm sóc để ra đơn <span className="font-normal text-slate-400">({care.length})</span>
+      </p>
+      {/* Kế hoạch chăm sóc tổng cho nhân viên — luôn hiển thị, không cần AI */}
+      <p className="mt-1 rounded-md bg-white px-2 py-1.5 text-[11px] text-slate-600">
+        Kế hoạch: cần khoảng <span className="font-semibold text-slate-800">{tongLanGap} lượt gặp</span> để phủ {care.length} khách này
+        {soCaoGiaTri > 0 ? <> · ưu tiên <span className="font-semibold text-red-600">{soCaoGiaTri} khách giá trị cao</span> (gặp dày)</> : null}.
       </p>
       <ul className="mt-2 space-y-1.5">
         {top.map((c, i) => {
@@ -427,7 +434,11 @@ function CareList({ care }: { care: CareItem[] }) {
               <span className="min-w-0">
                 <span className="font-medium text-slate-800">{c.tenKhach}</span>
                 {c.tinh ? <span className="text-slate-400"> · {c.tinh}</span> : null}
+                {c.caoGiaTri ? <span className="ml-1 rounded bg-red-100 px-1 text-[9px] font-medium text-red-700">giá trị cao</span> : null}
                 <span className="block text-slate-500">{c.chiTiet}</span>
+                <span className="mt-0.5 block font-medium text-emerald-700">
+                  → Đề xuất gặp lại ~{c.deXuatLan} lần trong {c.deXuatTuan} tuần để kích lại đơn
+                </span>
               </span>
             </li>
           );
@@ -437,7 +448,7 @@ function CareList({ care }: { care: CareItem[] }) {
         <p className="mt-1.5 text-[11px] text-slate-400">… và {care.length - top.length} khách khác</p>
       )}
       <p className="mt-2 text-[11px] italic text-slate-400">
-        Bấm “Phân tích AI” để nhận đề xuất số lần gặp thêm nhằm chốt đơn cho nhóm khách này.
+        Bấm nút “Phân tích AI (Gemini)” ở đầu báo cáo để có phân tích sâu &amp; kịch bản gặp cho từng khách.
       </p>
     </div>
   );
