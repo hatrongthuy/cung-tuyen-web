@@ -4,6 +4,7 @@ import SidebarNav, { type NavEntry } from "./SidebarNav";
 
 export type NavKey =
   | "cung-tuyen"
+  | "hoi-dap"
   | "doi-nhom"
   | "sp-trong-tam"
   | "bao-cao-tuan"
@@ -19,6 +20,7 @@ export type NavKey =
 // Menu quản lý — "Báo cáo tuần" + "Báo cáo tháng" gộp trong nhóm "Báo cáo".
 const NAV_ITEMS: NavEntry[] = [
   { key: "cung-tuyen", label: "Cung tuyến", href: "/quan-ly", icon: "🏠" },
+  { key: "hoi-dap", label: "Trợ lý AI", href: "/quan-ly/hoi-dap", icon: "🤖" },
   { key: "doi-nhom", label: "Quản lý đội nhóm", href: "/quan-ly/doi-nhom", icon: "👥" },
   { key: "sp-trong-tam", label: "SP trọng tâm", href: "/quan-ly/sp-trong-tam", icon: "⭐" },
   {
