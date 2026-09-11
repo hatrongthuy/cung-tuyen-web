@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import { findAllowlistEntry, type Role } from "@/lib/allowlist";
+import Credentials from "next-auth/providers/credentials";
+import { findAllowlistEntry, findByLogin, type Role } from "@/lib/allowlist";
 
 declare module "next-auth" {
   interface Session {
@@ -18,13 +18,24 @@ declare module "next-auth" {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-      authorization: {
-        params: {
-          prompt: "select_account",
-        },
+    Credentials({
+      name: "Họ tên & mã nhân viên",
+      credentials: {
+        hoTen: { label: "Họ tên", type: "text" },
+        maNhanVien: { label: "Mã nhân viên", type: "password" },
+      },
+      authorize(credentials) {
+        const hoTen = String(credentials?.hoTen ?? "");
+        const maNhanVien = String(credentials?.maNhanVien ?? "");
+        const entry = findByLogin(hoTen, maNhanVien);
+        if (!entry) return null;
+        return {
+          id: entry.email,
+          email: entry.email,
+          name: entry.hoTen,
+          role: entry.role,
+          maNhanVien: entry.maNhanVien ?? null,
+        };
       },
     }),
   ],
@@ -37,7 +48,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // với thông tin rõ ràng thay vì bị Google/NextAuth từ chối âm thầm.
       return true;
     },
-    async jwt({ token }) {
+    async jwt({ token, user }) {
+      // Khi mới đăng nhập, lấy email/tên từ tài khoản vừa xác thực.
+      if (user) {
+        token.email = user.email ?? token.email;
+        token.name = user.name ?? token.name;
+      }
       const entry = findAllowlistEntry(token.email);
       token.role = entry?.role ?? null;
       token.maNhanVien = entry?.maNhanVien ?? null;
