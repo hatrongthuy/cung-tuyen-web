@@ -44,6 +44,9 @@ const NAV_ITEMS: NavEntry[] = [
 // Menu nhân viên — mỗi người chỉ xem dữ liệu cá nhân của mình.
 const EMP_NAV_ITEMS: NavEntry[] = [
   { key: "cung-tuyen", label: "Cung tuyến", href: "/nhan-vien", icon: "🏠" },
+  { key: "hoi-dap", label: "Trợ lý AI", href: "/nhan-vien/hoi-dap", icon: "🤖" },
+  { key: "doi-nhom", label: "Kết quả của tôi", href: "/nhan-vien/doi-nhom", icon: "📈" },
+  { key: "sp-trong-tam", label: "SP trọng tâm", href: "/nhan-vien/sp-trong-tam", icon: "⭐" },
   { key: "tra-cuu-sale", label: "Tra cứu Sale", href: "/nhan-vien/tra-cuu-sale", icon: "🔎" },
   { key: "kpi", label: "KPI", href: "/nhan-vien/kpi", icon: "🎯" },
   { key: "doanh-so", label: "Doanh số", href: "/nhan-vien/doanh-so", icon: "💰" },

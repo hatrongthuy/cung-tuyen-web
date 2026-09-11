@@ -25,6 +25,7 @@ export default function SpTrongTamView({
   thang,
   nam,
   lastMonthLabel,
+  mine,
 }: {
   teamName: string;
   sptt: SpttResult;
@@ -32,6 +33,7 @@ export default function SpTrongTamView({
   thang: number;
   nam: number;
   lastMonthLabel: string;
+  mine?: boolean;
 }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiText, setAiText] = useState("");
@@ -71,7 +73,7 @@ export default function SpTrongTamView({
         <div>
           <h1 className="text-lg font-semibold text-slate-900">Triển khai sản phẩm trọng tâm</h1>
           <p className="text-xs text-slate-500">
-            Nhóm {teamName} · lũy kế 01–{ngay}/{thang}/{nam} · so cùng kỳ tháng {lastMonthLabel}
+            {mine ? "Dữ liệu của tôi" : `Nhóm ${teamName}`} · lũy kế 01–{ngay}/{thang}/{nam} · so cùng kỳ tháng {lastMonthLabel}
           </p>
         </div>
         <button

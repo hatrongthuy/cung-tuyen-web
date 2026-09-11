@@ -52,6 +52,8 @@ export default function DoiNhomView({
   summaries = [],
   tonDong,
   ctx,
+  onlyMa,
+  title,
 }: {
   teamName: string;
   salesTxns?: SaleTxnLite[];
@@ -59,6 +61,10 @@ export default function DoiNhomView({
   summaries?: EmployeeWeekSummary[];
   tonDong?: TonDongTuanTruoc | null;
   ctx: Ctx;
+  /** Nếu có: chỉ hiển thị dữ liệu của 1 nhân viên (nhân viên tự xem). */
+  onlyMa?: string;
+  /** Tiêu đề tuỳ biến (mặc định "Quản lý đội nhóm"). */
+  title?: string;
 }) {
   const emps = useMemo<EmpRow[]>(() => {
     const kdNow = salesByRange(salesTxns, ctx.monthStartMs, ctx.nowMs, "keDon");
@@ -71,7 +77,8 @@ export default function DoiNhomView({
     const tonByMa = new Map<string, { maKH: string; tenKH: string }[]>();
     if (tonDong) for (const t of tonDong.perEmp) tonByMa.set(normalizeMaNV(t.maNhanVien), t.khachChuaXuLy);
 
-    return allEmployees().map((e) => {
+    const onlyMaN = onlyMa ? normalizeMaNV(onlyMa) : null;
+    return allEmployees().filter((e) => !onlyMaN || normalizeMaNV(e.maNhanVien) === onlyMaN).map((e) => {
       const ma = normalizeMaNV(e.maNhanVien);
       const sm = sumByMa.get(ma);
       const canGap = (sm?.khachGoiY ?? [])
@@ -89,7 +96,7 @@ export default function DoiNhomView({
         tonDong: tonByMa.get(ma) ?? [],
       };
     });
-  }, [salesTxns, summaries, tonDong, ctx]);
+  }, [salesTxns, summaries, tonDong, ctx, onlyMa]);
 
   const g = useMemo(() => {
     const s = (f: (e: EmpRow) => number) => emps.reduce((a, e) => a + f(e), 0);
@@ -137,9 +144,9 @@ export default function DoiNhomView({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">Quản lý đội nhóm</h1>
+          <h1 className="text-lg font-semibold text-slate-900">{title ?? "Quản lý đội nhóm"}</h1>
           <p className="text-xs text-slate-500">
-            Nhóm {teamName} · lũy kế 01–{ctx.ngay}/{ctx.thang}/{ctx.nam} · so cùng kỳ tháng {ctx.lastMonthLabel}
+            {onlyMa ? "Dữ liệu của tôi" : `Nhóm ${teamName}`} · lũy kế 01–{ctx.ngay}/{ctx.thang}/{ctx.nam} · so cùng kỳ tháng {ctx.lastMonthLabel}
           </p>
         </div>
         <button

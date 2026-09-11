@@ -2,13 +2,20 @@
 
 import { useState } from "react";
 
-const GOI_Y = [
+const GOI_Y_NHOM = [
   "Doanh số kê đơn của Đỗ Cao Trung tháng này so cùng kỳ?",
   "Top 5 sản phẩm bán chạy nhất toàn kỳ?",
   "Khách nào lâu chưa mua Levobupi-BFS?",
   "Nhân viên nào tăng trưởng tốt nhất so cùng kỳ?",
   "Nhà thuốc Trung tâm Y tế Đoan Hùng đã mua những sản phẩm gì?",
   "Sản phẩm trọng tâm nào đang bán yếu tháng này?",
+];
+const GOI_Y_CANHAN = [
+  "Doanh số của tôi tháng này so cùng kỳ?",
+  "Top 5 sản phẩm tôi bán chạy nhất?",
+  "Khách nào của tôi lâu chưa mua lại?",
+  "Sản phẩm trọng tâm nào tôi đang bán yếu?",
+  "Những nhà thuốc nào tôi đang phụ trách có doanh số cao nhất?",
 ];
 
 interface QA {
@@ -18,10 +25,11 @@ interface QA {
   loading?: boolean;
 }
 
-export default function HoiDapView() {
+export default function HoiDapView({ mine }: { mine?: boolean }) {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<QA[]>([]);
   const [busy, setBusy] = useState(false);
+  const GOI_Y = mine ? GOI_Y_CANHAN : GOI_Y_NHOM;
 
   async function ask(question: string) {
     const q = question.trim();
@@ -50,7 +58,9 @@ export default function HoiDapView() {
       <div>
         <h1 className="text-lg font-semibold text-slate-900">🤖 Trợ lý AI — Hỏi đáp số liệu</h1>
         <p className="text-xs text-slate-500">
-          Hỏi bất kỳ câu nào về doanh số, khách hàng, sản phẩm, nhân viên… AI đọc dữ liệu Sale thật của nhóm để trả lời.
+          {mine
+            ? "Hỏi bất kỳ câu nào về doanh số, khách hàng, sản phẩm CỦA BẠN… AI đọc dữ liệu Sale thật của bạn để trả lời."
+            : "Hỏi bất kỳ câu nào về doanh số, khách hàng, sản phẩm, nhân viên… AI đọc dữ liệu Sale thật của nhóm để trả lời."}
         </p>
       </div>
 
