@@ -19,7 +19,7 @@ function short(n: number) {
 
 export function buildHoiDapDigest(
   data: SaleDetailData,
-  win: { nowFromMs: number; nowToMs: number; prevFromMs: number; prevToMs: number; todayLabel: string; lastMonthLabel: string }
+  win: { nowFromMs: number; nowToMs: number; prevFromMs: number; prevToMs: number; todayLabel: string; lastMonthLabel: string; onlyTid?: number }
 ): string {
   if (data.error) return `Lỗi đọc dữ liệu Sale: ${data.error}`;
   const baseMs = new Date(data.base + "T00:00:00").getTime();
@@ -33,7 +33,10 @@ export function buildHoiDapDigest(
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   };
   const C = { cid: 0, tid: 1, pid: 2, di: 3, sl: 4, dt: 5 };
-  const { tdv, cust, prod, rows, focus } = data;
+  const { tdv, cust, prod, focus } = data;
+  // Lọc theo 1 nhân viên (khi nhân viên tự xem — chỉ dữ liệu của họ).
+  const rows = win.onlyTid != null ? data.rows.filter((r) => r[1] === win.onlyTid) : data.rows;
+  const tdvShow = win.onlyTid != null ? [win.onlyTid] : tdv.map((_, i) => i);
 
   const nf1 = msToDi(win.nowFromMs), nt1 = msToDi(win.nowToMs);
   const pf1 = msToDi(win.prevFromMs), pt1 = msToDi(win.prevToMs);
@@ -46,7 +49,8 @@ export function buildHoiDapDigest(
   const L: string[] = [];
   L.push(`DỮ LIỆU BÁN HÀNG — NHÓM HÀ TRỌNG THỦY (PS Phú Thọ). Hôm nay: ${win.todayLabel}. Mốc số liệu mới nhất: ${diToDate(data.asofDi)}.`);
   L.push(`Kênh bán: khách "Nhóm khách hàng" có chữ "thầu" = doanh số THẦU; còn lại = KÊ ĐƠN (KĐ). Doanh thu là net.`);
-  L.push(`Nhân viên nhóm: ${tdv.join(", ")}.`);
+  if (win.onlyTid != null) L.push(`PHẠM VI: CHỈ dữ liệu của nhân viên "${tdv[win.onlyTid]}" (không xem của người khác).`);
+  else L.push(`Nhân viên nhóm: ${tdv.join(", ")}.`);
   L.push(`Kỳ "tháng này" = ${diToDate(nf1)}–${diToDate(nt1)}; "cùng kỳ" (tháng ${win.lastMonthLabel}) = ${diToDate(pf1)}–${diToDate(pt1)}.`);
   L.push("");
 
@@ -77,9 +81,9 @@ export function buildHoiDapDigest(
     else if (inPrev(r[C.di])) { if (isThau(r[C.cid])) nvPrev[t].thau += r[C.dt]; else nvPrev[t].kd += r[C.dt]; }
   }
   L.push("== THEO NHÂN VIÊN (tháng này KĐ/Thầu — cùng kỳ — tổng toàn kỳ) ==");
-  tdv.forEach((name, t) => {
-    L.push(`- ${name}: tháng này KĐ ${short(nvNow[t].kd)}/Thầu ${short(nvNow[t].thau)}; cùng kỳ KĐ ${short(nvPrev[t].kd)}/Thầu ${short(nvPrev[t].thau)}; tổng toàn kỳ KĐ ${short(nvAll[t].kd)}/Thầu ${short(nvAll[t].thau)}.`);
-  });
+  for (const t of tdvShow) {
+    L.push(`- ${tdv[t]}: tháng này KĐ ${short(nvNow[t].kd)}/Thầu ${short(nvNow[t].thau)}; cùng kỳ KĐ ${short(nvPrev[t].kd)}/Thầu ${short(nvPrev[t].thau)}; tổng toàn kỳ KĐ ${short(nvAll[t].kd)}/Thầu ${short(nvAll[t].thau)}.`);
+  }
   L.push("");
 
   // 3) Theo sản phẩm: tổng DT/SL/điểm bán toàn kỳ + DT tháng này
