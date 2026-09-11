@@ -24,16 +24,19 @@ export const ALLOWLIST: AllowlistEntry[] = [
     email: "booha061294@gmail.com",
     hoTen: "Hà Trọng Thủy",
     role: "manager",
+    maNhanVien: "014965",
   },
   {
     email: "daotao.cpc1hn@gmail.com",
     hoTen: "Khách tham quan",
     role: "manager",
+    maNhanVien: "014965",
   },
   {
     email: "lecongducib@gmail.com",
     hoTen: "Lê Công Đức",
     role: "superior",
+    maNhanVien: "012487",
   },
   {
     email: "caotrung3258@gmail.com",
@@ -75,4 +78,30 @@ export function findAllowlistEntry(email: string | null | undefined): AllowlistE
 
 export function allEmployees(): AllowlistEntry[] {
   return ALLOWLIST.filter((e) => e.role === "employee");
+}
+
+/** Chuẩn hoá tên để so khớp: bỏ dấu, thường hoá, gộp khoảng trắng. */
+function normalizeName(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // bỏ dấu thanh/mũ
+    .replace(/đ/gi, "d")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Đăng nhập bằng HỌ TÊN + MÃ NHÂN VIÊN (mã dùng làm mật khẩu).
+ * Khớp tên không phân biệt hoa/thường & dấu; mã phải trùng khít.
+ */
+export function findByLogin(
+  hoTen: string | null | undefined,
+  maNhanVien: string | null | undefined
+): AllowlistEntry | null {
+  const name = normalizeName(hoTen ?? "");
+  const code = (maNhanVien ?? "").trim();
+  if (!name || !code) return null;
+  const candidates = ALLOWLIST.filter((e) => normalizeName(e.hoTen) === name);
+  return candidates.find((e) => e.maNhanVien && e.maNhanVien === code) ?? null;
 }
