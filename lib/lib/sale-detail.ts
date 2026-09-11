@@ -43,9 +43,9 @@ function toDateMs(v: unknown): number | null {
     return Number.isFinite(ms) ? ms : null;
   }
   const s = String(v).trim();
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); // dd/MM/yyyy
   if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])).getTime();
-  const m2 = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const m2 = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); // yyyy-MM-dd
   if (m2) return new Date(Number(m2[1]), Number(m2[2]) - 1, Number(m2[3])).getTime();
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d.getTime();
@@ -55,10 +55,10 @@ export interface SaleDetailData {
   base: string;
   asofDi: number;
   tdv: string[];
-  cust: [string, string, string, string][];
-  prod: [string, string][];
-  focus: Record<string, number[]>;
-  rows: number[][];
+  cust: [string, string, string, string][]; // [mã, tên, tỉnh, nhóm KH]
+  prod: [string, string][]; // [mã, tên]
+  focus: Record<string, number[]>; // nhãn -> danh sách chỉ số sản phẩm
+  rows: number[][]; // [cid, tid, pid, di, sl, dt]
   error?: string | null;
 }
 
@@ -73,6 +73,7 @@ const EMPTY = (error: string): SaleDetailData => ({
   error,
 });
 
+/** Đọc tab "Sale sạch", lọc theo nhân viên trong nhóm, build cấu trúc DATA cho sale.html. */
 export async function getSaleDetailData(): Promise<SaleDetailData> {
   let raw: unknown[][];
   try {
@@ -87,6 +88,7 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     return EMPTY(err instanceof Error ? err.message : String(err));
   }
 
+  // Tìm dòng tiêu đề (chứa "Mã nhân viên" & "Doanh thu").
   let hdrIdx = -1;
   for (let i = 0; i < Math.min(20, raw.length); i++) {
     const r = (raw[i] ?? []).map((x) => String(x ?? "").trim().toLowerCase());
@@ -116,7 +118,7 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
   }
 
   const team = allEmployees();
-  const teamMa = new Map<string, number>();
+  const teamMa = new Map<string, number>(); // mã chuẩn hóa -> tid
   const tdv: string[] = [];
   team.forEach((e) => {
     teamMa.set(normalizeMaNV(e.maNhanVien), tdv.length);
@@ -136,12 +138,12 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     if (!r) continue;
     const ma = normalizeMaNV(r[iMaNV]);
     const tid = teamMa.get(ma);
-    if (tid === undefined) continue;
+    if (tid === undefined) continue; // chỉ lấy nhân viên trong nhóm
 
     const dateMs = iNgay >= 0 ? toDateMs(r[iNgay]) : null;
     if (dateMs === null) continue;
     const di = Math.round((dateMs - baseMs) / 86400000);
-    if (di < 0) continue;
+    if (di < 0) continue; // trước mốc gốc (không kỳ vọng xảy ra với base 2025)
 
     const maKH = String(r[iMaKH] ?? "").trim();
     if (!maKH) continue;
@@ -172,6 +174,7 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     if (di > maxDi) maxDi = di;
   }
 
+  // focus: nhãn -> chỉ số sản phẩm (bỏ mã không có trong dữ liệu)
   const focus: Record<string, number[]> = {};
   for (const [label, codes] of Object.entries(FOCUS_CODES)) {
     const idxs = codes.map((c) => prodIdx.get(c)).filter((x): x is number => x !== undefined);
@@ -181,16 +184,40 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
   return { base: BASE_DATE, asofDi: maxDi, tdv, cust, prod, focus, rows, error: null };
 }
 
-export interface SpttMetric { sl: number; dt: number; diemBan: number; }
-export interface SpttNv { ten: string; sl: number; dt: number; diemBan: number; }
-export interface SpttProduct { label: string; prodNames: string[]; now: SpttMetric; prev: SpttMetric; byNv: SpttNv[]; }
-export interface SpttResult { products: SpttProduct[]; tong: { now: SpttMetric; prev: SpttMetric }; error?: string | null; }
+// ---------- Bài 3: Triển khai SẢN PHẨM TRỌNG TÂM ----------
+// Tính cho từng SP trọng tâm (focus): sản lượng, số điểm bán (khách khác nhau), doanh thu —
+// kỳ này so với cùng kỳ tháng trước — và tách theo từng nhân viên.
+
+export interface SpttMetric {
+  sl: number;
+  dt: number;
+  diemBan: number;
+}
+export interface SpttNv {
+  ten: string;
+  sl: number;
+  dt: number;
+  diemBan: number;
+}
+export interface SpttProduct {
+  label: string;
+  prodNames: string[];
+  now: SpttMetric;
+  prev: SpttMetric;
+  byNv: SpttNv[];
+}
+export interface SpttResult {
+  products: SpttProduct[];
+  tong: { now: SpttMetric; prev: SpttMetric };
+  error?: string | null;
+}
 
 function msToDi(ms: number): number {
   const baseMs = new Date(BASE_DATE + "T00:00:00").getTime();
   return Math.round((ms - baseMs) / 86400000);
 }
 
+/** Tính chỉ số SP trọng tâm cho 2 cửa sổ thời gian (kỳ này & cùng kỳ), theo mốc ms. */
 export function buildSptt(
   data: SaleDetailData,
   nowFromMs: number,
@@ -220,15 +247,22 @@ export function buildSptt(
       if (onlyTid != null && r[C.tid] !== onlyTid) continue;
       if (!pidSet.has(r[C.pid])) continue;
       if (inNow(r[C.di])) {
-        now.sl += r[C.sl]; now.dt += r[C.dt]; nowCusts.add(r[C.cid]);
+        now.sl += r[C.sl];
+        now.dt += r[C.dt];
+        nowCusts.add(r[C.cid]);
         let nv = nvMap.get(r[C.tid]);
         if (!nv) { nv = { sl: 0, dt: 0, custs: new Set() }; nvMap.set(r[C.tid], nv); }
-        nv.sl += r[C.sl]; nv.dt += r[C.dt]; nv.custs.add(r[C.cid]);
+        nv.sl += r[C.sl];
+        nv.dt += r[C.dt];
+        nv.custs.add(r[C.cid]);
       } else if (inPrev(r[C.di])) {
-        prev.sl += r[C.sl]; prev.dt += r[C.dt]; prevCusts.add(r[C.cid]);
+        prev.sl += r[C.sl];
+        prev.dt += r[C.dt];
+        prevCusts.add(r[C.cid]);
       }
     }
-    now.diemBan = nowCusts.size; prev.diemBan = prevCusts.size;
+    now.diemBan = nowCusts.size;
+    prev.diemBan = prevCusts.size;
     const byNv: SpttNv[] = [...nvMap.entries()]
       .map(([tid, v]) => ({ ten: data.tdv[tid] ?? `NV${tid}`, sl: v.sl, dt: v.dt, diemBan: v.custs.size }))
       .filter((x) => x.sl > 0 || x.dt > 0)
@@ -237,6 +271,7 @@ export function buildSptt(
     return { label, prodNames: pids.map((pid) => data.prod[pid]?.[1] ?? "").filter(Boolean), now, prev, byNv };
   });
 
+  // Tổng nhóm (điểm bán = số khách khác nhau mua BẤT KỲ SP trọng tâm nào).
   const tNow: SpttMetric = { sl: 0, dt: 0, diemBan: 0 };
   const tPrev: SpttMetric = { sl: 0, dt: 0, diemBan: 0 };
   const tNowC = new Set<number>(), tPrevC = new Set<number>();
