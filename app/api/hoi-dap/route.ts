@@ -35,7 +35,14 @@ export async function POST(req: Request) {
   const lastMonthLabel = `${String(lmDate.getMonth() + 1).padStart(2, "0")}/${lmDate.getFullYear()}`;
   const todayLabel = `${String(ngay).padStart(2, "0")}/${String(thang).padStart(2, "0")}/${nam}`;
 
-  const digest = buildHoiDapDigest(data, { nowFromMs, nowToMs, prevFromMs, prevToMs, todayLabel, lastMonthLabel });
+  // Nhân viên chỉ được hỏi–đáp trên dữ liệu của CHÍNH MÌNH (bảo mật ở server).
+  let onlyTid: number | undefined;
+  if (role === "employee") {
+    onlyTid = data.tdv.indexOf(session.user.name ?? "");
+    if (onlyTid < 0) return NextResponse.json({ error: "Không tìm thấy dữ liệu của bạn." }, { status: 403 });
+  }
+
+  const digest = buildHoiDapDigest(data, { nowFromMs, nowToMs, prevFromMs, prevToMs, todayLabel, lastMonthLabel, onlyTid });
 
   const prompt = `Bạn là TRỢ LÝ DỮ LIỆU cho quản lý nhóm trình dược viên (ngành dược). Trả lời câu hỏi CHỈ dựa trên DỮ LIỆU dưới đây (số liệu đã được tính sẵn, chính xác — không tự cộng lại, không bịa số ngoài dữ liệu).
 Trả lời bằng tiếng Việt, ngắn gọn, đi thẳng vào con số/kết luận. Dùng bảng khi so sánh nhiều mục. Nếu dữ liệu không có thông tin để trả lời, nói rõ là không có. Khi hữu ích, thêm 1–2 nhận xét/đề xuất ngắn.
