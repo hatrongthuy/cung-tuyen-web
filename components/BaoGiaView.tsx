@@ -64,31 +64,46 @@ export default function BaoGiaView({
     [edits, giaGoc]
   );
 
+  const q = khongDau(tuKhoa.trim());
+  const dangTimTatCa = q.length > 0; // có từ khoá -> tra trên TẤT CẢ báo giá
+
   const nhomList = useMemo(() => {
+    const khop = (sp: SanPhamUI) =>
+      khongDau(sp.ten).includes(q) ||
+      khongDau(sp.hoatChat).includes(q) ||
+      khongDau(sp.nhom).includes(q) ||
+      khongDau(sp.quyCach).includes(q);
+
+    // Có từ khoá: gõ là ra sản phẩm + giá trên tất cả catalog, gom theo tên báo giá.
+    if (q) {
+      const map = new Map<string, SanPhamUI[]>();
+      for (const c of data) {
+        const nhan = c.ten.replace(/^Báo giá |^Catalogue /, "");
+        for (const sp of c.sanPham) {
+          if (!khop(sp)) continue;
+          if (!map.has(nhan)) map.set(nhan, []);
+          map.get(nhan)!.push(sp);
+        }
+      }
+      return Array.from(map.entries());
+    }
+
+    // Không có từ khoá: hiển thị catalog đang mở, gom theo nhóm.
     if (!catalog) return [] as [string, SanPhamUI[]][];
-    const q = khongDau(tuKhoa.trim());
-    const loc = catalog.sanPham.filter((sp) => {
-      if (!q) return true;
-      return (
-        khongDau(sp.ten).includes(q) ||
-        khongDau(sp.hoatChat).includes(q) ||
-        khongDau(sp.nhom).includes(q) ||
-        khongDau(sp.quyCach).includes(q)
-      );
-    });
     const map = new Map<string, SanPhamUI[]>();
-    for (const sp of loc) {
+    for (const sp of catalog.sanPham) {
       if (!map.has(sp.nhom)) map.set(sp.nhom, []);
       map.get(sp.nhom)!.push(sp);
     }
     return Array.from(map.entries());
-  }, [catalog, tuKhoa]);
+  }, [catalog, data, q]);
 
   const soKetQua = nhomList.reduce((n, [, arr]) => n + arr.length, 0);
 
   function batDauSua() {
     setThongBao(null);
     setEdits({});
+    setTuKhoa(""); // thoát tìm-tất-cả để sửa giá theo từng catalog
     setDangSua(true);
   }
   function huySua() {
@@ -228,7 +243,7 @@ export default function BaoGiaView({
                 type="search"
                 value={tuKhoa}
                 onChange={(e) => setTuKhoa(e.target.value)}
-                placeholder="Tìm sản phẩm, hoạt chất…"
+                placeholder="🔍 Tìm nhanh sản phẩm + giá (tất cả báo giá)…"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-400 sm:w-64"
               />
             )}
@@ -254,25 +269,31 @@ export default function BaoGiaView({
           </p>
         )}
 
-        {/* Tab chọn catalogue */}
-        <nav className="mt-4 flex flex-wrap gap-1">
-          {data.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setCatActive(c.id)}
-              className={
-                c.id === catActive
-                  ? "rounded-lg px-3 py-1.5 text-xs font-medium text-white"
-                  : "rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
-              }
-              style={c.id === catActive ? { backgroundColor: XANH } : undefined}
-            >
-              {c.ten.replace(/^Báo giá |^Catalogue /, "")}
-            </button>
-          ))}
-        </nav>
+        {/* Tab chọn catalogue — ẩn khi đang tìm trên tất cả báo giá */}
+        {!dangTimTatCa && (
+          <nav className="mt-4 flex flex-wrap gap-1">
+            {data.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setCatActive(c.id)}
+                className={
+                  c.id === catActive
+                    ? "rounded-lg px-3 py-1.5 text-xs font-medium text-white"
+                    : "rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                }
+                style={c.id === catActive ? { backgroundColor: XANH } : undefined}
+              >
+                {c.ten.replace(/^Báo giá |^Catalogue /, "")}
+              </button>
+            ))}
+          </nav>
+        )}
 
-        <p className="mt-3 text-xs text-slate-400">{soKetQua} sản phẩm</p>
+        <p className="mt-3 text-xs text-slate-400">
+          {dangTimTatCa
+            ? `Tìm thấy ${soKetQua} sản phẩm khớp "${tuKhoa.trim()}" trên tất cả báo giá`
+            : `${soKetQua} sản phẩm`}
+        </p>
 
         <div className="mt-2 overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-sm">
