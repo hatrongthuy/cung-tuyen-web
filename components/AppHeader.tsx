@@ -59,6 +59,7 @@ const EMP_NAV_ITEMS: NavEntry[] = [
       { key: "bao-cao-thang", label: "Báo cáo tháng", href: "/nhan-vien/bao-cao-thang", icon: "🗓️" },
     ],
   },
+  { key: "bao-cao-thau", label: "Báo cáo thầu", href: "/nhan-vien/bao-cao-thau", icon: "🏛️" },
   { key: "bao-gia", label: "Báo giá", href: "/bao-gia", icon: "🧾" },
 ];
 
