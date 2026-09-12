@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import WeeklyReportView from "@/components/WeeklyReportView";
-import DailyProgressView from "@/components/DailyProgressView";
+import BaoCaoTuanReport from "@/components/BaoCaoTuanReport";
 import {
   getDanhGiaCungTuyen,
   getGoiYTapTrung,
@@ -11,7 +11,15 @@ import {
   getCanhBaoKhachChet,
   getCanhBaoSanPhamNghi,
 } from "@/lib/data";
-import { buildEmployeeWeekSummaries, buildTonDongTuanTruoc } from "@/lib/aggregate";
+import { buildEmployeeWeekSummaries, buildTonDongTuanTruoc, getWeekDateRange } from "@/lib/aggregate";
+
+function weekRangeLabelOf(label: string | null, fallback: string | null): string {
+  const r = getWeekDateRange(label);
+  if (!r) return fallback ?? "";
+  const dd = (d: Date) => String(d.getDate()).padStart(2, "0");
+  const mm = (d: Date) => String(d.getMonth() + 1).padStart(2, "0");
+  return `${dd(r.start)}/${mm(r.start)} – ${dd(r.end)}/${mm(r.end)}/${r.end.getFullYear()}`;
+}
 import { getTeamSales } from "@/lib/sales";
 import { getKpiTabData } from "@/lib/kpi";
 import { currentWeekLabel as computeCurrentWeek, todayInVN, buildCareByEmp } from "@/lib/report-utils";
@@ -61,8 +69,9 @@ export default async function BaoCaoTuanPage() {
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" active="bao-cao-tuan" />
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-6">
-        <DailyProgressView
+        <BaoCaoTuanReport
           teamName={TEN_NHOM}
+          weekRangeLabel={weekRangeLabelOf(weekLabel, todayWeekLabel)}
           salesTxns={sales.txns}
           salesError={sales.error}
           kpiCols={kpiDoanhSo.columns}
