@@ -30,9 +30,11 @@ interface EmpRow {
   kdTH: number;
   kdKH: number;
   kdPct: number;
+  kdPctTruoc: number; // % KĐ tại thời điểm 7 ngày trước (để đối chiếu tuần trước)
   thauTH: number;
   thauKH: number;
   thauPct: number;
+  thauPctTruoc: number;
   coverage: number | null; // 0..1
   soGoiY: number;
   soDongY: number;
@@ -78,6 +80,8 @@ export default function BaoCaoTuanReport({
   const emps = useMemo<EmpRow[]>(() => {
     const kdNow = salesByRange(salesTxns, ctx.monthStartMs, ctx.nowMs, "keDon");
     const thauNow = salesByRange(salesTxns, ctx.monthStartMs, ctx.nowMs, "thau");
+    const kdPrev = salesByRange(salesTxns, ctx.monthStartMs, ctx.weekAgoMs, "keDon");
+    const thauPrev = salesByRange(salesTxns, ctx.monthStartMs, ctx.weekAgoMs, "thau");
 
     const cMa = findColumn(kpiCols, ["mã nv"]) ?? findColumn(kpiCols, ["mã", "nv"]) ?? findColumn(kpiCols, ["mã nhân"]);
     const cKd = findColumn(kpiCols, ["kê đơn", "kế hoạch"]) ?? findColumn(kpiCols, ["kê đơn", "hoạch"]);
@@ -113,9 +117,11 @@ export default function BaoCaoTuanReport({
         kdTH,
         kdKH: plan.kd,
         kdPct: pct(kdTH, plan.kd),
+        kdPctTruoc: pct(kdPrev[ma] ?? 0, plan.kd),
         thauTH,
         thauKH: plan.thau,
         thauPct: pct(thauTH, plan.thau),
+        thauPctTruoc: pct(thauPrev[ma] ?? 0, plan.thau),
         coverage: sm && soGoiY > 0 ? sm.tyLeHoanThanh : null,
         soGoiY,
         soDongY,
@@ -134,9 +140,11 @@ export default function BaoCaoTuanReport({
     const boSot = sum((e) => e.soChuaGap);
     const covMin = covVals.length ? Math.min(...covVals) : 0;
     const covMax = covVals.length ? Math.max(...covVals) : 0;
+    const kdPrevTotal = emps.reduce((a, e) => a + (e.kdPctTruoc / 100) * e.kdKH, 0);
+    const thauPrevTotal = emps.reduce((a, e) => a + (e.thauPctTruoc / 100) * e.thauKH, 0);
     return {
-      kdTH, kdKH, kdPct: pct(kdTH, kdKH),
-      thauTH, thauKH, thauPct: pct(thauTH, thauKH),
+      kdTH, kdKH, kdPct: pct(kdTH, kdKH), kdPctTruoc: pct(kdPrevTotal, kdKH),
+      thauTH, thauKH, thauPct: pct(thauTH, thauKH), thauPctTruoc: pct(thauPrevTotal, thauKH),
       coverage, boSot, covMin, covMax,
     };
   }, [emps]);
@@ -207,6 +215,26 @@ export default function BaoCaoTuanReport({
     }
     return out;
   }, [emps, g, boSotBreak, bangKhach, pctThoiGian]);
+
+  // ---- Đối chiếu tuần trước (suy từ dữ liệu: KĐ đã cải thiện chưa, thầu đã phát sinh chưa) ----
+  const pctThoiGianTruoc = Math.max(0, ((ctx.ngay - 7) / ctx.soNgayThang) * 100);
+  const doiChieu = useMemo(() => {
+    // Từng NV: so % KĐ 7 ngày trước với hiện tại.
+    const nv = emps
+      .filter((e) => e.kdKH > 0)
+      .map((e) => {
+        const delta = e.kdPct - e.kdPctTruoc;
+        const dat = e.kdPct >= pctThoiGian - 10; // đang bám tiến độ
+        const trang: "tang" | "giam" | "phang" = delta > 0.5 ? "tang" : delta < -0.5 ? "giam" : "phang";
+        return { ma: e.ma, ten: e.ten, ho: e.ho, truoc: e.kdPctTruoc, nay: e.kdPct, delta, dat, trang };
+      })
+      .sort((a, b) => a.nay - b.nay);
+    // Thầu nhóm: tuần trước -> tuần này.
+    const thau = g.thauKH > 0 ? { truoc: g.thauPctTruoc, nay: g.thauPct, phatSinh: g.thauPct > 0.001 } : null;
+    // Nhắc đôn đốc: NV chưa bám tiến độ (chưa "xong").
+    const nhac = nv.filter((x) => !x.dat);
+    return { nv, thau, nhac };
+  }, [emps, g, pctThoiGian, pctThoiGianTruoc]);
 
   // ---- Tải ảnh PNG / In ----
   const reportRef = useRef<HTMLDivElement>(null);
@@ -423,6 +451,61 @@ export default function BaoCaoTuanReport({
             </div>
           </Card>
         )}
+
+        {/* ===== Đối chiếu tuần trước ===== */}
+        <Card title="Đối chiếu tuần trước" sub={`So với 7 ngày trước (lũy kế tới cùng ngày) · tự suy từ dữ liệu — mốc thời gian tuần trước ${pctThoiGianTruoc.toFixed(0)}%`}>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[560px] text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-500">
+                  <th className="py-2 pr-3 font-medium">Nhân viên (Kênh Đơn %)</th>
+                  <th className="py-2 pr-3 text-right font-medium">Tuần trước</th>
+                  <th className="py-2 pr-3 text-right font-medium">Tuần này</th>
+                  <th className="py-2 pr-3 text-right font-medium">Thay đổi</th>
+                  <th className="py-2 pr-3 font-medium">Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody>
+                {doiChieu.nv.map((x) => (
+                  <tr key={x.ma} className="border-b border-slate-100">
+                    <td className="py-2 pr-3 font-medium text-slate-800">{x.ten}</td>
+                    <td className="py-2 pr-3 text-right text-slate-500">{pctStr(x.truoc)}</td>
+                    <td className="py-2 pr-3 text-right font-semibold text-slate-900">{pctStr(x.nay)}</td>
+                    <td className={`py-2 pr-3 text-right font-medium ${x.trang === "tang" ? "text-emerald-600" : x.trang === "giam" ? "text-red-600" : "text-slate-400"}`}>
+                      {x.trang === "tang" ? `▲ +${x.delta.toFixed(1)}đ%` : x.trang === "giam" ? `▼ ${x.delta.toFixed(1)}đ%` : "—"}
+                    </td>
+                    <td className="py-2 pr-3">
+                      {x.dat ? (
+                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700">✔ Bám tiến độ</span>
+                      ) : (
+                        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[11px] font-semibold text-red-700">✘ Chưa đạt — cần đôn đốc</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {doiChieu.thau && (
+            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+              Thầu nhóm: tuần trước <b>{pctStr(doiChieu.thau.truoc)}</b> → tuần này <b>{pctStr(doiChieu.thau.nay)}</b>{" "}
+              {doiChieu.thau.phatSinh
+                ? <span className="font-semibold text-emerald-700">✔ đã phát sinh doanh số</span>
+                : <span className="font-semibold text-red-700">✘ vẫn chưa phát sinh — cần đẩy mạnh</span>}
+            </p>
+          )}
+          {(doiChieu.nhac.length > 0 || (doiChieu.thau && !doiChieu.thau.phatSinh)) && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+              <p className="text-xs font-semibold text-amber-800">🔔 Nhắc đôn đốc tuần này</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-slate-700">
+                {doiChieu.nhac.map((x) => (
+                  <li key={x.ma}>Đôn đốc <b>{x.ten}</b> — KĐ mới {pctStr(x.nay)} (mốc {pctThoiGian.toFixed(0)}%), {x.trang === "tang" ? "có tăng nhưng chưa đủ" : x.trang === "giam" ? "đang đi xuống" : "gần như đứng yên"}.</li>
+                ))}
+                {doiChieu.thau && !doiChieu.thau.phatSinh && <li>Kiểm tra tiến độ các gói <b>thầu</b> — vẫn chưa phát sinh doanh số.</li>}
+              </ul>
+            </div>
+          )}
+        </Card>
 
         {/* ===== Đề xuất hành động ===== */}
         {deXuat.length > 0 && (
