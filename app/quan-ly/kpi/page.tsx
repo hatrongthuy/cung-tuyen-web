@@ -1,13 +1,18 @@
 import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import KpiView from "@/components/KpiView";
+import KpiScorecard from "@/components/KpiScorecard";
 import { KPI_TABS, getAllKpiTabsData } from "@/lib/kpi";
+import { getKpiScorecard } from "@/lib/kpi-actuals";
 import { getTeamSales } from "@/lib/sales";
-import { salesByMonth, normalizeMaNV } from "@/lib/report-utils";
+import { salesByMonth, normalizeMaNV, todayInVN } from "@/lib/report-utils";
 import { allEmployees } from "@/lib/allowlist";
 
 // Tên nhóm SS dùng để lọc dữ liệu KPI — cố định theo nhóm quản lý của app này.
 const TEN_NHOM = "Hà Trọng Thủy";
+
+// Luôn tính số liệu mới nhất mỗi lần mở (tiến độ cập nhật hàng ngày).
+export const dynamic = "force-dynamic";
 
 export default async function KpiPage() {
   const session = await auth();
@@ -27,6 +32,13 @@ export default async function KpiPage() {
     },
     { k: 0, nam: new Date().getFullYear(), thang: new Date().getMonth() + 1 }
   );
+
+  // Bảng điểm KPI tự tính (Kế hoạch từ file KPI + Thực hiện từ file Sale).
+  const scorecard = await getKpiScorecard(TEN_NHOM, latest.nam, latest.thang);
+  const today = todayInVN();
+  const soNgayThang = new Date(latest.nam, latest.thang, 0).getDate();
+  const laThangHienTai = today.getFullYear() === latest.nam && today.getMonth() + 1 === latest.thang;
+  const ngayMoc = laThangHienTai ? today.getDate() : soNgayThang;
   const keDonByCode = salesByMonth(sales.txns, latest.nam, latest.thang, "keDon");
   const thauByCode = salesByMonth(sales.txns, latest.nam, latest.thang, "thau");
   const salesSummary = {
@@ -46,6 +58,14 @@ export default async function KpiPage() {
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" active="kpi" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+        <KpiScorecard
+          rows={scorecard.rows}
+          monthLabel={scorecard.monthLabel}
+          error={scorecard.error}
+          hasAuto={scorecard.hasAuto}
+          ngay={ngayMoc}
+          soNgayThang={soNgayThang}
+        />
         <KpiView
           tabs={tabs}
           dataByTab={dataByTab}
