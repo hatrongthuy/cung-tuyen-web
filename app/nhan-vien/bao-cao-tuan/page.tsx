@@ -24,7 +24,7 @@ import { getTeamSales } from "@/lib/sales";
 import { getKpiTabData } from "@/lib/kpi";
 import { currentWeekLabel as computeCurrentWeek, todayInVN, buildCareByEmp } from "@/lib/report-utils";
 
-const TEN_NHOM = "Hà Trọng Thủy";
+import { TEN_NHOM, TEN_NHOM_HIEN_THI } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +68,7 @@ export default async function NhanVienBaoCaoTuanPage() {
       <AppHeader hoTen={user.name ?? ""} role="employee" active="bao-cao-tuan" />
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-6">
         <BaoCaoTuanReport
-          teamName={TEN_NHOM}
+          teamName={TEN_NHOM_HIEN_THI}
           weekRangeLabel={weekRangeLabelOf(weekLabel, todayWeekLabel)}
           salesTxns={sales.txns}
           salesError={sales.error}
@@ -87,7 +87,7 @@ export default async function NhanVienBaoCaoTuanPage() {
           <div className="border-t border-slate-100 p-4">
             <WeeklyReportView
               rows={danhGia}
-              teamName={TEN_NHOM}
+              teamName={TEN_NHOM_HIEN_THI}
               salesTxns={sales.txns}
               salesError={sales.error}
               summaries={summaries}

@@ -6,7 +6,7 @@ import { getTeamSales } from "@/lib/sales";
 import { salesByMonth, normalizeMaNV } from "@/lib/report-utils";
 
 // Tên nhóm SS dùng để lọc dữ liệu doanh số — cố định theo nhóm quản lý của app này.
-const TEN_NHOM = "Hà Trọng Thủy";
+import { TEN_NHOM, TEN_NHOM_HIEN_THI } from "@/lib/scope";
 
 function findMaCol(columns: string[]): string | null {
   return columns.find((c) => /mã\s*nv|mã\s*nhân/i.test(c)) ?? null;
@@ -42,7 +42,7 @@ export default async function DoanhSoNhanVienPage() {
           columns={plan.columns}
           rows={myRows}
           error={plan.error}
-          teamName={TEN_NHOM}
+          teamName={TEN_NHOM_HIEN_THI}
           keDonByCode={keDonByCode}
           thauByCode={thauByCode}
           actualMonthLabel={actualMonthLabel}

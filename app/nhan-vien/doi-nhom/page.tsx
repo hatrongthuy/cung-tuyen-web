@@ -6,7 +6,7 @@ import { buildEmployeeWeekSummaries, buildTonDongTuanTruoc } from "@/lib/aggrega
 import { getTeamSales } from "@/lib/sales";
 import { todayInVN } from "@/lib/report-utils";
 
-const TEN_NHOM = "Hà Trọng Thủy";
+import { TEN_NHOM, TEN_NHOM_HIEN_THI } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ export default async function DoiNhomNhanVienPage() {
       <AppHeader hoTen={user.name ?? ""} role="employee" active="doi-nhom" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         <DoiNhomView
-          teamName={TEN_NHOM}
+          teamName={TEN_NHOM_HIEN_THI}
           salesTxns={sales.txns}
           salesError={sales.error}
           summaries={summaries}

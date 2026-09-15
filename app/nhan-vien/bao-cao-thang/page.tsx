@@ -6,7 +6,7 @@ import { getKpiTabData } from "@/lib/kpi";
 import { getTeamSales } from "@/lib/sales";
 import { monthKeyOf, todayInVN } from "@/lib/report-utils";
 
-const TEN_NHOM = "Hà Trọng Thủy";
+import { TEN_NHOM, TEN_NHOM_HIEN_THI } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export default async function NhanVienBaoCaoThangPage() {
           danhGia={danhGia}
           doanhSo={doanhSo}
           kpis={kpis}
-          teamName={TEN_NHOM}
+          teamName={TEN_NHOM_HIEN_THI}
           salesTxns={sales.txns}
           salesError={sales.error}
           todayMonthKey={monthKeyOf(todayInVN())}
