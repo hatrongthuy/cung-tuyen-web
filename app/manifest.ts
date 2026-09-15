@@ -1,11 +1,12 @@
 import type { MetadataRoute } from "next";
+import { APP_SHORT_NAME, APP_DESCRIPTION } from "@/lib/scope";
 
 // Cấu hình PWA — cho phép "cài" web như ứng dụng trên điện thoại (Thêm vào màn hình chính).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Quản lý PS Phú Thọ",
-    short_name: "PS Phú Thọ",
-    description: "Quản lý cung tuyến, doanh số, KPI — Nhóm Hà Trọng Thủy",
+    name: `Quản lý ${APP_SHORT_NAME}`,
+    short_name: APP_SHORT_NAME,
+    description: APP_DESCRIPTION,
     start_url: "/",
     scope: "/",
     display: "standalone",

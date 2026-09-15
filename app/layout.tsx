@@ -1,15 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaSetup from "@/components/PwaSetup";
+import { APP_TITLE, APP_SHORT_NAME } from "@/lib/scope";
 
 export const metadata: Metadata = {
-  title: "Cung tuyến tuần — Nhóm Hà Trọng Thủy",
+  title: APP_TITLE,
   description: "Ứng dụng quản lý cung tuyến tuần cho trình dược viên",
-  applicationName: "PS Phú Thọ",
+  applicationName: APP_SHORT_NAME,
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "PS Phú Thọ",
+    title: APP_SHORT_NAME,
   },
   icons: {
     icon: "/favicon.ico",

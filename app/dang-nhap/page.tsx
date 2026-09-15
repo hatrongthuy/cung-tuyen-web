@@ -1,6 +1,7 @@
 import { AuthError } from "next-auth";
 import { signIn, auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { TEN_NHOM_HIEN_THI } from "@/lib/scope";
 
 export default async function DangNhapPage({
   searchParams,
@@ -43,7 +44,7 @@ export default async function DangNhapPage({
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
           <h1 className="text-xl font-semibold text-slate-900">Cung tuyến tuần</h1>
-          <p className="mt-1 text-sm text-slate-500">Nhóm Hà Trọng Thủy</p>
+          <p className="mt-1 text-sm text-slate-500">Nhóm {TEN_NHOM_HIEN_THI}</p>
         </div>
 
         {loi && (
