@@ -9,7 +9,7 @@ import { salesByMonth, normalizeMaNV, todayInVN } from "@/lib/report-utils";
 import { allEmployees } from "@/lib/allowlist";
 
 // Tên nhóm SS dùng để lọc dữ liệu KPI — cố định theo nhóm quản lý của app này.
-const TEN_NHOM = "Hà Trọng Thủy";
+import { TEN_NHOM } from "@/lib/scope";
 
 // Luôn tính số liệu mới nhất mỗi lần mở (tiến độ cập nhật hàng ngày).
 export const dynamic = "force-dynamic";

@@ -4,7 +4,7 @@ import SpTrongTamView from "@/components/SpTrongTamView";
 import { getSaleDetailData, buildSptt } from "@/lib/sale-detail";
 import { todayInVN } from "@/lib/report-utils";
 
-const TEN_NHOM = "Hà Trọng Thủy";
+import { TEN_NHOM, TEN_NHOM_HIEN_THI } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,7 @@ export default async function SpTrongTamPage() {
       <AppHeader hoTen={user.name ?? ""} role="manager" active="sp-trong-tam" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
         <SpTrongTamView
-          teamName={TEN_NHOM}
+          teamName={TEN_NHOM_HIEN_THI}
           sptt={sptt}
           ngay={ngay}
           thang={thang}

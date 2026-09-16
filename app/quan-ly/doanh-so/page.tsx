@@ -6,7 +6,7 @@ import { getTeamSales } from "@/lib/sales";
 import { salesByMonth } from "@/lib/report-utils";
 
 // Tên nhóm SS dùng để lọc dữ liệu doanh số — cố định theo nhóm quản lý của app này.
-const TEN_NHOM = "Hà Trọng Thủy";
+import { TEN_NHOM, TEN_NHOM_HIEN_THI } from "@/lib/scope";
 
 export default async function DoanhSoPage() {
   const session = await auth();
@@ -34,7 +34,7 @@ export default async function DoanhSoPage() {
           columns={plan.columns}
           rows={plan.rows}
           error={plan.error}
-          teamName={TEN_NHOM}
+          teamName={TEN_NHOM_HIEN_THI}
           keDonByCode={keDonByCode}
           thauByCode={thauByCode}
           actualMonthLabel={actualMonthLabel}
