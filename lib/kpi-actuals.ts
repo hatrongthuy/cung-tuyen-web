@@ -112,7 +112,7 @@ interface MetricColumns {
 }
 
 async function readKpiSheetTargets(
-  teamName: string
+  teamName: string | string[]
 ): Promise<{ byMa: Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>; error: string | null }> {
   let raw: string[][];
   try {
@@ -179,12 +179,12 @@ async function readKpiSheetTargets(
   const metricCols: Record<string, MetricColumns> = {};
   for (const m of METRICS) metricCols[m.key] = metricColumnsFor(m.sheetMetric);
 
-  const teamTrim = norm(teamName);
+  const teamTrims = (Array.isArray(teamName) ? teamName : [teamName]).map((t) => norm(t));
   const byMa = new Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>();
   for (let i = subRowIdx + 1; i < raw.length; i++) {
     const r = raw[i];
     if (!r) continue;
-    if (jNhom < 0 || norm(cell(r, jNhom)) !== teamTrim) continue;
+    if (jNhom < 0 || !teamTrims.includes(norm(cell(r, jNhom)))) continue;
     const ma = normalizeMaNV(cell(r, jMa));
     if (!ma) continue;
     // Bỏ các dòng "rác"/tổng hợp phía dưới: yêu cầu Kế hoạch DS KD-PM là số > 0.
@@ -301,7 +301,7 @@ async function computeActuals(
 
 /** Xây bảng điểm KPI theo nhân viên cho nhóm `teamName`, tháng (nam, thang). */
 export async function getKpiScorecard(
-  teamName: string,
+  teamName: string | string[],
   nam: number,
   thang: number
 ): Promise<KpiScorecardResult> {

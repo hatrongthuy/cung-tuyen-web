@@ -151,14 +151,21 @@ async function readKpiTab(tab: KpiTabConfig): Promise<KpiTabData> {
   return { columns: columns.filter(Boolean), rows, error: null };
 }
 
-/** Đọc dữ liệu 1 tab KPI, đã lọc theo Nhóm SS (mặc định: chỉ nhóm của trưởng nhóm truyền vào). */
-export async function getKpiTabData(tabKey: string, teamName: string): Promise<KpiTabData> {
+/** So khớp giá trị cột Nhóm SS với 1 tên nhóm hoặc danh sách nhiều tên nhóm (scope Tây Bắc). */
+function matchesTeamName(cellValue: string, teamName: string | string[]): boolean {
+  const v = (cellValue ?? "").trim().toLowerCase();
+  if (Array.isArray(teamName)) return teamName.some((t) => t.trim().toLowerCase() === v);
+  return teamName.trim().toLowerCase() === v;
+}
+
+/** Đọc dữ liệu 1 tab KPI, đã lọc theo Nhóm SS (mặc định: chỉ nhóm của trưởng nhóm truyền vào;
+ *  truyền mảng tên nhóm để lấy dữ liệu gộp nhiều nhóm — dùng cho scope Tây Bắc). */
+export async function getKpiTabData(tabKey: string, teamName: string | string[]): Promise<KpiTabData> {
   const tab = KPI_TABS.find((t) => t.key === tabKey);
   if (!tab) return { columns: [], rows: [], error: `Không tìm thấy tab KPI "${tabKey}".` };
   const data = await readKpiTab(tab);
   if (data.error) return data;
-  const teamTrim = teamName.trim();
-  const rows = data.rows.filter((r) => (r[tab.teamColumn] ?? "").trim() === teamTrim);
+  const rows = data.rows.filter((r) => matchesTeamName(r[tab.teamColumn] ?? "", teamName));
   return { columns: data.columns, rows, error: null };
 }
 
@@ -170,13 +177,12 @@ export interface AllKpiResult {
 }
 
 /** Đọc dữ liệu tất cả các tab KPI cùng lúc, đã lọc theo Nhóm SS. */
-export async function getAllKpiTabsData(teamName: string): Promise<AllKpiResult> {
-  const teamTrim = teamName.trim();
+export async function getAllKpiTabsData(teamName: string | string[]): Promise<AllKpiResult> {
   const entries = await Promise.all(
     KPI_TABS.map(async (tab) => {
       const data = await readKpiTab(tab);
       if (data.error) return [tab.key, data] as const;
-      const rows = data.rows.filter((r) => (r[tab.teamColumn] ?? "").trim() === teamTrim);
+      const rows = data.rows.filter((r) => matchesTeamName(r[tab.teamColumn] ?? "", teamName));
       return [tab.key, { columns: data.columns, rows, error: null }] as const;
     })
   );

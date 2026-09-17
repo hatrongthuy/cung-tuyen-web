@@ -1,4 +1,5 @@
 import type { SaleDetailData } from "./sale-detail";
+import { APP_SHORT_NAME, TEN_NHOM_HIEN_THI } from "./scope";
 
 // Tạo "bản tóm tắt số liệu" (digest) CHÍNH XÁC từ dữ liệu Sale để nạp cho AI trả lời hỏi–đáp.
 // Số liệu được tính sẵn ở server (không để AI tự cộng), AI chỉ đọc digest + câu hỏi để diễn giải.
@@ -47,7 +48,7 @@ export function buildHoiDapDigest(
   const focusPids = new Set<number>(Object.values(focus).flat());
 
   const L: string[] = [];
-  L.push(`DỮ LIỆU BÁN HÀNG — NHÓM HÀ TRỌNG THỦY (PS Phú Thọ). Hôm nay: ${win.todayLabel}. Mốc số liệu mới nhất: ${diToDate(data.asofDi)}.`);
+  L.push(`DỮ LIỆU BÁN HÀNG — NHÓM ${TEN_NHOM_HIEN_THI.toUpperCase()} (${APP_SHORT_NAME}). Hôm nay: ${win.todayLabel}. Mốc số liệu mới nhất: ${diToDate(data.asofDi)}.`);
   L.push(`Kênh bán: khách "Nhóm khách hàng" có chữ "thầu" = doanh số THẦU; còn lại = KÊ ĐƠN (KĐ). Doanh thu là net.`);
   if (win.onlyTid != null) L.push(`PHẠM VI: CHỈ dữ liệu của nhân viên "${tdv[win.onlyTid]}" (không xem của người khác).`);
   else L.push(`Nhân viên nhóm: ${tdv.join(", ")}.`);

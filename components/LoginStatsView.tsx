@@ -6,6 +6,7 @@ import EmployeeBarChart from "@/components/EmployeeBarChart";
 import ReportToolbar from "@/components/ReportToolbar";
 import { downloadCsv } from "@/lib/csv";
 import type { LoginStatRow } from "@/lib/login-stats";
+import { TEN_NHOM_HIEN_THI } from "@/lib/scope";
 
 function trangThai(r: LoginStatRow): { label: string; cls: string } {
   if (!r.daTungVao) return { label: "Chưa vào bao giờ", cls: "bg-slate-100 text-slate-500" };
@@ -32,7 +33,7 @@ export default function LoginStatsView({
 
   function exportCsv() {
     downloadCsv("thong-ke-dang-nhap", [
-      ["Thống kê đăng nhập web — Nhóm PS Phú Thọ"],
+      [`Thống kê đăng nhập web — Nhóm ${TEN_NHOM_HIEN_THI}`],
       [],
       ["Người dùng", "Email", "Vai trò", "Số ngày vào", "Tổng lượt", "Lần cuối", "Số ngày chưa vào", "Trạng thái"],
       ...stats.map((s) => [
@@ -73,7 +74,7 @@ export default function LoginStatsView({
       {totalRows === 0 && (
         <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           Chưa ghi nhận lượt đăng nhập nào. Bộ đếm bắt đầu tính từ khi tính năng này được bật — số liệu sẽ
-          xuất hiện dần khi mọi người đăng nhập. (Nếu đã có người vào mà vẫn trống, xem phần lưu ý ở cuối.)
+          xvất hiện dần khi mọi người đăng nhập. (Nếu đã có người vào mà vẫn trống, xem phần lưu ý ở cuối.)
         </p>
       )}
 
