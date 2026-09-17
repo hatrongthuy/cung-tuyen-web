@@ -4,7 +4,9 @@ import StatCard from "@/components/StatCard";
 import AlertBadge from "@/components/AlertBadge";
 import ScoreTrendChart from "@/components/ScoreTrendChart";
 import ConfirmButtons from "@/components/ConfirmButtons";
+import GoiYTuDong from "@/components/GoiYTuDong";
 import ChatBox, { type ChatMessage } from "@/components/ChatBox";
+import { buildCareByEmp } from "@/lib/report-utils";
 import {
   chuanHoaMaNV,
   getCanhBaoChuaViengTham,
@@ -71,6 +73,10 @@ export default async function NhanVienPage() {
   const spNghiCuaToi = spNghi.filter((r) => r["Tên nhân viên"]?.trim() === hoTen.trim());
 
   const soDaXacNhan = goiYCuaToi.filter((r) => xacNhanMap.has(r["Mã khách hàng"])).length;
+
+  // Gợi ý cung tuyến TỰ ĐỘNG (web tự sinh từ dữ liệu cảnh báo) — chỉ của tôi.
+  const careByEmp = buildCareByEmp(chuaVT, khChet, spNghi);
+  const goiYTuDongOrder = [{ ma: maNV || hoTen, hoTen }];
 
   const toMessage = (r: (typeof troChuyen)[number]): ChatMessage => ({
     thoiGian: r["Thời gian"],
@@ -153,6 +159,17 @@ export default async function NhanVienPage() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Gợi ý cung tuyến tự động — khách nên gặp
+          </h2>
+          <p className="mt-0.5 mb-3 text-xs text-slate-400">
+            Web tự gợi ý các khách ưu tiên nên gặp (từ dữ liệu khách chưa viếng thăm, khách &quot;chết&quot;,
+            sản phẩm nghỉ) kèm đề xuất tần suất gặp.
+          </p>
+          <GoiYTuDong careByEmp={careByEmp} order={goiYTuDongOrder} defaultOpen />
         </section>
 
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

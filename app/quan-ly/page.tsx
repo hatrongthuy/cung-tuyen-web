@@ -4,6 +4,7 @@ import StatCard from "@/components/StatCard";
 import AlertBadge from "@/components/AlertBadge";
 import EmployeeBarChart from "@/components/EmployeeBarChart";
 import EmployeeScoreTable from "@/components/EmployeeScoreTable";
+import GoiYTuDong from "@/components/GoiYTuDong";
 import {
   getCanhBaoChuaViengTham,
   getCanhBaoKhachChet,
@@ -13,6 +14,7 @@ import {
   getXacNhanGoiY,
 } from "@/lib/data";
 import { buildEmployeeWeekSummaries } from "@/lib/aggregate";
+import { buildCareByEmp } from "@/lib/report-utils";
 import { allEmployees } from "@/lib/allowlist";
 import { colorForIndex } from "@/lib/colors";
 
@@ -31,6 +33,10 @@ export default async function QuanLyPage() {
 
   const { weekLabel, summaries } = buildEmployeeWeekSummaries(goiY, xacNhan, danhGia);
   const employees = allEmployees();
+  const careByEmp = buildCareByEmp(chuaVT, khChet, spNghi);
+  const goiYOrder = employees
+    .filter((e) => e.role === "employee")
+    .map((e) => ({ ma: e.maNhanVien ?? e.hoTen, hoTen: e.hoTen }));
 
   const diemChart = summaries.map((s) => ({ hoTen: s.hoTen, giaTri: s.diemCungTuyen ?? 0 }));
   const tongDiem = summaries.reduce((s, x) => s + (x.diemCungTuyen ?? 0), 0);
@@ -95,6 +101,16 @@ export default async function QuanLyPage() {
               ))}
             </div>
           </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Gợi ý cung tuyến tự động — khách nên gặp tuần này
+          </h2>
+          <p className="mt-0.5 mb-3 text-xs text-slate-400">
+            Web tự sinh, không cần thao tác ngoài. Bấm tên nhân viên để xem danh sách khách ưu tiên của họ.
+          </p>
+          <GoiYTuDong careByEmp={careByEmp} order={goiYOrder} />
         </section>
 
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
