@@ -61,28 +61,35 @@ export default function GoiYTuDong({
   careByEmp,
   order,
   defaultOpen = false,
+  weeklyCap = 18,
 }: {
   careByEmp: Record<string, CareItem[]>;
   /** Thứ tự nhân viên để hiển thị (gồm cả người 0 gợi ý). */
   order: { ma: string; hoTen: string }[];
   /** true = mở sẵn tất cả (dùng cho trang nhân viên chỉ có 1 người). */
   defaultOpen?: boolean;
+  /** Số khách tối đa gợi ý cho MỖI nhân viên trong 1 tuần (mặc định 18). */
+  weeklyCap?: number;
 }) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const isOpen = (ma: string) => (ma in open ? open[ma] : defaultOpen);
   const toggle = (ma: string) => setOpen((o) => ({ ...o, [ma]: !isOpen(ma) }));
 
-  const tongGoiY = order.reduce((s, e) => s + (careByEmp[e.hoTen]?.length ?? 0), 0);
+  const tongTuan = order.reduce((s, e) => s + Math.min(careByEmp[e.hoTen]?.length ?? 0, weeklyCap), 0);
+  const tongTonDong = order.reduce((s, e) => s + (careByEmp[e.hoTen]?.length ?? 0), 0);
 
   return (
     <div>
       <p className="text-xs text-slate-400">
-        Web tự sinh từ dữ liệu cảnh báo (khách chết, chưa viếng thăm, sản phẩm nghỉ) — xếp theo mức ưu tiên,
-        kèm đề xuất tần suất gặp. Tổng cộng <b>{tongGoiY}</b> khách nên gặp.
+        Web tự sinh từ dữ liệu cảnh báo (khách chết, chưa viếng thăm, sản phẩm nghỉ), xếp theo mức ưu tiên.
+        Mỗi tuần chỉ chọn <b>tối đa {weeklyCap} khách/người</b> ưu tiên nhất — tuần này <b>{tongTuan}</b> khách
+        (còn {Math.max(0, tongTonDong - tongTuan)} khách để các tuần sau).
       </p>
       <div className="mt-3 space-y-2">
         {order.map((e) => {
-          const items = sortCare(careByEmp[e.hoTen] ?? []);
+          const all = sortCare(careByEmp[e.hoTen] ?? []);
+          const items = all.slice(0, weeklyCap);
+          const du = all.length - items.length;
           const opened = isOpen(e.ma);
           return (
             <div key={e.ma} className="rounded-xl border border-slate-200">
@@ -97,7 +104,7 @@ export default function GoiYTuDong({
                 <span className="text-xs text-slate-500">
                   {items.length > 0 ? (
                     <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
-                      {items.length} khách nên gặp
+                      {items.length} khách tuần này{du > 0 ? ` · +${du} chờ` : ""}
                     </span>
                   ) : (
                     <span className="text-slate-400">Không có gợi ý</span>
@@ -105,10 +112,17 @@ export default function GoiYTuDong({
                 </span>
               </button>
               {opened && items.length > 0 && (
-                <div className="grid gap-2 border-t border-slate-100 bg-slate-50/60 p-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {items.map((it, i) => (
-                    <KhachCard key={`${it.tenKhach}-${i}`} it={it} stt={i + 1} />
-                  ))}
+                <div className="border-t border-slate-100 bg-slate-50/60 p-3">
+                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {items.map((it, i) => (
+                      <KhachCard key={`${it.tenKhach}-${i}`} it={it} stt={i + 1} />
+                    ))}
+                  </div>
+                  {du > 0 && (
+                    <p className="mt-2 text-[11px] text-slate-400">
+                      + {du} khách ưu tiên thấp hơn — để dành các tuần sau (tránh gặp dồn quá tải).
+                    </p>
+                  )}
                 </div>
               )}
             </div>
