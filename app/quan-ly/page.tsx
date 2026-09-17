@@ -14,7 +14,7 @@ import {
   getXacNhanGoiY,
 } from "@/lib/data";
 import { buildEmployeeWeekSummaries } from "@/lib/aggregate";
-import { buildCareByEmp } from "@/lib/report-utils";
+import { getGoiYCungTuyen } from "@/lib/sale-care";
 import { allEmployees } from "@/lib/allowlist";
 import { colorForIndex } from "@/lib/colors";
 
@@ -36,7 +36,7 @@ export default async function QuanLyPage() {
 
   const { weekLabel, summaries } = buildEmployeeWeekSummaries(goiY, xacNhan, danhGia);
   const employees = allEmployees();
-  const careByEmp = buildCareByEmp(chuaVT, khChet, spNghi);
+  const careByEmp = await getGoiYCungTuyen(chuaVT, khChet, spNghi, Date.now());
   const goiYOrder = employees
     .filter((e) => e.role === "employee")
     .map((e) => ({ ma: e.maNhanVien ?? e.hoTen, hoTen: e.hoTen }));

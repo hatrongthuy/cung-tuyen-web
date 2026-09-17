@@ -6,7 +6,7 @@ import ScoreTrendChart from "@/components/ScoreTrendChart";
 import ConfirmButtons from "@/components/ConfirmButtons";
 import GoiYTuDong from "@/components/GoiYTuDong";
 import ChatBox, { type ChatMessage } from "@/components/ChatBox";
-import { buildCareByEmp } from "@/lib/report-utils";
+import { getGoiYCungTuyen } from "@/lib/sale-care";
 import {
   chuanHoaMaNV,
   getCanhBaoChuaViengTham,
@@ -74,8 +74,8 @@ export default async function NhanVienPage() {
 
   const soDaXacNhan = goiYCuaToi.filter((r) => xacNhanMap.has(r["Mã khách hàng"])).length;
 
-  // Gợi ý cung tuyến TỰ ĐỘNG (web tự sinh từ dữ liệu cảnh báo) — chỉ của tôi.
-  const careByEmp = buildCareByEmp(chuaVT, khChet, spNghi);
+  // Gợi ý cung tuyến TỰ ĐỘNG (cảnh báo + khách đi ắng từ Sale) — chỉ của tôi.
+  const careByEmp = await getGoiYCungTuyen(chuaVT, khChet, spNghi, Date.now());
   const goiYTuDongOrder = [{ ma: maNV || hoTen, hoTen }];
 
   const toMessage = (r: (typeof troChuyen)[number]): ChatMessage => ({

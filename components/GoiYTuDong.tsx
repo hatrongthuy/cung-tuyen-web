@@ -12,12 +12,14 @@ const LOAI_LABEL: Record<string, string> = {
   chet: "Khách chết",
   "chua-tham": "Chưa viếng thăm",
   "sp-nghi": "Sản phẩm nghỉ",
+  "sale-ang": "Lâu chưa mua (Sale)",
 };
-const LOAI_RANK: Record<string, number> = { chet: 3, "chua-tham": 2, "sp-nghi": 1 };
+const LOAI_RANK: Record<string, number> = { chet: 3, "chua-tham": 2, "sp-nghi": 1, "sale-ang": 0 };
 const LOAI_CLS: Record<string, string> = {
   chet: "bg-red-50 text-red-700",
   "chua-tham": "bg-amber-50 text-amber-700",
   "sp-nghi": "bg-slate-100 text-slate-600",
+  "sale-ang": "bg-sky-50 text-sky-700",
 };
 
 function sortCare(items: CareItem[]): CareItem[] {
