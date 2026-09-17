@@ -18,6 +18,9 @@ import { buildCareByEmp } from "@/lib/report-utils";
 import { allEmployees } from "@/lib/allowlist";
 import { colorForIndex } from "@/lib/colors";
 
+// Số khách gợi ý tối đa cho mỗi nhân viên trong 1 tuần (đồng bộ với GoiYTuDong).
+const GOI_Y_CAP = 18;
+
 export default async function QuanLyPage() {
   const session = await auth();
   const user = session!.user!;
@@ -71,34 +74,42 @@ export default async function QuanLyPage() {
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-900">
-              Trạng thái xác nhận gợi ý tuần này
+              Khối lượng gợi ý tuần này theo nhân viên
             </h2>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Số khách web đề xuất nên gặp tuần này (tối đa {GOI_Y_CAP}/người) — tự sinh từ dữ liệu.
+            </p>
             <div className="mt-3 space-y-3">
-              {summaries.map((s, idx) => (
-                <div key={s.maNhanVien}>
-                  <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="flex items-center gap-1.5 font-medium text-slate-700">
-                      <span
-                        className="h-2 w-2 rounded-full"
-                        style={{ backgroundColor: colorForIndex(idx) }}
+              {goiYOrder.map((e, idx) => {
+                const tong = careByEmp[e.hoTen]?.length ?? 0;
+                const tuan = Math.min(tong, GOI_Y_CAP);
+                const du = tong - tuan;
+                return (
+                  <div key={e.ma}>
+                    <div className="mb-1 flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1.5 font-medium text-slate-700">
+                        <span
+                          className="h-2 w-2 rounded-full"
+                          style={{ backgroundColor: colorForIndex(idx) }}
+                        />
+                        {e.hoTen}
+                      </span>
+                      <span className="text-slate-500">
+                        {tuan} khách tuần này{du > 0 ? ` · +${du} chờ` : ""}
+                      </span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.round((tuan / GOI_Y_CAP) * 100)}%`,
+                          backgroundColor: colorForIndex(idx),
+                        }}
                       />
-                      {s.hoTen}
-                    </span>
-                    <span className="text-slate-500">
-                      {s.soDongY}/{s.soGoiY} khách (đã phản hồi {s.soDaXacNhan}/{s.soGoiY})
-                    </span>
+                    </div>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.min(100, Math.round(s.tyLeHoanThanh * 100))}%`,
-                        backgroundColor: colorForIndex(idx),
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
