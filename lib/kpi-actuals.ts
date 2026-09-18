@@ -53,7 +53,14 @@ const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
 // ---- Cấu hình các chỉ tiêu hiển thị trên scorecard ----
 export type MetricUnit = "vnd" | "count";
-export type ActualKey = "keDon" | "thau" | "codeMoi" | "spttMoMoi" | "spttDuyTri";
+export type ActualKey =
+  | "keDon"
+  | "thau"
+  | "codeMoi"
+  | "spttMoMoi"
+  | "spttDuyTri"
+  | "cap2MoMoi"
+  | "cap2DuyTri";
 
 interface MetricConfig {
   key: string;
@@ -73,8 +80,8 @@ const METRICS: MetricConfig[] = [
   { key: "duyTriSptt", label: "Duy trì SPTT", unit: "count", sheetMetric: "Duy trì SPTT", actualKey: "spttDuyTri" },
   { key: "coaching", label: "Coaching call", unit: "count", sheetMetric: "Coaching call" },
   { key: "miniapp", label: "Miniapp", unit: "count", sheetMetric: "Miniapp" },
-  { key: "moMoiC2", label: "Mở mới SP Cấp 2", unit: "count", sheetMetric: "Mở mới SP Cấp 2" },
-  { key: "duyTriC2", label: "Duy trì SP cấp 2", unit: "count", sheetMetric: "Duy trì SP cấp 2" },
+  { key: "moMoiC2", label: "Mở mới SP Cấp 2", unit: "count", sheetMetric: "Mở mới SP Cấp 2", actualKey: "cap2MoMoi" },
+  { key: "duyTriC2", label: "Duy trì SP cấp 2", unit: "count", sheetMetric: "Duy trì SP cấp 2", actualKey: "cap2DuyTri" },
   { key: "tuyenDung", label: "Tuyển dụng NS", unit: "count", sheetMetric: "Tuyển dụng NS" },
 ];
 
@@ -112,7 +119,7 @@ interface MetricColumns {
 }
 
 async function readKpiSheetTargets(
-  teamName: string | string[]
+  teamName: string
 ): Promise<{ byMa: Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>; error: string | null }> {
   let raw: string[][];
   try {
@@ -179,12 +186,12 @@ async function readKpiSheetTargets(
   const metricCols: Record<string, MetricColumns> = {};
   for (const m of METRICS) metricCols[m.key] = metricColumnsFor(m.sheetMetric);
 
-  const teamTrims = (Array.isArray(teamName) ? teamName : [teamName]).map((t) => norm(t));
+  const teamTrim = norm(teamName);
   const byMa = new Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>();
   for (let i = subRowIdx + 1; i < raw.length; i++) {
     const r = raw[i];
     if (!r) continue;
-    if (jNhom < 0 || !teamTrims.includes(norm(cell(r, jNhom)))) continue;
+    if (jNhom < 0 || norm(cell(r, jNhom)) !== teamTrim) continue;
     const ma = normalizeMaNV(cell(r, jMa));
     if (!ma) continue;
     // Bỏ các dòng "rác"/tổng hợp phía dưới: yêu cầu Kế hoạch DS KD-PM là số > 0.
@@ -203,15 +210,24 @@ interface Actuals {
   codeMoi: number;
   spttMoMoi: number;
   spttDuyTri: number;
+  cap2MoMoi: number;
+  cap2DuyTri: number;
 }
 
 /** Tính phần THỰC HIỆN theo mã nhân viên từ file Sale, cho tháng (nam, thang). */
 async function computeActuals(
   nam: number,
   thang: number
-): Promise<{ byMa: Record<string, Actuals>; error: string | null }> {
+): Promise<{ byMa: Record<string, Actuals>; availableKeys: Set<ActualKey>; error: string | null }> {
   const data = await getSaleDetailData();
-  if (data.error) return { byMa: {}, error: `Không đọc được file Sale để tính thực hiện: ${data.error}` };
+  // Các chỉ tiêu web có nguồn tự tính. SP Cấp 2 chỉ "có nguồn" khi có NV được giao SP Cấp 2.
+  const availableKeys = new Set<ActualKey>(["keDon", "thau", "codeMoi", "spttMoMoi", "spttDuyTri"]);
+  const cap2ByTid = data.cap2ByTid ?? [];
+  if (cap2ByTid.some((a) => a.length > 0)) {
+    availableKeys.add("cap2MoMoi");
+    availableKeys.add("cap2DuyTri");
+  }
+  if (data.error) return { byMa: {}, availableKeys, error: `Không đọc được file Sale để tính thực hiện: ${data.error}` };
 
   const emps = allEmployees();
   const tidToMa = data.tdv.map((_, tid) => normalizeMaNV(emps[tid]?.maNhanVien ?? ""));
@@ -224,12 +240,18 @@ async function computeActuals(
   const inMonth = (di: number) => di >= diStart && di <= diEnd;
 
   const focusPids = new Set<number>(Object.values(data.focus).flat());
+  // SP Cấp 2 giao riêng theo NV -> Set pid cho từng tid.
+  const cap2PidSetByTid = cap2ByTid.map((a) => new Set<number>(a));
   const C = { cid: 0, tid: 1, pid: 2, di: 3, sl: 4, dt: 5 };
 
   const firstBuy = new Map<number, { di: number; tid: number }>();
   const firstFocus = new Map<number, { di: number; tid: number }>();
   const focusBeforeMonth = new Set<number>();
   const focusThisMonth = new Map<number, Set<number>>();
+  // SP Cấp 2 (theo từng NV): khóa "tid|cid".
+  const firstCap2 = new Map<string, { di: number; tid: number }>();
+  const cap2BeforeMonth = new Set<string>();
+  const cap2ThisMonth = new Set<string>();
 
   // keDon/thau theo tid trong tháng
   const keDonByTid: number[] = new Array(data.tdv.length).fill(0);
@@ -259,6 +281,15 @@ async function computeActuals(
       }
     }
 
+    const cap2Set = cap2PidSetByTid[tid];
+    if (cap2Set && cap2Set.has(pid)) {
+      const key = `${tid}|${cid}`;
+      const fc = firstCap2.get(key);
+      if (!fc || di < fc.di) firstCap2.set(key, { di, tid });
+      if (di < diStart) cap2BeforeMonth.add(key);
+      if (inMonth(di)) cap2ThisMonth.add(key);
+    }
+
     if (inMonth(di)) {
       const nhomKH = (data.cust[cid]?.[3] ?? "").toLowerCase();
       if (nhomKH.includes("thầu")) thauByTid[tid] += dt;
@@ -269,6 +300,8 @@ async function computeActuals(
   const codeMoiByTid: number[] = new Array(data.tdv.length).fill(0);
   const spttMoMoiByTid: number[] = new Array(data.tdv.length).fill(0);
   const spttDuyTriByTid: number[] = new Array(data.tdv.length).fill(0);
+  const cap2MoMoiByTid: number[] = new Array(data.tdv.length).fill(0);
+  const cap2DuyTriByTid: number[] = new Array(data.tdv.length).fill(0);
 
   for (const { di, tid } of firstBuy.values()) {
     if (inMonth(di)) codeMoiByTid[tid] = (codeMoiByTid[tid] ?? 0) + 1;
@@ -280,10 +313,18 @@ async function computeActuals(
     if (!focusBeforeMonth.has(cid)) continue; // đã mua SPTT trước đó => duy trì
     for (const tid of tids) spttDuyTriByTid[tid] = (spttDuyTriByTid[tid] ?? 0) + 1;
   }
+  for (const { di, tid } of firstCap2.values()) {
+    if (inMonth(di)) cap2MoMoiByTid[tid] = (cap2MoMoiByTid[tid] ?? 0) + 1;
+  }
+  for (const key of cap2ThisMonth) {
+    if (!cap2BeforeMonth.has(key)) continue; // đã mua SP cấp 2 trước đó => duy trì
+    const tid = Number(key.split("|")[0]);
+    cap2DuyTriByTid[tid] = (cap2DuyTriByTid[tid] ?? 0) + 1;
+  }
 
   const byMa: Record<string, Actuals> = {};
   const add = (ma: string): Actuals => {
-    if (!byMa[ma]) byMa[ma] = { keDon: 0, thau: 0, codeMoi: 0, spttMoMoi: 0, spttDuyTri: 0 };
+    if (!byMa[ma]) byMa[ma] = { keDon: 0, thau: 0, codeMoi: 0, spttMoMoi: 0, spttDuyTri: 0, cap2MoMoi: 0, cap2DuyTri: 0 };
     return byMa[ma];
   };
   for (let tid = 0; tid < data.tdv.length; tid++) {
@@ -295,13 +336,15 @@ async function computeActuals(
     a.codeMoi += codeMoiByTid[tid];
     a.spttMoMoi += spttMoMoiByTid[tid];
     a.spttDuyTri += spttDuyTriByTid[tid];
+    a.cap2MoMoi += cap2MoMoiByTid[tid];
+    a.cap2DuyTri += cap2DuyTriByTid[tid];
   }
-  return { byMa, error: null };
+  return { byMa, availableKeys, error: null };
 }
 
 /** Xây bảng điểm KPI theo nhân viên cho nhóm `teamName`, tháng (nam, thang). */
 export async function getKpiScorecard(
-  teamName: string | string[],
+  teamName: string,
   nam: number,
   thang: number
 ): Promise<KpiScorecardResult> {
@@ -313,10 +356,14 @@ export async function getKpiScorecard(
     return { rows: [], monthLabel, error, hasAuto: false };
   }
 
+  // Chỉ nhân viên kinh doanh mới có phần Thực hiện tự tính từ Sale (quản lý thì lấy theo sheet).
+  const empSet = new Set(allEmployees().map((e) => normalizeMaNV(e.maNhanVien)));
+
   let hasAuto = false;
   const rows: EmployeeScore[] = [];
   for (const [ma, info] of targets.byMa) {
     const act = actuals.byMa[ma];
+    const isEmp = empSet.has(ma);
     const metrics: MetricScore[] = METRICS.map((m) => {
       const cols = info.cols[m.key] ?? { kh: null, diem: null, th: null };
       const keHoach = cols.kh != null ? numOrNull(info.row[cols.kh]) : null;
@@ -324,8 +371,9 @@ export async function getKpiScorecard(
 
       let thucHien: number | null = null;
       let nguon: MetricScore["nguon"] = "chua-co";
-      if (m.actualKey && act) {
-        thucHien = act[m.actualKey] ?? 0;
+      // Chỉ coi là "tự tính" khi chỉ tiêu có nguồn dữ liệu (VD SP Cấp 2 chỉ auto khi đã cấu hình mã).
+      if (isEmp && m.actualKey && actuals.availableKeys.has(m.actualKey)) {
+        thucHien = act ? act[m.actualKey] ?? 0 : 0;
         nguon = "tu-tinh";
         if (thucHien > 0) hasAuto = true;
       } else {

@@ -38,10 +38,35 @@ function badgeFor(nguon: MetricScore["nguon"]) {
   return <span className="rounded bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">chưa có số</span>;
 }
 
+function MetricRow({ m, marker }: { m: MetricScore; marker: number }) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-xs">
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-slate-700">{m.label}</span>
+          {badgeFor(m.nguon)}
+        </div>
+        <div className="text-slate-500">
+          <span className="font-semibold text-slate-800">{fmtValue(m.thucHien, m.unit)}</span>
+          <span className="text-slate-400"> / {fmtValue(m.keHoach, m.unit)}</span>
+          {m.tiTrong != null && (
+            <span className={`ml-1.5 font-semibold ${m.tiTrong >= marker - 10 ? "text-emerald-600" : "text-amber-600"}`}>
+              {Math.round(m.tiTrong)}%
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="mt-1">
+        <Bar pct={m.tiTrong} marker={marker} />
+      </div>
+    </div>
+  );
+}
+
 function EmployeeCard({ emp, marker }: { emp: EmployeeScore; marker: number }) {
-  // Tách chỉ tiêu tự tính (ưu tiên hiển thị rõ) và chỉ tiêu theo sheet.
+  // Tách chỉ tiêu tự tính (web tự chạy) và chỉ tiêu theo file KPI công ty — CẢ HAI đều hiện đủ, mỗi mục 1 dòng.
   const auto = emp.metrics.filter((m) => m.nguon === "tu-tinh");
-  const khac = emp.metrics.filter((m) => m.nguon !== "tu-tinh" && (m.keHoach != null || m.thucHien != null));
+  const khac = emp.metrics.filter((m) => m.nguon !== "tu-tinh");
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -50,46 +75,30 @@ function EmployeeCard({ emp, marker }: { emp: EmployeeScore; marker: number }) {
         <span className="text-xs text-slate-400">Điểm KH: {emp.tongDiemKH.toLocaleString("vi-VN")}</span>
       </div>
 
-      <div className="mt-3 space-y-3">
-        {auto.map((m) => (
-          <div key={m.key}>
-            <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium text-slate-700">{m.label}</span>
-                {badgeFor(m.nguon)}
-              </div>
-              <div className="text-slate-500">
-                <span className="font-semibold text-slate-800">{fmtValue(m.thucHien, m.unit)}</span>
-                <span className="text-slate-400"> / {fmtValue(m.keHoach, m.unit)}</span>
-                {m.tiTrong != null && (
-                  <span className={`ml-1.5 font-semibold ${m.tiTrong >= marker - 10 ? "text-emerald-600" : "text-amber-600"}`}>
-                    {Math.round(m.tiTrong)}%
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="mt-1">
-              <Bar pct={m.tiTrong} marker={marker} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {khac.length > 0 && (
-        <div className="mt-3 border-t border-slate-100 pt-3">
-          <p className="mb-1.5 text-[11px] font-medium text-slate-400">Chỉ tiêu khác (theo file KPI công ty)</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
-            {khac.map((m) => (
-              <div key={m.key} className="flex items-baseline justify-between gap-1 text-[11px]">
-                <span className="truncate text-slate-500">{m.label}</span>
-                <span className="whitespace-nowrap text-slate-700">
-                  {fmtValue(m.thucHien, m.unit)}
-                  <span className="text-slate-400">/{fmtValue(m.keHoach, m.unit)}</span>
-                </span>
-              </div>
+      {auto.length > 0 && (
+        <>
+          <p className="mt-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
+            Tự động cập nhật từ Sale
+          </p>
+          <div className="space-y-3">
+            {auto.map((m) => (
+              <MetricRow key={m.key} m={m} marker={marker} />
             ))}
           </div>
-        </div>
+        </>
+      )}
+
+      {khac.length > 0 && (
+        <>
+          <p className="mt-4 mb-1.5 border-t border-slate-100 pt-3 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            Theo file KPI công ty
+          </p>
+          <div className="space-y-3">
+            {khac.map((m) => (
+              <MetricRow key={m.key} m={m} marker={marker} />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
