@@ -316,15 +316,12 @@ async function computeActuals(
   const cap2MoMoiByTid: number[] = new Array(data.tdv.length).fill(0);
   const cap2DuyTriByTid: number[] = new Array(data.tdv.length).fill(0);
 
-  // Code mới = mã khách LẦN ĐẦU xuất hiện trên TOÀN BỘ file Sale rơi vào tháng này, VÀ trong
-  // tháng đó có nhân viên trong nhóm bán — tính cho người bán đầu tiên (trong nhóm) tháng này.
-  const custFirstDi = data.custFirstDi ?? [];
-  for (const [cid, fb] of firstBuy) {
-    const globalFirst = custFirstDi[cid];
-    if (globalFirst != null && inMonth(globalFirst) && inMonth(fb.di)) {
-      codeMoiByTid[fb.tid] = (codeMoiByTid[fb.tid] ?? 0) + 1;
-    }
-  }
+  // Code mới: TẠM TẮT tự tính — để 0.
+  // Lý do: dữ liệu Sale hiện không đủ tin cậy để suy "code chưa từng xuất hiện" (cùng một nhà
+  // thuốc nhưng MÃ KHÁCH đổi giữa các kỳ, và lịch sử chưa chuẩn hoá), nên số web tự đếm bị thổi
+  // phồng (VD 14/1). Web KHÔNG tự đếm Code mới nữa để tránh sai; số này chờ nhập tay/công ty
+  // hoặc bật lại khi có khóa mã khách ổn định. (firstBuy/custFirstDi vẫn giữ để bật lại nhanh.)
+  void firstBuy;
   for (const { di, tid } of firstFocus.values()) {
     if (inMonth(di)) spttMoMoiByTid[tid] = (spttMoMoiByTid[tid] ?? 0) + 1;
   }
