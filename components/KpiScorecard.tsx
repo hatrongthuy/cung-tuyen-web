@@ -54,6 +54,11 @@ function MetricRow({ m, marker }: { m: MetricScore; marker: number }) {
               {Math.round(m.tiTrong)}%
             </span>
           )}
+          {m.diemTH != null && m.diemKH != null && (
+            <span className="ml-1.5 text-slate-400">
+              · <span className="font-semibold text-indigo-600">{m.diemTH}</span>/{m.diemKH}đ
+            </span>
+          )}
         </div>
       </div>
       <div className="mt-1">
@@ -72,8 +77,20 @@ function EmployeeCard({ emp, marker }: { emp: EmployeeScore; marker: number }) {
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-900">{emp.ten}</h3>
-        <span className="text-xs text-slate-400">Điểm KH: {emp.tongDiemKH.toLocaleString("vi-VN")}</span>
+        <span className="text-xs text-slate-500">
+          Điểm đạt:{" "}
+          <span className="text-sm font-bold text-indigo-600">{emp.diemDat.toLocaleString("vi-VN")}</span>
+          <span className="text-slate-400">/{emp.diemKHDat.toLocaleString("vi-VN")}đ</span>
+          {emp.diemKHDat > 0 && (
+            <span className="ml-1 font-semibold text-indigo-500">
+              ({Math.round((emp.diemDat / emp.diemKHDat) * 100)}%)
+            </span>
+          )}
+        </span>
       </div>
+      <p className="mt-0.5 text-[10px] text-slate-400">
+        Tổng điểm KH cả tháng: {emp.tongDiemKH.toLocaleString("vi-VN")}đ
+      </p>
 
       {auto.length > 0 && (
         <>
@@ -100,6 +117,53 @@ function EmployeeCard({ emp, marker }: { emp: EmployeeScore; marker: number }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// Bảng xếp hạng nhóm theo điểm KPI đạt được (tạm tính) + tổng điểm cả nhóm.
+function RankingPanel({ rows }: { rows: EmployeeScore[] }) {
+  // rows đã được sắp theo điểm đạt giảm dần từ tầng dữ liệu.
+  const groupDat = rows.reduce((s, r) => s + r.diemDat, 0);
+  const groupKHDat = rows.reduce((s, r) => s + r.diemKHDat, 0);
+  const groupPct = groupKHDat > 0 ? Math.round((groupDat / groupKHDat) * 100) : null;
+  const maxDat = Math.max(1, ...rows.map((r) => r.diemDat));
+
+  return (
+    <div className="mt-3 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold text-indigo-900">Xếp hạng nhóm theo điểm KPI (tạm tính)</h3>
+        <span className="text-xs text-indigo-700">
+          Cả nhóm:{" "}
+          <span className="font-bold">{groupDat.toLocaleString("vi-VN")}</span>
+          <span className="text-indigo-400">/{groupKHDat.toLocaleString("vi-VN")}đ</span>
+          {groupPct != null && <span className="ml-1 font-semibold">({groupPct}%)</span>}
+        </span>
+      </div>
+      <ol className="mt-3 space-y-2">
+        {rows.map((r, i) => {
+          const pct = r.diemKHDat > 0 ? Math.round((r.diemDat / r.diemKHDat) * 100) : null;
+          const w = Math.max(2, Math.round((r.diemDat / maxDat) * 100));
+          const medal = i === 0 ? "bg-amber-400" : i === 1 ? "bg-slate-300" : i === 2 ? "bg-orange-300" : "bg-indigo-200";
+          return (
+            <li key={r.ma} className="flex items-center gap-2 text-xs">
+              <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[10px] font-bold text-slate-800 ${medal}`}>
+                {i + 1}
+              </span>
+              <span className="w-28 flex-none truncate font-medium text-slate-700" title={r.ten}>
+                {r.ten}
+              </span>
+              <span className="relative h-2.5 flex-1 overflow-hidden rounded-full bg-white">
+                <span className="absolute left-0 top-0 h-full rounded-full bg-indigo-500" style={{ width: `${w}%` }} />
+              </span>
+              <span className="w-24 flex-none text-right text-slate-600">
+                <span className="font-bold text-indigo-700">{r.diemDat.toLocaleString("vi-VN")}</span>
+                {pct != null && <span className="ml-1 text-indigo-400">{pct}%</span>}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
@@ -144,20 +208,25 @@ export default function KpiScorecard({
         </p>
       ) : (
         <>
+          <RankingPanel rows={rows} />
           <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
             {rows.map((emp) => (
               <EmployeeCard key={emp.ma} emp={emp} marker={marker} />
             ))}
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+            <span className="font-medium text-indigo-600">Điểm đạt (tạm tính)</span> = % hoàn thành (tối đa 100%) ×
+            Điểm KH của từng mục, chỉ cộng các mục đã có số thực hiện — <span className="font-medium">chưa gồm
+            thưởng/phạt</span> riêng của công ty (bán hàng mới, date gần, họp nhóm, role play…). Dùng để so tiến độ &amp;
+            xếp hạng, số điểm chốt cuối tháng vẫn theo công ty.
             {hasAuto ? (
               <>
-                Chỉ tiêu gắn nhãn <span className="font-medium text-emerald-600">tự tính</span> (DS kê đơn, DS thầu,
-                Code mới, Mở mới/Duy trì SPTT) được web tự cập nhật từ file Sale mỗi ngày — Code mới &amp; SPTT là số
-                web suy ra, anh/chị đối chiếu lại khi cần. Các chỉ tiêu khác lấy theo file KPI của công ty.
+                {" "}Chỉ tiêu gắn nhãn <span className="font-medium text-emerald-600">tự tính</span> (DS kê đơn, DS thầu,
+                Code mới, Mở mới/Duy trì SPTT, SP Cấp 2) được web tự cập nhật từ file Sale mỗi ngày; các chỉ tiêu khác
+                lấy theo file KPI của công ty.
               </>
             ) : (
-              <>Các chỉ tiêu tự tính hiện chưa có phát sinh trong tháng. Các chỉ tiêu khác lấy theo file KPI công ty.</>
+              <> Các chỉ tiêu tự tính hiện chưa có phát sinh trong tháng.</>
             )}
           </p>
         </>
