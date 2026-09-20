@@ -51,6 +51,13 @@ function numOrNull(v: unknown): number | null {
 
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
+/** So khớp giá trị cột Nhóm SS với 1 tên nhóm hoặc danh sách nhiều tên nhóm (scope Tây Bắc). */
+function matchesTeamName(cellValue: string, teamName: string | string[]): boolean {
+  const v = norm(cellValue);
+  if (Array.isArray(teamName)) return teamName.some((t) => norm(t) === v);
+  return norm(teamName) === v;
+}
+
 // ---- Cấu hình các chỉ tiêu hiển thị trên scorecard ----
 export type MetricUnit = "vnd" | "count";
 export type ActualKey =
@@ -119,7 +126,7 @@ interface MetricColumns {
 }
 
 async function readKpiSheetTargets(
-  teamName: string
+  teamName: string | string[]
 ): Promise<{ byMa: Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>; error: string | null }> {
   let raw: string[][];
   try {
@@ -186,12 +193,11 @@ async function readKpiSheetTargets(
   const metricCols: Record<string, MetricColumns> = {};
   for (const m of METRICS) metricCols[m.key] = metricColumnsFor(m.sheetMetric);
 
-  const teamTrim = norm(teamName);
   const byMa = new Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>();
   for (let i = subRowIdx + 1; i < raw.length; i++) {
     const r = raw[i];
     if (!r) continue;
-    if (jNhom < 0 || norm(cell(r, jNhom)) !== teamTrim) continue;
+    if (jNhom < 0 || !matchesTeamName(cell(r, jNhom), teamName)) continue;
     const ma = normalizeMaNV(cell(r, jMa));
     if (!ma) continue;
     // Bỏ các dòng "rác"/tổng hợp phía dưới: yêu cầu Kế hoạch DS KD-PM là số > 0.
@@ -344,7 +350,7 @@ async function computeActuals(
 
 /** Xây bảng điểm KPI theo nhân viên cho nhóm `teamName`, tháng (nam, thang). */
 export async function getKpiScorecard(
-  teamName: string,
+  teamName: string | string[],
   nam: number,
   thang: number
 ): Promise<KpiScorecardResult> {
