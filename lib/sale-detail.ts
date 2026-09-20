@@ -70,6 +70,7 @@ export interface SaleDetailData {
   prod: [string, string][]; // [mã, tên]
   focus: Record<string, number[]>; // nhãn -> danh sách chỉ số sản phẩm (SP trọng tâm/SPTT)
   cap2ByTid: number[][]; // theo từng nhân viên (tid) -> danh sách chỉ số SP Cấp 2 được giao cho họ
+  custFirstDi: number[]; // theo cid -> di lần đầu mã khách xuất hiện trên TOÀN BỘ file (mốc code mới)
   rows: number[][]; // [cid, tid, pid, di, sl, dt]
   error?: string | null;
 }
@@ -82,6 +83,7 @@ const EMPTY = (error: string): SaleDetailData => ({
   prod: [],
   focus: {},
   cap2ByTid: [],
+  custFirstDi: [],
   rows: [],
   error,
 });
@@ -121,6 +123,8 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
   const iTenKH = col("Tên khách hàng thực tế") >= 0 ? col("Tên khách hàng thực tế") : col("Tên khách hàng");
   const iTinh = col("Tỉnh");
   const iNgay = col("Ngày");
+  const iThang = col("Tháng");
+  const iNam = col("Năm");
   const iMaSP = col("Mã sản phẩm chuẩn hóa") >= 0 ? col("Mã sản phẩm chuẩn hóa") : col("Mã sản phẩm");
   const iTenSP = col("Tên chuẩn hóa sản phẩm") >= 0 ? col("Tên chuẩn hóa sản phẩm") : col("Tên sản phẩm");
   const iSL = col("Số lượng");
@@ -148,21 +152,46 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
   const prod: [string, string][] = [];
   const rows: number[][] = [];
   let maxDi = 0;
+  // Mốc "code mới": lần đầu MỖI mã khách xuất hiện trên TOÀN BỘ file Sale (mọi nhân viên,
+  // kể cả SS/quản lý và vùng khác) — dùng để xác định code chưa từng xuất hiện.
+  const codeFirstDi = new Map<string, number>();
+
+  // Ngày của 1 dòng: ưu tiên cột "Ngày"; nếu trống thì lấy Tháng + Năm (ngày 1).
+  // Dữ liệu lịch sử 2025 chỉ điền Tháng/Năm, ô "Ngày" để trống — nếu chỉ đọc "Ngày" sẽ mất
+  // sạch lịch sử, khiến khách cũ bị tính nhầm thành code mới.
+  const rowDi = (r: unknown[]): number | null => {
+    let dateMs = iNgay >= 0 ? toDateMs(r[iNgay]) : null;
+    if (dateMs === null) {
+      const th = iThang >= 0 ? parseInt(String(r[iThang] ?? "").trim(), 10) : NaN;
+      const nm = iNam >= 0 ? parseInt(String(r[iNam] ?? "").trim(), 10) : NaN;
+      if (Number.isInteger(th) && th >= 1 && th <= 12 && Number.isInteger(nm) && nm >= 2000) {
+        dateMs = new Date(nm, th - 1, 1).getTime();
+      }
+    }
+    if (dateMs === null) return null;
+    const di = Math.round((dateMs - baseMs) / 86400000);
+    return di < 0 ? null : di;
+  };
 
   for (let i = hdrIdx + 1; i < raw.length; i++) {
     const r = raw[i];
     if (!r) continue;
-    const ma = normalizeMaNV(r[iMaNV]);
-    const tid = teamMa.get(ma);
-    if (tid === undefined) continue; // chỉ lấy nhân viên trong nhóm
 
-    const dateMs = iNgay >= 0 ? toDateMs(r[iNgay]) : null;
-    if (dateMs === null) continue;
-    const di = Math.round((dateMs - baseMs) / 86400000);
-    if (di < 0) continue; // trước mốc gốc (không kỳ vọng xảy ra với base 2025)
+    const di = rowDi(r);
+    if (di === null) continue;
 
     const maKH = String(r[iMaKH] ?? "").trim();
     if (!maKH) continue;
+
+    // Mốc code mới: cập nhật lần đầu xuất hiện của mã khách trên TOÀN BỘ file (trước khi lọc nhóm).
+    const prevFirst = codeFirstDi.get(maKH);
+    if (prevFirst === undefined || di < prevFirst) codeFirstDi.set(maKH, di);
+
+    // Từ đây chỉ giữ giao dịch của nhân viên trong nhóm.
+    const ma = normalizeMaNV(r[iMaNV]);
+    const tid = teamMa.get(ma);
+    if (tid === undefined) continue;
+
     let cid = custIdx.get(maKH);
     if (cid === undefined) {
       cid = cust.length;
@@ -209,7 +238,10 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     return idxs;
   });
 
-  return { base: BASE_DATE, asofDi: maxDi, tdv, cust, prod, focus, cap2ByTid, rows, error: null };
+  // Mốc code mới theo từng khách của nhóm (cid) = lần đầu mã khách đó xuất hiện trên toàn bộ file.
+  const custFirstDi: number[] = cust.map(([maKH]) => codeFirstDi.get(maKH) ?? 0);
+
+  return { base: BASE_DATE, asofDi: maxDi, tdv, cust, prod, focus, cap2ByTid, custFirstDi, rows, error: null };
 }
 
 // ---------- Bài 3: Triển khai SẢN PHẨM TRỌNG TÂM ----------
