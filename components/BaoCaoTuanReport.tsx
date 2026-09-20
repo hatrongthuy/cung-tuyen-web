@@ -270,9 +270,71 @@ export default function BaoCaoTuanReport({
   const covRows = [...emps].filter((e) => e.coverage !== null).sort((a, b) => (b.coverage ?? 0) - (a.coverage ?? 0));
   const kdRows = [...emps].filter((e) => e.kdKH > 0).sort((a, b) => b.kdPct - a.kdPct);
 
+  // ----- Phân tích AI (Gemini) -----
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiText, setAiText] = useState<string>("");
+  const [aiError, setAiError] = useState<string>("");
+
+  function buildTomTat(): string {
+    const L: string[] = [];
+    L.push(`Nhóm: ${teamName} | Tuần: ${weekRangeLabel}`);
+    L.push(
+      `TỔNG NHÓM: DS kê đơn ${formatShortVnd(g.kdTH)}/${formatShortVnd(g.kdKH)} (${pctStr(g.kdPct)}), ` +
+        `DS thầu ${formatShortVnd(g.thauTH)}/${formatShortVnd(g.thauKH)} (${pctStr(g.thauPct)}); ` +
+        `coverage TB ${g.coverage !== null ? pctStr(g.coverage * 100) : "—"}; ` +
+        `khách bỏ sót (chưa gặp theo gợi ý) ${g.boSot}.`
+    );
+    L.push("THEO NHÂN VIÊN:");
+    for (const e of emps) {
+      L.push(
+        `- ${e.ten}: KĐ ${formatShortVnd(e.kdTH)}/${formatShortVnd(e.kdKH)} (${pctStr(e.kdPct)}), ` +
+          `thầu ${formatShortVnd(e.thauTH)}/${formatShortVnd(e.thauKH)} (${pctStr(e.thauPct)}), ` +
+          `coverage ${e.coverage !== null ? pctStr(e.coverage * 100) : "—"}, ` +
+          `gặp ${e.soDongY}/${e.soGoiY}, còn bỏ sót ${e.soChuaGap}.`
+      );
+    }
+    if (bangKhach.length) {
+      L.push("KHÁCH ƯU TIÊN TÁI KÍCH HOẠT:");
+      for (const r of bangKhach) {
+        L.push(`- ${r.nv}: ${r.item.tenKhach} (${r.item.soNgay} ngày chưa mua, DT12T ${formatShortVnd(r.item.doanhThu12T)}).`);
+      }
+    }
+    return L.join("\n");
+  }
+
+  async function phanTichAI() {
+    setAiLoading(true);
+    setAiError("");
+    setAiText("");
+    try {
+      const res = await fetch("/api/phan-tich-tuan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tomTat: buildTomTat() }),
+      });
+      const data = await res.json();
+      if (!res.ok) setAiError(data?.error || "Lỗi phân tích.");
+      else setAiText(data?.text || "");
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-end gap-2">
+        <button
+          onClick={phanTichAI}
+          disabled={aiLoading}
+          className="mr-auto inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4">
+            <path d="M11 2 8.5 8.5 2 11l6.5 2.5L11 20l2.5-6.5L20 11l-6.5-2.5L11 2Z" />
+          </svg>
+          {aiLoading ? "Đang phân tích..." : "Phân tích AI (Gemini)"}
+        </button>
         <button
           onClick={taiAnh}
           disabled={dangTaiAnh}
@@ -287,6 +349,25 @@ export default function BaoCaoTuanReport({
           🖨️ In / Lưu PDF
         </button>
       </div>
+
+      {(aiText || aiError) && (
+        <section className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-violet-900">Phân tích của Gemini — tuần {weekRangeLabel}</h2>
+            <button
+              onClick={() => { setAiText(""); setAiError(""); }}
+              className="no-print text-xs text-slate-400 hover:text-slate-600"
+            >
+              Đóng
+            </button>
+          </div>
+          {aiError ? (
+            <p className="mt-2 text-xs text-red-700">{aiError}</p>
+          ) : (
+            <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{aiText}</div>
+          )}
+        </section>
+      )}
 
       <div ref={reportRef} className="space-y-5 rounded-2xl bg-[#eef1f6] p-4 sm:p-6">
         {/* ===== Tiêu đề ===== */}
