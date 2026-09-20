@@ -100,6 +100,8 @@ export interface MetricScore {
   thucHien: number | null;
   tiTrong: number | null; // % đạt (Thực hiện / Kế hoạch)
   diemKH: number | null;
+  /** Điểm THỰC HIỆN tạm tính = min(%đạt, 100%) × Điểm KH. null nếu chưa đủ dữ liệu. */
+  diemTH: number | null;
   /** "tu-tinh" = web tự tính từ Sale; "sheet" = lấy cột Thực hiện trong file KPI; "chua-co" = chưa có số. */
   nguon: "tu-tinh" | "sheet" | "chua-co";
 }
@@ -108,7 +110,12 @@ export interface EmployeeScore {
   ma: string;
   ten: string;
   metrics: MetricScore[];
+  /** Tổng Điểm KH của TẤT CẢ chỉ tiêu (điểm kế hoạch tối đa). */
   tongDiemKH: number;
+  /** Tổng điểm ĐẠT ĐƯỢC (tạm tính) — chỉ cộng các mục đã có số thực hiện. */
+  diemDat: number;
+  /** Tổng Điểm KH của riêng các mục đã đo được (mẫu số để ra % điểm). */
+  diemKHDat: number;
 }
 
 export interface KpiScorecardResult {
@@ -393,14 +400,24 @@ export async function getKpiScorecard(
       const tiTrong =
         keHoach != null && keHoach > 0 && thucHien != null ? (thucHien / keHoach) * 100 : null;
 
-      return { key: m.key, label: m.label, unit: m.unit, keHoach, thucHien, tiTrong, diemKH, nguon };
+      // Điểm thực hiện tạm tính: % đạt (trần 100%) × Điểm KH.
+      // Chỉ tính khi có Điểm KH, có Kế hoạch > 0 và đã có số Thực hiện.
+      let diemTH: number | null = null;
+      if (diemKH != null && keHoach != null && keHoach > 0 && thucHien != null) {
+        const ratio = Math.min(thucHien / keHoach, 1);
+        diemTH = Math.round(ratio * diemKH);
+      }
+
+      return { key: m.key, label: m.label, unit: m.unit, keHoach, thucHien, tiTrong, diemKH, diemTH, nguon };
     });
 
     const tongDiemKH = metrics.reduce((s, x) => s + (x.diemKH ?? 0), 0);
-    rows.push({ ma, ten: info.ten, metrics, tongDiemKH });
+    const diemDat = metrics.reduce((s, x) => s + (x.diemTH ?? 0), 0);
+    const diemKHDat = metrics.reduce((s, x) => s + (x.diemTH != null ? x.diemKH ?? 0 : 0), 0);
+    rows.push({ ma, ten: info.ten, metrics, tongDiemKH, diemDat, diemKHDat });
   }
 
-  // Sắp theo tổng điểm KH giảm dần (người chỉ tiêu cao lên trước).
-  rows.sort((a, b) => b.tongDiemKH - a.tongDiemKH);
+  // Sắp theo điểm ĐẠT ĐƯỢC giảm dần (người đang đạt cao lên trước); hòa thì theo điểm KH.
+  rows.sort((a, b) => b.diemDat - a.diemDat || b.tongDiemKH - a.tongDiemKH);
   return { rows, monthLabel, error, hasAuto };
 }
