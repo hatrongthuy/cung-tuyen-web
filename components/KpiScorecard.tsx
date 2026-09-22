@@ -33,6 +33,8 @@ function Bar({ pct, marker }: { pct: number | null; marker: number }) {
 function badgeFor(nguon: MetricScore["nguon"]) {
   if (nguon === "tu-tinh")
     return <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">tự tính</span>;
+  if (nguon === "nhap-tay")
+    return <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">nhập tay</span>;
   if (nguon === "sheet")
     return <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">theo sheet</span>;
   return <span className="rounded bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium text-slate-400">chưa có số</span>;
@@ -69,9 +71,11 @@ function MetricRow({ m, marker }: { m: MetricScore; marker: number }) {
 }
 
 function EmployeeCard({ emp, marker }: { emp: EmployeeScore; marker: number }) {
-  // Tách chỉ tiêu tự tính (web tự chạy) và chỉ tiêu theo file KPI công ty — CẢ HAI đều hiện đủ, mỗi mục 1 dòng.
-  const auto = emp.metrics.filter((m) => m.nguon === "tu-tinh");
-  const khac = emp.metrics.filter((m) => m.nguon !== "tu-tinh");
+  // Nhóm 1: web tự tính (từ Sale) + nhân viên nhập tay (Code mới). Nhóm 2: lấy theo file KPI công ty.
+  // Code mới luôn ở nhóm 1 (kể cả khi chưa nhập) để nhân viên biết chỗ điền.
+  const inGroup1 = (m: MetricScore) => m.nguon === "tu-tinh" || m.nguon === "nhap-tay" || m.key === "codeMoi";
+  const auto = emp.metrics.filter(inGroup1);
+  const khac = emp.metrics.filter((m) => !inGroup1(m));
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -95,7 +99,7 @@ function EmployeeCard({ emp, marker }: { emp: EmployeeScore; marker: number }) {
       {auto.length > 0 && (
         <>
           <p className="mt-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-600">
-            Tự động cập nhật từ Sale
+            Tự động từ Sale &amp; nhập tay
           </p>
           <div className="space-y-3">
             {auto.map((m) => (
