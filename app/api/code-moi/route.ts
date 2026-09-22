@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { appendCodeMoi } from "@/lib/code-moi";
 
-// Nhân viên tự nhập "Code mới" (số nhà thuốc/khách mở mới trong tháng) — ghi qua webhook n8n,
-// cùng mẫu với /api/confirm: chạy ở server để (1) không lộ URL webhook ra trình duyệt,
-// (2) chỉ nhân viên đã đăng nhập mới ghi được, và luôn ghi đúng MÃ NV của chính họ (chống giả mạo).
-//
-// n8n nhận (GET, query string) rồi APPEND 1 dòng vào tab "Code mới nhập tay":
-//   Thời điểm | Mã nhân viên | Tên nhân viên | Năm | Tháng | Tuần | Số code mới
-// Bảng KPI đọc lại tab đó (lib/code-moi.ts), lấy lần nhập MỚI NHẤT trong tháng.
+// Nhân viên tự nhập "Code mới" (số nhà thuốc/khách mở mới trong tháng).
+// Web GHI THẲNG vào Google Sheet bằng service account quyền ghi (không cần webhook/n8n).
+// Chạy ở server để chỉ nhân viên đã đăng nhập mới ghi được, và luôn ghi đúng MÃ NV của chính họ.
 
-/** Ngày hiện tại theo giờ VN (Asia/Ho_Chi_Minh). */
+/** Ngày hiện tại theo giờ VN. */
 function nowVN(): { nam: number; thang: number; ngay: number; tuan: number } {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Ho_Chi_Minh",
@@ -31,14 +28,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Không có quyền" }, { status: 403 });
   }
 
-  const webhookUrl = process.env.N8N_CODE_MOI_WEBHOOK_URL;
-  if (!webhookUrl) {
-    return NextResponse.json(
-      { ok: false, error: "Chưa cấu hình N8N_CODE_MOI_WEBHOOK_URL" },
-      { status: 500 }
-    );
-  }
-
   let body: { so?: number | string };
   try {
     body = await req.json();
@@ -52,26 +41,18 @@ export async function POST(req: Request) {
   }
 
   const { nam, thang, tuan } = nowVN();
-  const params = new URLSearchParams({
-    nv: session.user.maNhanVien,
-    tennv: session.user.name ?? "",
-    nam: String(nam),
-    thang: String(thang),
-    tuan: String(tuan),
-    so: String(so),
-    ts: new Date().toISOString(),
-  });
-
   try {
-    const res = await fetch(`${webhookUrl}?${params.toString()}`, { method: "GET" });
-    if (!res.ok) {
-      return NextResponse.json(
-        { ok: false, error: `Webhook n8n trả lỗi (${res.status})` },
-        { status: 502 }
-      );
-    }
+    await appendCodeMoi({
+      ma: session.user.maNhanVien,
+      ten: session.user.name ?? "",
+      nam,
+      thang,
+      tuan,
+      so,
+    });
     return NextResponse.json({ ok: true, nam, thang, tuan, so });
-  } catch {
-    return NextResponse.json({ ok: false, error: "Không gọi được webhook n8n" }, { status: 502 });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Lỗi ghi dữ liệu";
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
