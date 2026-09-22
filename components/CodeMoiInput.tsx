@@ -65,7 +65,7 @@ export default function CodeMoiInput({
 
       {!configured && (
         <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
-          Tính năng nhập tay chưa được cấu hình (thiếu webhook/sheet lưu trữ). Anh/chị báo quản trị để bật.
+          Tính năng nhập tay chưa sẵn sàng (chưa cấu hình sheet lưu trữ). Anh/chị báo quản trị để bật.
         </p>
       )}
 
