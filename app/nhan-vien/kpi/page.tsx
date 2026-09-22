@@ -2,8 +2,10 @@ import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import KpiView from "@/components/KpiView";
 import KpiScorecard from "@/components/KpiScorecard";
+import CodeMoiInput from "@/components/CodeMoiInput";
 import { KPI_TABS, getAllKpiTabsData } from "@/lib/kpi";
 import { getKpiScorecard } from "@/lib/kpi-actuals";
+import { getCodeMoiManual } from "@/lib/code-moi";
 import { getTeamSales } from "@/lib/sales";
 import { salesByMonth, normalizeMaNV, todayInVN } from "@/lib/report-utils";
 
@@ -52,6 +54,11 @@ export default async function KpiNhanVienPage() {
   // Bảng điểm KPI tự tính — lọc về đúng nhân viên đang đăng nhập.
   const scorecardAll = await getKpiScorecard(TEN_NHOM, latest.nam, latest.thang);
   const myScorecardRows = scorecardAll.rows.filter((r) => r.ma === meMa);
+
+  // Code mới NHẬP TAY của chính nhân viên (để đổ vào ô nhập).
+  const codeMoiManual = await getCodeMoiManual(latest.nam, latest.thang);
+  const myCodeMoi = codeMoiManual.byMa[meMa] ?? null;
+  const codeMoiMonthLabel = `${String(latest.thang).padStart(2, "0")}/${latest.nam}`;
   const today = todayInVN();
   const soNgayThang = new Date(latest.nam, latest.thang, 0).getDate();
   const laThangHienTai = today.getFullYear() === latest.nam && today.getMonth() + 1 === latest.thang;
@@ -73,6 +80,11 @@ export default async function KpiNhanVienPage() {
     <>
       <AppHeader hoTen={user.name ?? ""} role="employee" active="kpi" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+        <CodeMoiInput
+          current={myCodeMoi}
+          monthLabel={codeMoiMonthLabel}
+          configured={codeMoiManual.configured}
+        />
         <KpiScorecard
           rows={myScorecardRows}
           monthLabel={scorecardAll.monthLabel}
