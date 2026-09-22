@@ -4,37 +4,38 @@ import { google } from "googleapis";
 // CODE MỚI NHẬP TAY (theo tuần) — nhân viên tự nhập trên web.
 // ------------------------------------------------------------------
 // Chỉ tiêu "Code mới" không thể suy tự động đủ tin cậy từ file Sale (mã khách đổi giữa các kỳ),
-// nên để nhân viên tự nhập. Mỗi lần nhập ghi 1 dòng vào 1 tab Google Sheet (qua webhook n8n).
-// File này ĐỌC lại tab đó: với mỗi (Mã NV, Năm, Tháng) lấy giá trị MỚI NHẤT (theo thời điểm nhập)
-// làm số Code mới trong tháng — cho phép nhân viên cập nhật/sửa lại, lần nhập sau đè lần trước.
+// nên để nhân viên tự nhập. Web GHI thẳng vào Google Sheet bằng SERVICE ACCOUNT quyền ghi
+// (giống lib/login-log.ts) — KHÔNG cần webhook/n8n. Với mỗi (Mã NV, Năm, Tháng) lấy giá trị của
+// LẦN NHẬP MỚI NHẤT làm số Code mới trong tháng (cho phép nhân viên cập nhật/sửa, lần sau đè lần trước).
 //
-// Cấu trúc tab (n8n append, có dòng tiêu đề):
-//   Thời điểm | Mã nhân viên | Tên nhân viên | Năm | Tháng | Tuần | Số code mới
-// (Đọc theo TÊN cột nên thứ tự cột không bắt buộc, miễn có "Mã nhân viên" và "Số code mới".)
+// Lưu vào tab "Code mới nhập tay" của sheet chính (GOOGLE_SHEETS_SPREADSHEET_ID — sheet mà service
+// account đã có quyền EDITOR, cùng nơi đang ghi "Lịch sử đăng nhập"). Tab tự tạo nếu chưa có.
 
-const CODEMOI_SPREADSHEET_ID =
-  process.env.GOOGLE_SHEETS_CODEMOI_SPREADSHEET_ID ||
-  process.env.GOOGLE_SHEETS_KPI_SPREADSHEET_ID ||
-  "1dv0q_SpajvhbaOtNu43ctwetjXhBUURRIaDVv39W5bw";
-const CODEMOI_TAB = process.env.GOOGLE_SHEETS_CODEMOI_TAB || "Code mới nhập tay";
+const SPREADSHEET_ID =
+  process.env.GOOGLE_SHEETS_CODEMOI_SPREADSHEET_ID || process.env.GOOGLE_SHEETS_SPREADSHEET_ID || "";
+const TAB = process.env.GOOGLE_SHEETS_CODEMOI_TAB || "Code mới nhập tay";
+const HEADERS = ["Thời điểm", "Mã nhân viên", "Tên nhân viên", "Năm", "Tháng", "Tuần", "Số code mới"];
 
-function getAuth() {
+/** Service account quyền GHI (đọc + ghi) — sheet phải được share EDITOR cho email service account. */
+function getWritableAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  return new google.auth.JWT({
-    email,
-    key,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-  });
+  let key = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY;
+  if (!email || !key) throw new Error("Thiếu GOOGLE_SERVICE_ACCOUNT_EMAIL / PRIVATE_KEY");
+  key = key.replace(/\\n/g, "\n");
+  return new google.auth.JWT({ email, key, scopes: ["https://www.googleapis.com/auth/spreadsheets"] });
+}
+
+let cached: ReturnType<typeof google.sheets> | null = null;
+function client() {
+  if (!cached) cached = google.sheets({ version: "v4", auth: getWritableAuth() });
+  return cached;
 }
 
 function normalizeMaNV(v: unknown): string {
   return String(v ?? "").trim().replace(/^0+(?=\d)/, "");
 }
-
 const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
 
-/** Số nguyên >= 0 từ ô; null nếu không đọc được. */
 function intOrNull(v: unknown): number | null {
   const s = String(v ?? "").trim();
   if (!s || !/\d/.test(s)) return null;
@@ -42,71 +43,114 @@ function intOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Mốc thời gian (ms) để so "mới nhất". Chấp nhận số serial, ISO, dd/MM/yyyy... */
-function tsToMs(v: unknown): number {
-  if (v === null || v === undefined || v === "") return 0;
-  if (typeof v === "number" && Number.isFinite(v)) {
-    // serial Google Sheets
-    if (v > 1000 && v < 100000) return Math.round((v - 25569) * 86400 * 1000);
-    return v;
+/** Thời điểm hiện tại theo giờ VN (chuỗi RAW, tránh Sheets đổi thành số serial). */
+function vnNowStr(): string {
+  const p = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Ho_Chi_Minh",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const g = (t: string) => p.find((x) => x.type === t)?.value ?? "";
+  let H = g("hour");
+  if (H === "24") H = "00";
+  return `${g("year")}-${g("month")}-${g("day")} ${H}:${g("minute")}:${g("second")}`;
+}
+
+async function ensureTab(sheets: ReturnType<typeof google.sheets>) {
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID, fields: "sheets.properties.title" });
+  if (meta.data.sheets?.some((s) => s.properties?.title === TAB)) return;
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { requests: [{ addSheet: { properties: { title: TAB } } }] },
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${TAB}'!A1`,
+    valueInputOption: "RAW",
+    requestBody: { values: [HEADERS] },
+  });
+}
+
+/** Ghi 1 dòng Code mới nhập tay. Tự tạo tab nếu chưa có. */
+export async function appendCodeMoi(input: {
+  ma: string;
+  ten: string;
+  nam: number;
+  thang: number;
+  tuan: number;
+  so: number;
+}): Promise<void> {
+  if (!SPREADSHEET_ID) throw new Error("Thiếu GOOGLE_SHEETS_SPREADSHEET_ID để lưu Code mới");
+  const sheets = client();
+  const row = [[vnNowStr(), input.ma, input.ten, input.nam, input.thang, input.tuan, input.so]];
+  const append = () =>
+    sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${TAB}'!A1`,
+      valueInputOption: "RAW",
+      insertDataOption: "INSERT_ROWS",
+      requestBody: { values: row },
+    });
+  try {
+    await append();
+  } catch {
+    await ensureTab(sheets);
+    await append();
   }
-  const s = String(v).trim();
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{1,2}))?/);
-  if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]), Number(m[4] ?? 0), Number(m[5] ?? 0)).getTime();
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
 }
 
 export interface CodeMoiManualResult {
   /** Mã NV (đã bỏ số 0 đầu) -> số Code mới nhập tay của tháng. */
   byMa: Record<string, number>;
-  /** true nếu tính năng đã được cấu hình (đọc được tab). */
+  /** true nếu tính năng đã sẵn sàng (có sheet lưu trữ). */
   configured: boolean;
   error: string | null;
 }
 
-/**
- * Đọc số Code mới NHẬP TAY cho tháng (nam, thang).
- * Với mỗi mã NV, lấy giá trị của LẦN NHẬP MỚI NHẤT trong tháng đó.
- */
+/** Đọc số Code mới NHẬP TAY cho tháng (nam, thang). Với mỗi mã NV, lấy LẦN NHẬP MỚI NHẤT. */
 export async function getCodeMoiManual(nam: number, thang: number): Promise<CodeMoiManualResult> {
+  if (!SPREADSHEET_ID) return { byMa: {}, configured: false, error: null };
+
   let raw: unknown[][];
   try {
-    const sheets = google.sheets({ version: "v4", auth: getAuth() });
+    const sheets = client();
     const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: CODEMOI_SPREADSHEET_ID,
-      range: `'${CODEMOI_TAB}'`,
+      spreadsheetId: SPREADSHEET_ID,
+      range: `'${TAB}'`,
       valueRenderOption: "UNFORMATTED_VALUE",
     });
     raw = (res.data.values as unknown[][] | undefined) ?? [];
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    // Tab chưa tạo/chưa cấu hình -> coi như chưa có số, không phải lỗi chặn.
+    // Tab chưa tồn tại (chưa ai nhập) -> coi như đã sẵn sàng, chỉ là chưa có số.
     if (/unable to parse range|not found|requested entity was not found/i.test(msg)) {
-      return { byMa: {}, configured: false, error: null };
+      return { byMa: {}, configured: true, error: null };
     }
     return { byMa: {}, configured: false, error: `Không đọc được Code mới nhập tay: ${msg}` };
   }
 
-  // Tìm dòng tiêu đề (có "mã nhân viên" và "số code mới").
   let hdrIdx = -1;
-  for (let i = 0; i < Math.min(10, raw.length); i++) {
+  for (let i = 0; i < Math.min(5, raw.length); i++) {
     const r = (raw[i] ?? []).map((x) => norm(String(x ?? "")));
     if (r.includes("mã nhân viên") && r.some((c) => c.includes("code mới"))) {
       hdrIdx = i;
       break;
     }
   }
-  if (hdrIdx < 0) return { byMa: {}, configured: raw.length > 0, error: null };
+  if (hdrIdx < 0) return { byMa: {}, configured: true, error: null };
 
   const hdr = (raw[hdrIdx] as unknown[]).map((x) => norm(String(x ?? "")));
   const iMa = hdr.findIndex((h) => h === "mã nhân viên");
   const iNam = hdr.findIndex((h) => h === "năm");
   const iThang = hdr.findIndex((h) => h === "tháng");
   const iSo = hdr.findIndex((h) => h.includes("số code mới") || h === "code mới");
-  const iTs = hdr.findIndex((h) => h.includes("thời điểm") || h.includes("thoi diem") || h === "timestamp");
 
-  const latest = new Map<string, { ts: number; so: number }>();
+  const latest = new Map<string, number>();
   for (let i = hdrIdx + 1; i < raw.length; i++) {
     const r = raw[i];
     if (!r) continue;
@@ -117,12 +161,11 @@ export async function getCodeMoiManual(nam: number, thang: number): Promise<Code
     if (nm !== nam || th !== thang) continue;
     const so = iSo >= 0 ? intOrNull(r[iSo]) : null;
     if (so === null) continue;
-    const ts = iTs >= 0 ? tsToMs(r[iTs]) : i; // không có cột thời điểm -> dùng thứ tự dòng
-    const cur = latest.get(ma);
-    if (!cur || ts >= cur.ts) latest.set(ma, { ts, so });
+    // Dòng dưới = nhập sau (append thêm ở cuối) => ghi đè, giữ giá trị MỚI NHẤT.
+    latest.set(ma, Math.max(0, so));
   }
 
   const byMa: Record<string, number> = {};
-  for (const [ma, v] of latest) byMa[ma] = Math.max(0, v.so);
+  for (const [ma, so] of latest) byMa[ma] = so;
   return { byMa, configured: true, error: null };
 }
