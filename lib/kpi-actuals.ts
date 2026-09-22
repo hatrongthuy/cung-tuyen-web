@@ -2,6 +2,7 @@ import { google } from "googleapis";
 import { allEmployees } from "./allowlist";
 import { parseMoney } from "./format";
 import { getSaleDetailData } from "./sale-detail";
+import { getCodeMoiManual } from "./code-moi";
 
 // ------------------------------------------------------------------
 // Bảng điểm KPI TỰ ĐỘNG (scorecard)
@@ -102,8 +103,8 @@ export interface MetricScore {
   diemKH: number | null;
   /** Điểm THỰC HIỆN tạm tính = min(%đạt, 100%) × Điểm KH. null nếu chưa đủ dữ liệu. */
   diemTH: number | null;
-  /** "tu-tinh" = web tự tính từ Sale; "sheet" = lấy cột Thực hiện trong file KPI; "chua-co" = chưa có số. */
-  nguon: "tu-tinh" | "sheet" | "chua-co";
+  /** "tu-tinh" = web tự tính từ Sale; "nhap-tay" = nhân viên tự nhập; "sheet" = cột Thực hiện file KPI; "chua-co" = chưa có số. */
+  nguon: "tu-tinh" | "nhap-tay" | "sheet" | "chua-co";
 }
 
 export interface EmployeeScore {
@@ -234,7 +235,8 @@ async function computeActuals(
 ): Promise<{ byMa: Record<string, Actuals>; availableKeys: Set<ActualKey>; error: string | null }> {
   const data = await getSaleDetailData();
   // Các chỉ tiêu web có nguồn tự tính. SP Cấp 2 chỉ "có nguồn" khi có NV được giao SP Cấp 2.
-  const availableKeys = new Set<ActualKey>(["keDon", "thau", "codeMoi", "spttMoMoi", "spttDuyTri"]);
+  // codeMoi KHÔNG còn tự tính (chuyển sang nhân viên tự nhập) — không đưa vào availableKeys.
+  const availableKeys = new Set<ActualKey>(["keDon", "thau", "spttMoMoi", "spttDuyTri"]);
   const cap2ByTid = data.cap2ByTid ?? [];
   if (cap2ByTid.some((a) => a.length > 0)) {
     availableKeys.add("cap2MoMoi");
@@ -365,9 +367,13 @@ export async function getKpiScorecard(
   thang: number
 ): Promise<KpiScorecardResult> {
   const monthLabel = `${String(thang).padStart(2, "0")}/${nam}`;
-  const [targets, actuals] = await Promise.all([readKpiSheetTargets(teamName), computeActuals(nam, thang)]);
+  const [targets, actuals, codeMoiManual] = await Promise.all([
+    readKpiSheetTargets(teamName),
+    computeActuals(nam, thang),
+    getCodeMoiManual(nam, thang),
+  ]);
 
-  const error = targets.error ?? actuals.error ?? null;
+  const error = targets.error ?? actuals.error ?? codeMoiManual.error ?? null;
   if (targets.byMa.size === 0) {
     return { rows: [], monthLabel, error, hasAuto: false };
   }
@@ -387,8 +393,15 @@ export async function getKpiScorecard(
 
       let thucHien: number | null = null;
       let nguon: MetricScore["nguon"] = "chua-co";
-      // Chỉ coi là "tự tính" khi chỉ tiêu có nguồn dữ liệu (VD SP Cấp 2 chỉ auto khi đã cấu hình mã).
-      if (isEmp && m.actualKey && actuals.availableKeys.has(m.actualKey)) {
+      // Code mới: KHÔNG tự tính (dữ liệu Sale không đủ tin cậy) — lấy theo số NHÂN VIÊN TỰ NHẬP.
+      if (m.key === "codeMoi") {
+        const v = codeMoiManual.byMa[ma];
+        if (v != null) {
+          thucHien = v;
+          nguon = "nhap-tay";
+        }
+      } else if (isEmp && m.actualKey && actuals.availableKeys.has(m.actualKey)) {
+        // Chỉ coi là "tự tính" khi chỉ tiêu có nguồn dữ liệu (VD SP Cấp 2 chỉ auto khi đã cấu hình mã).
         thucHien = act ? act[m.actualKey] ?? 0 : 0;
         nguon = "tu-tinh";
         if (thucHien > 0) hasAuto = true;
