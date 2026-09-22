@@ -74,7 +74,7 @@ export default function LoginStatsView({
       {totalRows === 0 && (
         <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           Chưa ghi nhận lượt đăng nhập nào. Bộ đếm bắt đầu tính từ khi tính năng này được bật — số liệu sẽ
-          xvất hiện dần khi mọi người đăng nhập. (Nếu đã có người vào mà vẫn trống, xem phần lưu ý ở cuối.)
+          xuất hiện dần khi mọi người đăng nhập. (Nếu đã có người vào mà vẫn trống, xem phần lưu ý ở cuối.)
         </p>
       )}
 
