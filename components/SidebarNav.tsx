@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Role } from "@/lib/allowlist";
 import type { NavKey } from "./AppHeader";
+import { APP_SHORT_NAME } from "@/lib/scope";
 
 const ROLE_LABEL: Record<Role, string> = {
   manager: "Quản lý nhóm",
@@ -88,7 +89,7 @@ export default function SidebarNav({
           ) : null}
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-sm font-semibold text-slate-900 sm:text-base">
-              QUẢN LÝ PS PHÚ THỌ
+              QUẢN LÝ {APP_SHORT_NAME.toUpperCase()}
             </h1>
             <p className="truncate text-xs text-slate-500">
               {hoTen} · {ROLE_LABEL[role]}
@@ -124,7 +125,7 @@ export default function SidebarNav({
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-slate-900">PS PHÚ THỌ</p>
+            <p className="text-sm font-semibold text-slate-900">{APP_SHORT_NAME.toUpperCase()}</p>
             <p className="truncate text-xs text-slate-500">{hoTen}</p>
           </div>
           <button
