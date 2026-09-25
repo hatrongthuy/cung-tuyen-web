@@ -25,7 +25,31 @@ export default async function BaoCaoThauPage() {
   const session = await auth();
   const user = session!.user!;
 
-  const rows = await getBaoCaoThau();
+  let rows: Awaited<ReturnType<typeof getBaoCaoThau>>;
+  try {
+    rows = await getBaoCaoThau();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return (
+      <>
+        <AppHeader hoTen={user.name ?? ""} role="manager" active="bao-cao-thau" />
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+            <h1 className="text-sm font-semibold text-red-800">
+              Không đọc được dữ liệu &quot;Báo cáo thầu&quot;
+            </h1>
+            <p className="mt-2 whitespace-pre-wrap break-words text-xs text-red-700">
+              {message}
+            </p>
+            <p className="mt-3 text-xs text-red-600">
+              Chụp lại đúng dòng chữ đỏ ở trên gửi cho người phụ trách kỹ thuật để kiểm tra.
+            </p>
+          </div>
+        </main>
+      </>
+    );
+  }
+
   const khachs = groupByCustomer(rows);
   const tinhOptions = distinctTinh(rows);
   const canhBaoHetHan = getCanhBaoHetHanThau(rows, NGUONG_SAP_HET_HAN_THANG);
