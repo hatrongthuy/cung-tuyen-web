@@ -278,12 +278,20 @@ export interface SpttNv {
   dt: number;
   diemBan: number;
 }
+export interface SpttCust {
+  ten: string;
+  tinh: string;
+  sl: number;
+  dt: number;
+}
 export interface SpttProduct {
   label: string;
   prodNames: string[];
   now: SpttMetric;
   prev: SpttMetric;
   byNv: SpttNv[];
+  /** Danh sách khách hàng đã mua SP này trong kỳ (now), sắp theo sản lượng giảm dần. */
+  custs: SpttCust[];
 }
 export interface SpttResult {
   products: SpttProduct[];
@@ -321,6 +329,7 @@ export function buildSptt(
     const nowCusts = new Set<number>();
     const prevCusts = new Set<number>();
     const nvMap = new Map<number, { sl: number; dt: number; custs: Set<number> }>();
+    const custAgg = new Map<number, { sl: number; dt: number }>(); // theo cid, kỳ now
 
     for (const r of data.rows) {
       if (onlyTid != null && r[C.tid] !== onlyTid) continue;
@@ -334,6 +343,10 @@ export function buildSptt(
         nv.sl += r[C.sl];
         nv.dt += r[C.dt];
         nv.custs.add(r[C.cid]);
+        let cu = custAgg.get(r[C.cid]);
+        if (!cu) { cu = { sl: 0, dt: 0 }; custAgg.set(r[C.cid], cu); }
+        cu.sl += r[C.sl];
+        cu.dt += r[C.dt];
       } else if (inPrev(r[C.di])) {
         prev.sl += r[C.sl];
         prev.dt += r[C.dt];
@@ -347,7 +360,11 @@ export function buildSptt(
       .filter((x) => x.sl > 0 || x.dt > 0)
       .sort((a, b) => b.dt - a.dt);
 
-    return { label, prodNames: pids.map((pid) => data.prod[pid]?.[1] ?? "").filter(Boolean), now, prev, byNv };
+    const custs: SpttCust[] = [...custAgg.entries()]
+      .map(([cid, v]) => ({ ten: data.cust[cid]?.[1] || `KH${cid}`, tinh: data.cust[cid]?.[2] || "", sl: v.sl, dt: v.dt }))
+      .sort((a, b) => b.sl - a.sl || b.dt - a.dt);
+
+    return { label, prodNames: pids.map((pid) => data.prod[pid]?.[1] ?? "").filter(Boolean), now, prev, byNv, custs };
   });
 
   // Tổng nhóm (điểm bán = số khách khác nhau mua BẤT KỲ SP trọng tâm nào).
@@ -363,4 +380,88 @@ export function buildSptt(
   tNow.diemBan = tNowC.size; tPrev.diemBan = tPrevC.size;
 
   return { products: products.sort((a, b) => b.now.dt - a.now.dt), tong: { now: tNow, prev: tPrev }, error: null };
+}
+
+// ------------------------------------------------------------------
+// Chọn THÁNG / KHOẢNG THÁNG cho trang SP trọng tâm (đọc từ ?tu=&den=).
+// ------------------------------------------------------------------
+export interface SpttRange {
+  nowFromMs: number;
+  nowToMs: number;
+  prevFromMs: number;
+  prevToMs: number;
+  tu: string; // "YYYY-MM" đã chọn (từ)
+  den: string; // "YYYY-MM" đã chọn (đến)
+  rangeLabel: string; // nhãn kỳ đang xem
+  prevLabel: string; // nhãn kỳ so sánh
+  isDefault: boolean; // true nếu không chọn gì (mặc định = tháng hiện tại, lũy kế tới hôm nay)
+  availableMonths: { key: string; label: string }[];
+}
+
+/** Tính cửa sổ now/prev + nhãn cho SP trọng tâm theo tháng/khoảng tháng người dùng chọn. */
+export function resolveSpttRange(
+  params: { tu?: string; den?: string },
+  today: Date,
+  baseYear = 2025,
+  baseMonth = 1
+): SpttRange {
+  const curY = today.getFullYear();
+  const curM = today.getMonth() + 1;
+  const toIdx = (y: number, m: number) => y * 12 + (m - 1);
+  const curIdx = toIdx(curY, curM);
+  const baseIdx = toIdx(baseYear, baseMonth);
+  const ym = (idx: number) => ({ y: Math.floor(idx / 12), m: (idx % 12) + 1 });
+  const key = (idx: number) => { const { y, m } = ym(idx); return `${y}-${String(m).padStart(2, "0")}`; };
+  const lbl = (idx: number) => { const { y, m } = ym(idx); return `${String(m).padStart(2, "0")}/${y}`; };
+
+  const availableMonths: { key: string; label: string }[] = [];
+  for (let i = curIdx; i >= baseIdx; i--) availableMonths.push({ key: key(i), label: lbl(i) });
+
+  const parse = (s?: string): number | null => {
+    const mm = String(s ?? "").match(/^(\d{4})-(\d{1,2})$/);
+    if (!mm) return null;
+    const idx = toIdx(Number(mm[1]), Number(mm[2]));
+    return idx >= baseIdx && idx <= curIdx ? idx : null;
+  };
+  let tuIdx = parse(params.tu);
+  let denIdx = parse(params.den);
+  const isDefault = tuIdx == null && denIdx == null;
+  if (isDefault) { tuIdx = curIdx; denIdx = curIdx; }
+  else if (tuIdx == null) tuIdx = denIdx as number;
+  else if (denIdx == null) denIdx = tuIdx;
+  if ((tuIdx as number) > (denIdx as number)) { const t = tuIdx as number; tuIdx = denIdx as number; denIdx = t; }
+  const a = tuIdx as number, b = denIdx as number;
+
+  const A = ym(a), B = ym(b);
+  const nowFromMs = new Date(A.y, A.m - 1, 1).getTime();
+  const denEndMs = new Date(B.y, B.m, 0, 23, 59, 59, 999).getTime();
+  const endOfToday = new Date(curY, curM - 1, today.getDate(), 23, 59, 59, 999).getTime();
+  const nowToMs = Math.min(denEndMs, endOfToday);
+
+  const n = b - a + 1; // số tháng trong kỳ
+  const pa = a - n, pb = a - 1; // kỳ liền trước, cùng độ dài
+  const PA = ym(pa), PB = ym(pb);
+  const prevFromMs = new Date(PA.y, PA.m - 1, 1).getTime();
+
+  let prevToMs: number;
+  let prevLabel: string;
+  let rangeLabel: string;
+  if (isDefault) {
+    // Mặc định: tháng hiện tại lũy kế tới hôm nay, so cùng kỳ (cùng ngày) tháng trước.
+    const soNgayThangTruoc = new Date(curY, curM - 1, 0).getDate();
+    const ngayTruoc = Math.min(today.getDate(), soNgayThangTruoc);
+    prevToMs = new Date(curY, curM - 2, ngayTruoc, 23, 59, 59, 999).getTime();
+    rangeLabel = `lũy kế 01–${today.getDate()}/${curM}/${curY}`;
+    prevLabel = `cùng kỳ tháng ${lbl(a - 1)}`;
+  } else {
+    prevToMs = new Date(PB.y, PB.m, 0, 23, 59, 59, 999).getTime();
+    rangeLabel = a === b ? `tháng ${lbl(a)}` : `${lbl(a)} – ${lbl(b)}`;
+    prevLabel = pa < baseIdx ? "kỳ liền trước (thiếu dữ liệu)" : (pa === pb ? `tháng ${lbl(pa)}` : `${lbl(pa)} – ${lbl(pb)}`);
+  }
+
+  return {
+    nowFromMs, nowToMs, prevFromMs, prevToMs,
+    tu: key(a), den: key(b),
+    rangeLabel, prevLabel, isDefault, availableMonths,
+  };
 }
