@@ -13,13 +13,24 @@ const SALES_TAB = process.env.GOOGLE_SHEETS_SALES_TAB || "Sale sạch";
 // Mốc gốc: 01/01/2025 (bao trùm toàn bộ lịch sử của file T1.25–T8.26).
 const BASE_DATE = "2025-01-01";
 
-// Cấu hình sản phẩm TRỌNG TÂM (giữ nguyên từ bản cũ) — theo MÃ sản phẩm chuẩn hóa.
+// Cấu hình sản phẩm TRỌNG TÂM. Nhận diện theo MÃ sản phẩm chuẩn hóa (bản cũ) HOẶC theo TÊN
+// (từ khóa) — vì sau khi lấy dữ liệu từ "Đơn kế toán", MÃ sản phẩm có thể khác mã chuẩn cũ,
+// khiến đếm ra 0. Khớp thêm theo tên cho bền (tên sản phẩm ổn định hơn mã).
 const FOCUS_CODES: Record<string, string[]> = {
   Atosiban: ["A01497"],
   "Proges sup": ["P01808", "P01846"],
   "pH Protect": ["P01879"],
   Progermila: ["P01481"],
   Propofol: ["P01845"],
+};
+
+// Từ khóa TÊN cho từng SP trọng tâm (không phân biệt hoa/thường). Khớp nếu tên chứa 1 từ khóa.
+const FOCUS_KEYWORDS: Record<string, string[]> = {
+  Atosiban: ["atosiban"],
+  "Proges sup": ["proges sup"],
+  "pH Protect": ["ph balance protect", "balance protect intimate"],
+  Progermila: ["progermila"],
+  Propofol: ["propofol"],
 };
 
 // Sản phẩm CẤP 2 (chuyên khoa PS) — ĐƯỢC GIAO CHỈ ĐỊNH THEO TỪNG NGƯỜI (chỉ Tuyền & Cường có).
@@ -219,11 +230,19 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     if (di > maxDi) maxDi = di;
   }
 
-  // focus: nhãn -> chỉ số sản phẩm (bỏ mã không có trong dữ liệu)
+  // focus: nhãn -> chỉ số sản phẩm. Khớp theo MÃ (bản cũ) VÀ theo TÊN (từ khóa) để bền với đổi mã.
   const focus: Record<string, number[]> = {};
   for (const [label, codes] of Object.entries(FOCUS_CODES)) {
-    const idxs = codes.map((c) => prodIdx.get(c)).filter((x): x is number => x !== undefined);
-    focus[label] = idxs;
+    const set = new Set<number>();
+    codes.forEach((c) => { const p = prodIdx.get(c); if (p !== undefined) set.add(p); });
+    const kws = FOCUS_KEYWORDS[label] ?? [];
+    if (kws.length) {
+      prod.forEach(([, ten], pid) => {
+        const t = (ten || "").toLowerCase();
+        if (kws.some((k) => t.includes(k))) set.add(pid);
+      });
+    }
+    focus[label] = Array.from(set);
   }
 
   // SP Cấp 2 giao riêng cho từng NV: khớp theo TÊN sản phẩm (từ khóa).
