@@ -1,7 +1,6 @@
 import { google } from "googleapis";
 import { allEmployees } from "./allowlist";
 import { parseMoney } from "./format";
-import { docDonNhapTay } from "./don-nhap-tay";
 
 // Sinh dữ liệu chi tiết cho màn "Tra cứu Sale" (public/sale.html) TRỰC TIẾP từ Google Sheet
 // "Sale sạch" — thay cho bản snapshot tĩnh trước đây (chỉ có dữ liệu từ 2026). Nhờ đọc trực tiếp,
@@ -231,46 +230,6 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     const dt = parseMoney(r[iDT]);
     rows.push([cid, tid, pid, di, sl, dt]);
     if (di > maxDi) maxDi = di;
-  }
-
-  // ---- GỘP đơn nhập tay (theo dõi) vào dữ liệu Sale ----
-  // Đơn nhập tay lưu ở tab riêng (không bị đồng bộ ghi đè). Chỉ gộp đơn của nhân viên trong nhóm.
-  // Phần tử thứ 7 của row = 1 để đánh dấu "nhập tay" (các nơi khác chỉ đọc chỉ số 0..5 nên an toàn).
-  try {
-    const dons = await docDonNhapTay();
-    for (const d of dons) {
-      const ma = normalizeMaNV(d.maNV);
-      const tid = teamMa.get(ma);
-      if (tid === undefined) continue;
-      const maKH = String(d.maKH ?? "").trim();
-      if (!maKH) continue;
-      const ms = toDateMs(d.ngayDuyet);
-      if (ms === null) continue;
-      const di = Math.round((ms - baseMs) / 86400000);
-      if (di < 0) continue;
-      const prevFirst = codeFirstDi.get(maKH);
-      if (prevFirst === undefined || di < prevFirst) codeFirstDi.set(maKH, di);
-      let cid = custIdx.get(maKH);
-      if (cid === undefined) {
-        cid = cust.length;
-        custIdx.set(maKH, cid);
-        cust.push([maKH, String(d.tenKH ?? "").trim(), String(d.tinh ?? "").trim(), String(d.nhomKH ?? "").trim()]);
-      }
-      const maSP = String(d.maSP ?? "").trim();
-      if (!maSP) continue;
-      let pid = prodIdx.get(maSP);
-      if (pid === undefined) {
-        pid = prod.length;
-        prodIdx.set(maSP, pid);
-        prod.push([maSP, String(d.tenSP ?? "").trim()]);
-      }
-      const sl = Number.isFinite(d.soLuong) ? d.soLuong : 0;
-      const dt = Number.isFinite(d.doanhThu) ? d.doanhThu : 0;
-      rows.push([cid, tid, pid, di, sl, dt, 1]);
-      if (di > maxDi) maxDi = di;
-    }
-  } catch {
-    // Không đọc được đơn nhập tay -> bỏ qua, không ảnh hưởng dữ liệu Sale.
   }
 
   // focus: nhãn -> chỉ số sản phẩm. Khớp theo MÃ (bản cũ) VÀ theo TÊN (từ khóa) để bền với đổi mã.
