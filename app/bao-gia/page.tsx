@@ -4,6 +4,7 @@ import BaoGiaView, { type CatalogUI } from "@/components/BaoGiaView";
 import type { Role } from "@/lib/allowlist";
 import { CATALOGS as SEED, NGAY_CAP_NHAT } from "@/lib/bao-gia-data";
 import { docSanPham } from "@/lib/bao-gia-sheet";
+import { quyCachThanhPhamTheoId } from "@/lib/bao-gia-quy-cach";
 
 export const metadata = {
   title: "Báo giá sản phẩm — CPC1 Hà Nội",
@@ -20,6 +21,14 @@ export default async function BaoGiaPage() {
 
   let catalogs: CatalogUI[];
   let suaDuoc = role === "manager";
+
+  // Quy cách thành phẩm (đọc trực tiếp từ file quy cách theo Mã BFO). Lỗi -> {} (không chặn trang).
+  let qcTP: Record<string, { phanLoai: string; soDangKy: string; quyCachChuan: string }> = {};
+  try {
+    qcTP = await quyCachThanhPhamTheoId();
+  } catch {
+    qcTP = {};
+  }
 
   try {
     const rows = await docSanPham();
@@ -39,6 +48,9 @@ export default async function BaoGiaPage() {
           hoatChat: r.hoatChat,
           quyCach: r.quyCach,
           gia: r.gia,
+          phanLoai: qcTP[r.id]?.phanLoai ?? "",
+          soDangKy: qcTP[r.id]?.soDangKy ?? "",
+          quyCachChuan: qcTP[r.id]?.quyCachChuan ?? "",
         })),
     }));
   } catch {
@@ -51,14 +63,20 @@ export default async function BaoGiaPage() {
       pdf: meta.pdf,
       cover: meta.cover,
       kichThuoc: meta.kichThuoc,
-      sanPham: meta.sanPham.map((sp, i) => ({
-        id: `${meta.id}-${i + 1}`,
-        nhom: sp.nhom,
-        ten: sp.ten,
-        hoatChat: sp.hoatChat,
-        quyCach: sp.quyCach,
-        gia: sp.gia,
-      })),
+      sanPham: meta.sanPham.map((sp, i) => {
+        const id = `${meta.id}-${i + 1}`;
+        return {
+          id,
+          nhom: sp.nhom,
+          ten: sp.ten,
+          hoatChat: sp.hoatChat,
+          quyCach: sp.quyCach,
+          gia: sp.gia,
+          phanLoai: qcTP[id]?.phanLoai ?? "",
+          soDangKy: qcTP[id]?.soDangKy ?? "",
+          quyCachChuan: qcTP[id]?.quyCachChuan ?? "",
+        };
+      }),
     }));
   }
 
