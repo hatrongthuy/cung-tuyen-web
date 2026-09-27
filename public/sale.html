@@ -368,23 +368,44 @@ function renderOverview(){
   </div>`;
 }
 
-function renderCustomer(){
-  if(state.selCust!=null)return renderCustDetail(state.selCust);
-  const q=state.custQuery.trim().toLowerCase();
-  // scope customers by current tdv/tinh filter
+// Dựng danh sách khách hàng theo bộ lọc hiện tại (TDV/Tỉnh/SP trọng tâm) + kỳ tháng + từ khoá.
+// Dùng chung cho hiển thị và cho nút "Tải danh sách".
+function custListData(){
   const rr=frows();
   const cids=new Set(rr.map(r=>r[C.cid]));
-  // DT theo KỲ đã chọn (Từ tháng..Đến tháng, đã lọc theo TDV/Tỉnh/SP trọng tâm).
   const dtKy=new Map();
-  for(const r of rr)dtKy.set(r[C.cid],(dtKy.get(r[C.cid])||0)+r[C.dt]);
+  for(const r of rr)dtKy.set(r[C.cid],(dtKy.get(r[C.cid])||0)+r[C.dt]); // DT theo kỳ đã chọn
+  const q=state.custQuery.trim().toLowerCase();
   let list=[...cids].map(cid=>{
     const crows=custRows(cid).filter(r=>state.tdv<0||r[C.tid]===state.tdv);
-    const lastDi=Math.max(...crows.map(r=>r[C.di])); // mua gần nhất: toàn thời gian (đánh giá duy trì)
-    const dt=dtKy.get(cid)||0; // doanh thu trong kỳ đã chọn
-    return {cid,lastDi,dt,tenkh:CUST[cid][1],makh:CUST[cid][0],tinh:CUST[cid][2]};
+    const lastDi=Math.max(...crows.map(r=>r[C.di])); // mua gần nhất: toàn thời gian
+    const lastRow=crows.reduce((a,r)=>r[C.di]>a[C.di]?r:a,crows[0]);
+    const dt=dtKy.get(cid)||0;
+    return {cid,lastDi,dt,tid:lastRow[C.tid],tenkh:CUST[cid][1],makh:CUST[cid][0],tinh:CUST[cid][2],nhom:CUST[cid][3]||""};
   });
   if(q)list=list.filter(c=>c.tenkh.toLowerCase().includes(q)||c.makh.toLowerCase().includes(q));
   list.sort((a,b)=>b.lastDi-a.lastDi);
+  return list;
+}
+function trangThaiKH(days){return days<=45?"Duy trì tốt":(days<=90?"Chú ý":"Lâu chưa lấy");}
+function taiDanhSachKH(){
+  const list=custListData();
+  if(!list.length){alert("Không có khách hàng nào để tải với bộ lọc/kỳ hiện tại.");return;}
+  const head=["STT","Mã KH","Tên khách hàng","Nhóm KH","Tỉnh","TDV phụ trách","Mua gần nhất","Số ngày chưa lấy","Trạng thái","DT kỳ "+state.mFrom+"→"+state.mTo+" (đ)"];
+  const eh=v=>String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const trs=list.map((c,i)=>{const d=daysSince(c.lastDi);return `<tr><td>${i+1}</td><td>${eh(c.makh)}</td><td>${eh(c.tenkh)}</td><td>${eh(c.nhom)}</td><td>${eh(c.tinh)}</td><td>${eh(TDV[c.tid]||"")}</td><td>${eh(dstr(diToDate(c.lastDi)))}</td><td>${d}</td><td>${trangThaiKH(d)}</td><td>${Math.round(c.dt)}</td></tr>`;}).join("");
+  const html=`<html><head><meta charset="utf-8"></head><body><table border="1"><thead><tr>${head.map(h=>`<th>${eh(h)}</th>`).join("")}</tr></thead><tbody>${trs}</tbody></table></body></html>`;
+  const blob=new Blob(["﻿"+html],{type:"application/vnd.ms-excel;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const safe=s=>String(s).replace(/[\\/:*?"<>|]/g,"-").replace(/\s+/g,"_");
+  const a=document.createElement("a");
+  a.href=url;a.download=`danh_sach_khach_hang_${state.tdv>=0?safe(TDV[state.tdv]):"tat-ca-TDV"}_${state.tinh?safe(state.tinh):"tat-ca-tinh"}_${safe(state.mFrom)}-${safe(state.mTo)}.xls`;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function renderCustomer(){
+  if(state.selCust!=null)return renderCustDetail(state.selCust);
+  const q=state.custQuery.trim().toLowerCase();
+  const list=custListData();
   const shown=list.slice(0,60);
   const items=shown.map(c=>{
     const days=daysSince(c.lastDi);
@@ -392,7 +413,10 @@ function renderCustomer(){
   }).join("");
   return `
   <div class="card pad">
-    <div class="search-row"><input type="text" id="custSearch" placeholder="🔍 Tìm khách hàng theo tên hoặc mã KH…" value="${esc(state.custQuery)}" autocomplete="off"></div>
+    <div class="search-row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <input type="text" id="custSearch" placeholder="🔍 Tìm khách hàng theo tên hoặc mã KH…" value="${esc(state.custQuery)}" autocomplete="off" style="flex:1;min-width:200px">
+      <button id="btnTaiKH" data-dl="cust" title="Tải danh sách khách hàng ra Excel (theo bộ lọc & kỳ tháng đang chọn)" style="cursor:pointer;border:none;border-radius:10px;padding:10px 14px;font-weight:600;font-size:13px;background:var(--brand);color:#fff;font-family:inherit;white-space:nowrap">⬇ Tải danh sách (${list.length})</button>
+    </div>
     <div class="ci-meta" style="margin-top:8px;color:var(--muted)">${list.length} khách hàng${q?" khớp":""}${list.length>60?" · hiển thị 60 gần nhất":""} · bấm để xem chi tiết sản phẩm đang lấy</div>
     <div class="cust-list">${items||`<div class="empty">Không tìm thấy khách hàng phù hợp</div>`}</div>
   </div>`;
@@ -699,6 +723,7 @@ async function runCustAI(cid,btn){
   finally{btn.disabled=false;btn.textContent=old;}
 }
 document.addEventListener("click",e=>{
+  const dl=e.target.closest("[data-dl]");if(dl){if(dl.dataset.dl==="cust")taiDanhSachKH();return;}
   const aiBtn=e.target.closest("[data-ai-cust]");if(aiBtn){runCustAI(+aiBtn.dataset.aiCust,aiBtn);return;}
   const tab=e.target.closest("[data-tab]");if(tab){state.tab=tab.dataset.tab;state.selCust=null;state.selProd=null;state._activeSearch=null;renderTabs();render();window.scrollTo({top:0});return;}
   const seg=e.target.closest(".seg button");if(seg){const s=seg.parentElement.dataset.seg;
