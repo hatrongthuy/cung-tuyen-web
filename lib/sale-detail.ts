@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { allEmployees } from "./allowlist";
 import { parseMoney } from "./format";
+import { docDonNhapTay } from "./don-nhap-tay";
 
 // Sinh dữ liệu chi tiết cho màn "Tra cứu Sale" (public/sale.html) TRỰC TIẾP từ Google Sheet
 // "Sale sạch" — thay cho bản snapshot tĩnh trước đây (chỉ có dữ liệu từ 2026). Nhờ đọc trực tiếp,
@@ -77,6 +78,7 @@ export interface SaleDetailData {
   base: string;
   asofDi: number;
   tdv: string[];
+  tdvMa: string[]; // theo tid -> mã nhân viên (để form thêm đơn chọn TDV)
   cust: [string, string, string, string][]; // [mã, tên, tỉnh, nhóm KH]
   prod: [string, string][]; // [mã, tên]
   focus: Record<string, number[]>; // nhãn -> danh sách chỉ số sản phẩm (SP trọng tâm/SPTT)
@@ -90,6 +92,7 @@ const EMPTY = (error: string): SaleDetailData => ({
   base: BASE_DATE,
   asofDi: 0,
   tdv: [],
+  tdvMa: [],
   cust: [],
   prod: [],
   focus: {},
@@ -230,6 +233,46 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     if (di > maxDi) maxDi = di;
   }
 
+  // ---- GỘP đơn nhập tay (theo dõi) vào dữ liệu Sale ----
+  // Đơn nhập tay lưu ở tab riêng (không bị đồng bộ ghi đè). Chỉ gộp đơn của nhân viên trong nhóm.
+  // Phần tử thứ 7 của row = 1 để đánh dấu "nhập tay" (các nơi khác chỉ đọc chỉ số 0..5 nên an toàn).
+  try {
+    const dons = await docDonNhapTay();
+    for (const d of dons) {
+      const ma = normalizeMaNV(d.maNV);
+      const tid = teamMa.get(ma);
+      if (tid === undefined) continue;
+      const maKH = String(d.maKH ?? "").trim();
+      if (!maKH) continue;
+      const ms = toDateMs(d.ngayDuyet);
+      if (ms === null) continue;
+      const di = Math.round((ms - baseMs) / 86400000);
+      if (di < 0) continue;
+      const prevFirst = codeFirstDi.get(maKH);
+      if (prevFirst === undefined || di < prevFirst) codeFirstDi.set(maKH, di);
+      let cid = custIdx.get(maKH);
+      if (cid === undefined) {
+        cid = cust.length;
+        custIdx.set(maKH, cid);
+        cust.push([maKH, String(d.tenKH ?? "").trim(), String(d.tinh ?? "").trim(), String(d.nhomKH ?? "").trim()]);
+      }
+      const maSP = String(d.maSP ?? "").trim();
+      if (!maSP) continue;
+      let pid = prodIdx.get(maSP);
+      if (pid === undefined) {
+        pid = prod.length;
+        prodIdx.set(maSP, pid);
+        prod.push([maSP, String(d.tenSP ?? "").trim()]);
+      }
+      const sl = Number.isFinite(d.soLuong) ? d.soLuong : 0;
+      const dt = Number.isFinite(d.doanhThu) ? d.doanhThu : 0;
+      rows.push([cid, tid, pid, di, sl, dt, 1]);
+      if (di > maxDi) maxDi = di;
+    }
+  } catch {
+    // Không đọc được đơn nhập tay -> bỏ qua, không ảnh hưởng dữ liệu Sale.
+  }
+
   // focus: nhãn -> chỉ số sản phẩm. Khớp theo MÃ (bản cũ) VÀ theo TÊN (từ khóa) để bền với đổi mã.
   const focus: Record<string, number[]> = {};
   for (const [label, codes] of Object.entries(FOCUS_CODES)) {
@@ -260,7 +303,7 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
   // Mốc code mới theo từng khách của nhóm (cid) = lần đầu mã khách đó xuất hiện trên toàn bộ file.
   const custFirstDi: number[] = cust.map(([maKH]) => codeFirstDi.get(maKH) ?? 0);
 
-  return { base: BASE_DATE, asofDi: maxDi, tdv, cust, prod, focus, cap2ByTid, custFirstDi, rows, error: null };
+  return { base: BASE_DATE, asofDi: maxDi, tdv, tdvMa: tidMa, cust, prod, focus, cap2ByTid, custFirstDi, rows, error: null };
 }
 
 // ---------- Bài 3: Triển khai SẢN PHẨM TRỌNG TÂM ----------
