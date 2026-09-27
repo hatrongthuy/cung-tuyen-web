@@ -9,6 +9,9 @@ export interface SanPhamUI {
   hoatChat: string;
   quyCach: string;
   gia: string;
+  phanLoai?: string; // Thuốc / TTB
+  soDangKy?: string;
+  quyCachChuan?: string; // quy cách thành phẩm (đóng gói/kiện)
 }
 
 export interface CatalogUI {
@@ -72,7 +75,8 @@ export default function BaoGiaView({
       khongDau(sp.ten).includes(q) ||
       khongDau(sp.hoatChat).includes(q) ||
       khongDau(sp.nhom).includes(q) ||
-      khongDau(sp.quyCach).includes(q);
+      khongDau(sp.quyCach).includes(q) ||
+      khongDau(sp.soDangKy ?? "").includes(q);
 
     // Có từ khoá: gõ là ra sản phẩm + giá trên tất cả catalog, gom theo tên báo giá.
     if (q) {
@@ -358,28 +362,76 @@ function NhomBlock({
         </td>
       </tr>
       {arr.map((sp) => (
-        <tr key={sp.id} className="border-b border-slate-100 align-top">
-          <td className="py-2 pr-3">
-            <p className="font-medium text-slate-900">{sp.ten}</p>
-            <p className="text-xs text-slate-500">{sp.hoatChat}</p>
-          </td>
-          <td className="py-2 pr-3 text-xs text-slate-600">{sp.quyCach}</td>
-          <td className="py-2 pr-3 text-right font-semibold whitespace-nowrap text-slate-900">
-            {dangSua ? (
-              <input
-                type="text"
-                value={edits[sp.id] ?? sp.gia}
-                onChange={(e) =>
-                  setEdits((prev) => ({ ...prev, [sp.id]: e.target.value }))
-                }
-                className="w-44 rounded-md border border-slate-300 px-2 py-1 text-right text-sm font-semibold outline-none focus:border-emerald-500"
-              />
-            ) : (
-              sp.gia
-            )}
+        <SanPhamRow key={sp.id} sp={sp} dangSua={dangSua} edits={edits} setEdits={setEdits} />
+      ))}
+    </>
+  );
+}
+
+function SanPhamRow({
+  sp,
+  dangSua,
+  edits,
+  setEdits,
+}: {
+  sp: SanPhamUI;
+  dangSua: boolean;
+  edits: Record<string, string>;
+  setEdits: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+}) {
+  const [moQC, setMoQC] = useState(false);
+  const coQC = !!(sp.quyCachChuan && sp.quyCachChuan.trim());
+  return (
+    <>
+      <tr className="border-b border-slate-100 align-top">
+        <td className="py-2 pr-3">
+          <p className="font-medium text-slate-900">{sp.ten}</p>
+          <p className="text-xs text-slate-500">{sp.hoatChat}</p>
+          {coQC && !dangSua && (
+            <button
+              onClick={() => setMoQC((v) => !v)}
+              className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 hover:text-emerald-800"
+            >
+              <span>{moQC ? "▾" : "▸"}</span> Quy cách thành phẩm
+            </button>
+          )}
+        </td>
+        <td className="py-2 pr-3 text-xs text-slate-600">{sp.quyCach}</td>
+        <td className="py-2 pr-3 text-right font-semibold whitespace-nowrap text-slate-900">
+          {dangSua ? (
+            <input
+              type="text"
+              value={edits[sp.id] ?? sp.gia}
+              onChange={(e) => setEdits((prev) => ({ ...prev, [sp.id]: e.target.value }))}
+              className="w-44 rounded-md border border-slate-300 px-2 py-1 text-right text-sm font-semibold outline-none focus:border-emerald-500"
+            />
+          ) : (
+            sp.gia
+          )}
+        </td>
+      </tr>
+      {coQC && moQC && !dangSua && (
+        <tr className="border-b border-slate-100">
+          <td colSpan={3} className="pb-3">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 text-xs">
+              <div className="mb-1 flex flex-wrap gap-x-4 gap-y-0.5 text-slate-600">
+                {sp.phanLoai && (
+                  <span>
+                    Phân loại: <span className="font-medium text-slate-800">{sp.phanLoai}</span>
+                  </span>
+                )}
+                {sp.soDangKy && (
+                  <span>
+                    Số đăng ký: <span className="font-medium text-slate-800">{sp.soDangKy}</span>
+                  </span>
+                )}
+              </div>
+              <p className="mb-0.5 font-semibold text-emerald-800">Quy cách thành phẩm</p>
+              <p className="whitespace-pre-line leading-relaxed text-slate-700">{sp.quyCachChuan}</p>
+            </div>
           </td>
         </tr>
-      ))}
+      )}
     </>
   );
 }
