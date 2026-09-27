@@ -399,17 +399,22 @@ function renderCustomer(){
 }
 
 function renderCustDetail(cid){
-  const crows=custRows(cid).filter(r=>state.tdv<0||r[C.tid]===state.tdv);
+  const crowsAll=custRows(cid).filter(r=>state.tdv<0||r[C.tid]===state.tdv);
+  // Lọc theo KỲ đã chọn (Từ tháng..Đến tháng) cho doanh thu / sản lượng / số lần.
+  const crows=crowsAll.filter(r=>{const m=diToMonth(r[C.di]);return m>=state.mFrom&&m<=state.mTo;});
   const c=CUST[cid];
-  // current tdv = most recent
-  const lastRow=crows.reduce((a,r)=>r[C.di]>a[C.di]?r:a,crows[0]);
+  // TDV phụ trách & "mua gần nhất" theo TOÀN THỜI GIAN (recency thật để đánh giá duy trì).
+  const lastRow=crowsAll.reduce((a,r)=>r[C.di]>a[C.di]?r:a,crowsAll[0]);
   const tdvName=TDV[lastRow[C.tid]];
-  const dt=crows.reduce((a,r)=>a+r[C.dt],0);
-  const lastDi=Math.max(...crows.map(r=>r[C.di]));
-  // per product
+  const lastDi=Math.max(...crowsAll.map(r=>r[C.di]));
+  const dt=crows.reduce((a,r)=>a+r[C.dt],0); // doanh thu trong kỳ
+  // Lấy gần nhất TOÀN THỜI GIAN theo từng SP (để trạng thái duy trì đúng thực tế).
+  const lastAllByP=new Map();
+  for(const r of crowsAll){const p=r[C.pid];const cur=lastAllByP.get(p);if(cur===undefined||r[C.di]>cur)lastAllByP.set(p,r[C.di]);}
+  // Số lần / SL / DT theo KỲ đã chọn.
   const byP=new Map();
-  for(const r of crows){const p=r[C.pid];if(!byP.has(p))byP.set(p,{pid:p,dt:0,sl:0,dates:new Set(),last:-1});const o=byP.get(p);o.dt+=r[C.dt];o.sl+=r[C.sl];o.dates.add(r[C.di]);if(r[C.di]>o.last)o.last=r[C.di];}
-  const prods=[...byP.values()].sort((a,b)=>b.last-a.last||b.dt-a.dt);
+  for(const r of crows){const p=r[C.pid];if(!byP.has(p))byP.set(p,{pid:p,dt:0,sl:0,dates:new Set()});const o=byP.get(p);o.dt+=r[C.dt];o.sl+=r[C.sl];o.dates.add(r[C.di]);}
+  const prods=[...byP.values()].map(o=>({pid:o.pid,dt:o.dt,sl:o.sl,dates:o.dates,last:lastAllByP.get(o.pid)??-1})).sort((a,b)=>b.last-a.last||b.dt-a.dt);
   const nActive=prods.filter(p=>daysSince(p.last)<=45).length;
   const rowsHtml=prods.map(p=>{
     const days=daysSince(p.last);
@@ -423,11 +428,12 @@ function renderCustDetail(cid){
     <div class="dhead"><h2>${esc(c[1])}</h2><span class="tag">${esc(c[3]||"—")}</span></div>
     <div class="dmeta"><span>Mã KH: <b class="mono">${esc(c[0])}</b></span><span>Tỉnh: <b>${esc(c[2])}</b></span><span>TDV phụ trách: <b>${esc(tdvName)}</b></span><span>Mua gần nhất: <b>${dstr(diToDate(lastDi))}</b> (${daysSince(lastDi)} ngày)</span></div>
     <div class="mini-kpis">
-      <div class="mini"><div class="m-l">Tổng doanh thu</div><div class="m-v num">${compact(dt)}</div></div>
-      <div class="mini"><div class="m-l">SP từng lấy</div><div class="m-v num">${prods.length}</div></div>
+      <div class="mini"><div class="m-l">Doanh thu kỳ ${state.mFrom}→${state.mTo}</div><div class="m-v num">${compact(dt)}</div></div>
+      <div class="mini"><div class="m-l">SP lấy trong kỳ</div><div class="m-v num">${prods.length}</div></div>
       <div class="mini"><div class="m-l">SP đang duy trì</div><div class="m-v num" style="color:var(--good)">${nActive}</div></div>
       <div class="mini"><div class="m-l">SP lâu chưa lấy</div><div class="m-v num" style="color:var(--crit)">${prods.filter(p=>daysSince(p.last)>90).length}</div></div>
     </div>
+    ${prods.length===0?`<div class="note" style="margin-bottom:12px;color:var(--warn)">Khách này không có giao dịch trong kỳ ${state.mFrom}→${state.mTo}. Đổi Từ/Đến tháng để xem kỳ khác.</div>`:""}
     <div class="note" style="margin-bottom:12px">Trạng thái theo lần lấy gần nhất: <b style="color:var(--good)">Duy trì tốt</b> ≤45 ngày · <b style="color:var(--warn)">Chú ý</b> 46–90 ngày · <b style="color:var(--crit)">Lâu chưa lấy</b> &gt;90 ngày (mốc so sánh: ${dstr(ASOF)}).</div>
     <div class="tbl-wrap"><table><thead><tr><th class="no-sort">Sản phẩm</th><th class="r no-sort">Số lần</th><th class="r no-sort">Tổng SL</th><th class="r no-sort">Doanh thu</th><th class="no-sort">Lấy gần nhất</th><th class="r no-sort">Ngày chưa lấy</th><th class="no-sort">Trạng thái</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>
     <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"><button class="ai-btn" data-ai-cust="${cid}" style="cursor:pointer;border:none;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13px;background:var(--brand);color:#fff;font-family:inherit">🤖 Phân tích AI khách hàng</button><div class="ai-hint" style="margin-top:6px;font-size:12px;color:var(--muted)">Gợi ý sản phẩm tiềm năng nên chào lại &amp; hành động cho lần gặp tới.</div><div data-ai-out="${cid}" style="margin-top:12px"></div></div>
