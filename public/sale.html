@@ -374,10 +374,13 @@ function renderCustomer(){
   // scope customers by current tdv/tinh filter
   const rr=frows();
   const cids=new Set(rr.map(r=>r[C.cid]));
+  // DT theo KỲ đã chọn (Từ tháng..Đến tháng, đã lọc theo TDV/Tỉnh/SP trọng tâm).
+  const dtKy=new Map();
+  for(const r of rr)dtKy.set(r[C.cid],(dtKy.get(r[C.cid])||0)+r[C.dt]);
   let list=[...cids].map(cid=>{
     const crows=custRows(cid).filter(r=>state.tdv<0||r[C.tid]===state.tdv);
-    const lastDi=Math.max(...crows.map(r=>r[C.di]));
-    const dt=crows.reduce((a,r)=>a+r[C.dt],0);
+    const lastDi=Math.max(...crows.map(r=>r[C.di])); // mua gần nhất: toàn thời gian (đánh giá duy trì)
+    const dt=dtKy.get(cid)||0; // doanh thu trong kỳ đã chọn
     return {cid,lastDi,dt,tenkh:CUST[cid][1],makh:CUST[cid][0],tinh:CUST[cid][2]};
   });
   if(q)list=list.filter(c=>c.tenkh.toLowerCase().includes(q)||c.makh.toLowerCase().includes(q));
@@ -385,7 +388,7 @@ function renderCustomer(){
   const shown=list.slice(0,60);
   const items=shown.map(c=>{
     const days=daysSince(c.lastDi);
-    return `<button class="cust-item" data-cust="${c.cid}"><div class="ci-top"><div style="min-width:0"><div class="ci-name">${esc(c.tenkh)}</div><div class="ci-meta"><span class="mono">${esc(c.makh)}</span> · ${esc(c.tinh)}</div></div>${chip(days)}</div><div class="ci-meta" style="margin-top:8px">Mua gần nhất: <b style="color:var(--ink)">${dstr(diToDate(c.lastDi))}</b> · DT: ${vnd(c.dt)}đ</div></button>`;
+    return `<button class="cust-item" data-cust="${c.cid}"><div class="ci-top"><div style="min-width:0"><div class="ci-name">${esc(c.tenkh)}</div><div class="ci-meta"><span class="mono">${esc(c.makh)}</span> · ${esc(c.tinh)}</div></div>${chip(days)}</div><div class="ci-meta" style="margin-top:8px">Mua gần nhất: <b style="color:var(--ink)">${dstr(diToDate(c.lastDi))}</b> · DT kỳ ${state.mFrom}→${state.mTo}: <b style="color:var(--ink)">${vnd(c.dt)}đ</b></div></button>`;
   }).join("");
   return `
   <div class="card pad">
