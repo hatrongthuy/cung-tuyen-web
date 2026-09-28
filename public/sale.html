@@ -424,45 +424,50 @@ function renderCustomer(){
 }
 
 function renderCustDetail(cid){
-  const crowsAll=custRows(cid).filter(r=>state.tdv<0||r[C.tid]===state.tdv);
-  // Lọc theo KỲ đã chọn (Từ tháng..Đến tháng) cho doanh thu / sản lượng / số lần.
-  const crows=crowsAll.filter(r=>{const m=diToMonth(r[C.di]);return m>=state.mFrom&&m<=state.mTo;});
   const c=CUST[cid];
-  // TDV phụ trách & "mua gần nhất" theo TOÀN THỜI GIAN (recency thật để đánh giá duy trì).
-  const lastRow=crowsAll.reduce((a,r)=>r[C.di]>a[C.di]?r:a,crowsAll[0]);
-  const tdvName=TDV[lastRow[C.tid]];
-  const lastDi=Math.max(...crowsAll.map(r=>r[C.di]));
-  const dt=crows.reduce((a,r)=>a+r[C.dt],0); // doanh thu trong kỳ
-  // Lấy gần nhất TOÀN THỜI GIAN theo từng SP (để trạng thái duy trì đúng thực tế).
-  const lastAllByP=new Map();
-  for(const r of crowsAll){const p=r[C.pid];const cur=lastAllByP.get(p);if(cur===undefined||r[C.di]>cur)lastAllByP.set(p,r[C.di]);}
-  // Số lần / SL / DT theo KỲ đã chọn.
-  const byP=new Map();
-  for(const r of crows){const p=r[C.pid];if(!byP.has(p))byP.set(p,{pid:p,dt:0,sl:0,dates:new Set()});const o=byP.get(p);o.dt+=r[C.dt];o.sl+=r[C.sl];o.dates.add(r[C.di]);}
-  const prods=[...byP.values()].map(o=>({pid:o.pid,dt:o.dt,sl:o.sl,dates:o.dates,last:lastAllByP.get(o.pid)??-1})).sort((a,b)=>b.last-a.last||b.dt-a.dt);
-  const nActive=prods.filter(p=>daysSince(p.last)<=45).length;
-  const rowsHtml=prods.map(p=>{
-    const days=daysSince(p.last);
-    return `<tr><td class="name-cell"><span class="n1">${esc(PROD[p.pid][1])}</span><div class="n2"><span class="mono">${esc(PROD[p.pid][0])}</span>${PID2FOCUS[p.pid]?` <span class="tag">⭐ ${PID2FOCUS[p.pid]}</span>`:""}</div></td>
-      <td class="r num">${p.dates.size}</td><td class="r num">${nf.format(p.sl)}</td><td class="r num">${vnd(p.dt)}</td>
-      <td class="num">${dstr(diToDate(p.last))}</td><td class="r num">${days}</td><td>${chip(days)}</td></tr>`;
-  }).join("");
   return `
   <button class="back" data-back="cust">← Danh sách khách hàng</button>
   <div class="card pad">
     <div class="dhead"><h2>${esc(c[1])}</h2><span class="tag">${esc(c[3]||"—")}</span></div>
-    <div class="dmeta"><span>Mã KH: <b class="mono">${esc(c[0])}</b></span><span>Tỉnh: <b>${esc(c[2])}</b></span><span>TDV phụ trách: <b>${esc(tdvName)}</b></span><span>Mua gần nhất: <b>${dstr(diToDate(lastDi))}</b> (${daysSince(lastDi)} ngày)</span></div>
-    <div class="mini-kpis">
-      <div class="mini"><div class="m-l">Doanh thu kỳ ${state.mFrom}→${state.mTo}</div><div class="m-v num">${compact(dt)}</div></div>
-      <div class="mini"><div class="m-l">SP lấy trong kỳ</div><div class="m-v num">${prods.length}</div></div>
-      <div class="mini"><div class="m-l">SP đang duy trì</div><div class="m-v num" style="color:var(--good)">${nActive}</div></div>
-      <div class="mini"><div class="m-l">SP lâu chưa lấy</div><div class="m-v num" style="color:var(--crit)">${prods.filter(p=>daysSince(p.last)>90).length}</div></div>
-    </div>
-    ${prods.length===0?`<div class="note" style="margin-bottom:12px;color:var(--warn)">Khách này không có giao dịch trong kỳ ${state.mFrom}→${state.mTo}. Đổi Từ/Đến tháng để xem kỳ khác.</div>`:""}
-    <div class="note" style="margin-bottom:12px">Trạng thái theo lần lấy gần nhất: <b style="color:var(--good)">Duy trì tốt</b> ≤45 ngày · <b style="color:var(--warn)">Chú ý</b> 46–90 ngày · <b style="color:var(--crit)">Lâu chưa lấy</b> &gt;90 ngày (mốc so sánh: ${dstr(ASOF)}).</div>
-    <div class="tbl-wrap"><table><thead><tr><th class="no-sort">Sản phẩm</th><th class="r no-sort">Số lần</th><th class="r no-sort">Tổng SL</th><th class="r no-sort">Doanh thu</th><th class="no-sort">Lấy gần nhất</th><th class="r no-sort">Ngày chưa lấy</th><th class="no-sort">Trạng thái</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>
-    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"><button class="ai-btn" data-ai-cust="${cid}" style="cursor:pointer;border:none;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13px;background:var(--brand);color:#fff;font-family:inherit">🤖 Phân tích AI khách hàng</button><div class="ai-hint" style="margin-top:6px;font-size:12px;color:var(--muted)">Gợi ý sản phẩm tiềm năng nên chào lại &amp; hành động cho lần gặp tới.</div><div data-ai-out="${cid}" style="margin-top:12px"></div></div>
+    <div class="dmeta"><span>Mã KH: <b class="mono">${esc(c[0])}</b></span><span>Tỉnh: <b>${esc(c[2])}</b></span></div>
+    <div id="custBox" style="margin-top:12px;color:var(--muted)">Đang tải tất cả đơn của khách…</div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)"><button class="ai-btn" data-ai-cust="${cid}" style="cursor:pointer;border:none;border-radius:10px;padding:10px 16px;font-weight:600;font-size:13px;background:var(--brand);color:#fff;font-family:inherit">🤖 Phân tích AI khách hàng</button><div class="ai-hint" style="margin-top:6px;font-size:12px;color:var(--muted)">Gợi ý sản phẩm tiềm năng nên chào lại &amp; hành động cho lần gặp tới (theo dữ liệu nhóm).</div><div data-ai-out="${cid}" style="margin-top:12px"></div></div>
   </div>`;
+}
+function napCustDetail(cid){
+  const box=document.getElementById("custBox");if(!box)return;
+  const makh=CUST[cid][0];
+  fetch("/api/khach-hang?ma="+encodeURIComponent(makh),{cache:"no-store"}).then(r=>r.json()).then(j=>{
+    if(!j.ok){box.textContent="Không tải được: "+(j.error||"");return;}
+    const all=j.lines||[];
+    if(!all.length){box.innerHTML=`<div class="empty">Không có dữ liệu đơn cho khách này.</div>`;return;}
+    const crows=all.filter(l=>{const m=diToMonth(l.di);return m>=state.mFrom&&m<=state.mTo;});
+    const lastDi=Math.max(...all.map(l=>l.di));
+    const dtKy=crows.reduce((a,l)=>a+(l.dt||0),0);
+    const lastByP=new Map();for(const l of all){const cur=lastByP.get(l.maSP);if(cur===undefined||l.di>cur)lastByP.set(l.maSP,l.di);}
+    const byP=new Map();
+    for(const l of crows){let o=byP.get(l.maSP);if(!o){o={maSP:l.maSP,tenSP:l.tenSP,sl:0,dt:0,dates:new Set(),reps:new Map()};byP.set(l.maSP,o);}o.sl+=l.sl;o.dt+=l.dt;o.dates.add(l.di);let rp=o.reps.get(l.maNV);if(!rp){rp={ten:l.tenNV||l.maNV,sl:0,dt:0};o.reps.set(l.maNV,rp);}rp.sl+=l.sl;rp.dt+=l.dt;}
+    const prods=[...byP.values()].map(o=>({maSP:o.maSP,tenSP:o.tenSP,sl:o.sl,dt:o.dt,dates:o.dates,reps:o.reps,last:lastByP.get(o.maSP)??-1})).sort((a,b)=>b.last-a.last||b.dt-a.dt);
+    const nActive=prods.filter(p=>daysSince(p.last)<=45).length;
+    const nOld=prods.filter(p=>daysSince(p.last)>90).length;
+    const rowsHtml=prods.map(p=>{
+      const days=daysSince(p.last);
+      const multi=p.reps.size>1;
+      const repRows=[...p.reps.entries()].sort((a,b)=>b[1].sl-a[1].sl).map(([ma,rp])=>`<tr class="cd-rep" data-for="${esc(p.maSP)}" style="display:none;background:var(--panel2,transparent)"><td style="padding-left:20px;color:var(--muted)">↳ ${esc(rp.ten)}</td><td class="r num"></td><td class="r num">${nf.format(rp.sl)}</td><td class="r num">${vnd(rp.dt)}</td><td></td><td></td><td></td></tr>`).join("");
+      return `<tr class="cd-head" data-prod="${esc(p.maSP)}" style="cursor:${multi?"pointer":"default"}"><td class="name-cell"><span class="n1">${multi?'<span style="color:var(--muted)">▸ </span>':""}${esc(p.tenSP||p.maSP)}</span><div class="n2"><span class="mono">${esc(p.maSP)}</span>${multi?` · <span style="color:var(--muted)">${p.reps.size} NV</span>`:""}</div></td><td class="r num">${p.dates.size}</td><td class="r num">${nf.format(p.sl)}</td><td class="r num">${vnd(p.dt)}</td><td class="num">${dstr(diToDate(p.last))}</td><td class="r num">${days}</td><td>${chip(days)}</td></tr>${repRows}`;
+    }).join("");
+    box.innerHTML=`
+      <div class="dmeta" style="margin-bottom:10px"><span>Nhóm KH: <b>${esc(j.nhomKH||"—")}</b></span><span>Mua gần nhất: <b>${dstr(diToDate(lastDi))}</b> (${daysSince(lastDi)} ngày)</span><span>Số NV bán vào: <b>${new Set(all.map(l=>l.maNV)).size}</b></span></div>
+      <div class="mini-kpis">
+        <div class="mini"><div class="m-l">Doanh thu kỳ ${state.mFrom}→${state.mTo}</div><div class="m-v num">${compact(dtKy)}</div></div>
+        <div class="mini"><div class="m-l">SP lấy trong kỳ</div><div class="m-v num">${prods.length}</div></div>
+        <div class="mini"><div class="m-l">SP đang duy trì</div><div class="m-v num" style="color:var(--good)">${nActive}</div></div>
+        <div class="mini"><div class="m-l">SP lâu chưa lấy</div><div class="m-v num" style="color:var(--crit)">${nOld}</div></div>
+      </div>
+      ${prods.length===0?`<div class="note" style="margin:10px 0;color:var(--warn)">Khách không có giao dịch trong kỳ ${state.mFrom}→${state.mTo}. Đổi Từ/Đến tháng để xem kỳ khác.</div>`:""}
+      <div class="note" style="margin:10px 0">Hiển thị <b>TẤT CẢ đơn</b> của khách (mọi nhân viên, kể cả ngoài nhóm). Bấm 1 SP có nhiều NV để xem chi tiết từng người. Trạng thái theo lần lấy gần nhất (mốc: ${dstr(ASOF)}).</div>
+      <div class="tbl-wrap"><table><thead><tr><th class="no-sort">Sản phẩm</th><th class="r no-sort">Số lần</th><th class="r no-sort">Tổng SL</th><th class="r no-sort">Doanh thu</th><th class="no-sort">Lấy gần nhất</th><th class="r no-sort">Ngày chưa lấy</th><th class="no-sort">Trạng thái</th></tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+  }).catch(e=>{box.textContent="Lỗi: "+e.message;});
 }
 
 function productAgg(rows){
@@ -706,6 +711,7 @@ function render(){
     state.tab==="focus"?renderFocus():
     state.tab==="don-hang"?renderDonHang():renderMonthly();
   if(state.tab==="don-hang")napDonHang();
+  if(state.tab==="customer"&&state.selCust!=null)napCustDetail(state.selCust);
   // keep search focus
   const sid=state._activeSearch==="cust"?"custSearch":state._activeSearch==="prod"?"prodSearch":null;
   if(sid){const cs=document.getElementById(sid);if(cs&&document.activeElement!==cs){cs.focus();cs.setSelectionRange(cs.value.length,cs.value.length);}}
@@ -764,6 +770,7 @@ async function runCustAI(cid,btn){
 }
 document.addEventListener("click",e=>{
   const dl=e.target.closest("[data-dl]");if(dl){if(dl.dataset.dl==="cust")taiDanhSachKH();return;}
+  const cdh=e.target.closest(".cd-head");if(cdh&&cdh.dataset.prod){const id=String(cdh.dataset.prod).replace(/[\\"]/g,"\\$&");document.querySelectorAll('.cd-rep[data-for="'+id+'"]').forEach(el=>{el.style.display=el.style.display==="none"?"table-row":"none";});return;}
   const dhr=e.target.closest("#dhReload");if(dhr){DONS_CACHE=null;napDonHang();return;}
   const dhh=e.target.closest(".don-head");if(dhh){const id=String(dhh.dataset.don).replace(/[\\"]/g,"\\$&");document.querySelectorAll('.don-line[data-for="'+id+'"]').forEach(el=>{el.style.display=el.style.display==="none"?"table-row":"none";});return;}
   const aiBtn=e.target.closest("[data-ai-cust]");if(aiBtn){runCustAI(+aiBtn.dataset.aiCust,aiBtn);return;}
