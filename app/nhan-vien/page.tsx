@@ -6,6 +6,8 @@ import ScoreTrendChart from "@/components/ScoreTrendChart";
 import ConfirmButtons from "@/components/ConfirmButtons";
 import GoiYTuDong from "@/components/GoiYTuDong";
 import ChatBox, { type ChatMessage } from "@/components/ChatBox";
+import GiaoViecNhanVien from "@/components/GiaoViecNhanVien";
+import { listGiaoViec, normMa } from "@/lib/giao-viec";
 import { getGoiYCungTuyen } from "@/lib/sale-care";
 import {
   chuanHoaMaNV,
@@ -44,6 +46,10 @@ export default async function NhanVienPage() {
 
   const weekLabel = getCurrentWeekLabel(danhGia);
   const weekRange = getWeekDateRange(weekLabel);
+
+  // Việc được quản lý giao cho tôi (giao việc trực tiếp trên web).
+  const { tasks: giaoViecAll } = await listGiaoViec();
+  const viecCuaToi = giaoViecAll.filter((t) => normMa(t.maNV) === normMa(user.maNhanVien));
 
   const goiYCuaToi = goiY
     .filter((r) => chuanHoaMaNV(r["Mã nhân viên"]) === maNV)
@@ -98,6 +104,14 @@ export default async function NhanVienPage() {
     <>
       <AppHeader hoTen={hoTen} role="employee" weekLabel={weekLabel} active="cung-tuyen" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+        <section className="mb-6 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">📋 Việc cần làm tuần này</h2>
+          <p className="mt-0.5 mb-3 text-xs text-slate-500">
+            Việc quản lý giao cho bạn. Bấm &quot;Hoàn thành&quot; khi xong để quản lý theo dõi.
+          </p>
+          <GiaoViecNhanVien initialTasks={viecCuaToi} variant="home" />
+        </section>
+
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard label="Khách cần gặp tuần này" value={goiYCuaToi.length} accentColor="#2a78d6" />
           <StatCard
