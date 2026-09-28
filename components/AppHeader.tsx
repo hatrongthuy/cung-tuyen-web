@@ -15,12 +15,14 @@ export type NavKey =
   | "tra-cuu-sale"
   | "tro-chuyen"
   | "bao-gia"
+  | "giao-viec"
   | "dang-nhap";
 
 // Menu quản lý — "Báo cáo tuần" + "Báo cáo tháng" gộp trong nhóm "Báo cáo".
 const NAV_ITEMS: NavEntry[] = [
   { key: "cung-tuyen", label: "Cung tuyến", href: "/quan-ly", icon: "🏠" },
   { key: "hoi-dap", label: "Trợ lý AI", href: "/quan-ly/hoi-dap", icon: "🤖" },
+  { key: "giao-viec", label: "Giao việc", href: "/quan-ly/giao-viec", icon: "📋" },
   { key: "doi-nhom", label: "Quản lý đội nhóm", href: "/quan-ly/doi-nhom", icon: "👥" },
   { key: "sp-trong-tam", label: "SP trọng tâm", href: "/quan-ly/sp-trong-tam", icon: "⭐" },
   {
@@ -44,6 +46,7 @@ const NAV_ITEMS: NavEntry[] = [
 // Menu nhân viên — mỗi người chỉ xem dữ liệu cá nhân của mình.
 const EMP_NAV_ITEMS: NavEntry[] = [
   { key: "cung-tuyen", label: "Cung tuyến", href: "/nhan-vien", icon: "🏠" },
+  { key: "giao-viec", label: "Việc được giao", href: "/nhan-vien/giao-viec", icon: "📋" },
   { key: "hoi-dap", label: "Trợ lý AI", href: "/nhan-vien/hoi-dap", icon: "🤖" },
   { key: "doi-nhom", label: "Kết quả của tôi", href: "/nhan-vien/doi-nhom", icon: "📈" },
   { key: "sp-trong-tam", label: "SP trọng tâm", href: "/nhan-vien/sp-trong-tam", icon: "⭐" },
