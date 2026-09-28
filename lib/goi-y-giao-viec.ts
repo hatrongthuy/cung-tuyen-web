@@ -8,6 +8,10 @@ import type { CareItem } from "./report-utils";
 import { allEmployees } from "./allowlist";
 import { appendManyGiaoViec, listGiaoViec, type GiaoViecInput } from "./giao-viec";
 
+// Số việc tối đa đề xuất cho MỖI nhân viên trong 1 tuần (đồng bộ với "khách nên gặp tuần này" = 18).
+// Tránh dồn cả tồn kho khách vào 1 tuần — chỉ lấy nhóm ưu tiên cao nhất để làm được trong tuần.
+const CAP_MOI_NV = 18;
+
 // ------------------------------------------------------------------
 // SINH VIỆC TỰ ĐỘNG TỪ BÁO CÁO TUẦN.
 // Nguồn: getGoiYCungTuyen (gộp cảnh báo "khách chưa viếng thăm / khách chết / sản phẩm nghỉ" +
@@ -91,12 +95,13 @@ export async function buildGoiYGiaoViec(tuan: string): Promise<{ goiY: GoiYViec[
     const emp = byName.get(normName(tenNV));
     if (!emp) continue; // bỏ qua tên không thuộc nhóm
     const seen = new Set<string>();
+    const cuaNV: GoiYViec[] = [];
     for (const c of items) {
       if (!c.tenKhach) continue;
       const khoaNguon = `${emp.ma}|${tuan}|${c.loai}|${normName(c.tenKhach)}`;
       if (seen.has(khoaNguon)) continue;
       seen.add(khoaNguon);
-      goiY.push({
+      cuaNV.push({
         maNV: emp.ma,
         tenNV: emp.ten,
         tuan,
@@ -109,6 +114,9 @@ export async function buildGoiYGiaoViec(tuan: string): Promise<{ goiY: GoiYViec[
         soNgay: c.soNgay,
       });
     }
+    // Ưu tiên cao trước, khách để lâu (số ngày lớn) trước; chỉ giữ tối đa CAP_MOI_NV việc/tuần.
+    cuaNV.sort((a, b) => (uuRank[a.uuTien] ?? 1) - (uuRank[b.uuTien] ?? 1) || b.soNgay - a.soNgay);
+    goiY.push(...cuaNV.slice(0, CAP_MOI_NV));
   }
 
   goiY.sort(
