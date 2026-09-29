@@ -67,10 +67,14 @@ export default function DoiNhomView({
   title?: string;
 }) {
   const emps = useMemo<EmpRow[]>(() => {
-    const kdNow = salesByRange(salesTxns, ctx.monthStartMs, ctx.nowMs, "keDon");
-    const kdPrev = salesByRange(salesTxns, ctx.lastMonthStartMs, ctx.lastMonthSameMs, "keDon");
-    const thauNow = salesByRange(salesTxns, ctx.monthStartMs, ctx.nowMs, "thau");
-    const thauPrev = salesByRange(salesTxns, ctx.lastMonthStartMs, ctx.lastMonthSameMs, "thau");
+    // Tháng này & tháng trước (để cộng bù các dòng Sale KHÔNG có ngày cụ thể — chỉ có Tháng/Năm).
+    const now = { nam: ctx.nam, thang: ctx.thang };
+    const lm = new Date(ctx.lastMonthStartMs);
+    const prev = { nam: lm.getFullYear(), thang: lm.getMonth() + 1 };
+    const kdNow = salesByRange(salesTxns, ctx.monthStartMs, ctx.nowMs, "keDon", now);
+    const kdPrev = salesByRange(salesTxns, ctx.lastMonthStartMs, ctx.lastMonthSameMs, "keDon", prev);
+    const thauNow = salesByRange(salesTxns, ctx.monthStartMs, ctx.nowMs, "thau", now);
+    const thauPrev = salesByRange(salesTxns, ctx.lastMonthStartMs, ctx.lastMonthSameMs, "thau", prev);
 
     const sumByMa = new Map<string, EmployeeWeekSummary>();
     for (const s of summaries) sumByMa.set(normalizeMaNV(s.maNhanVien), s);
