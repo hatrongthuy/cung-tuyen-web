@@ -134,18 +134,28 @@ export function salesByMonth(
   return out;
 }
 
-/** Tổng doanh thu theo mã nhân viên cho 1 khoảng ngày [startMs, endMs]. Lọc theo `kenh` nếu có. */
+/** Tổng doanh thu theo mã nhân viên cho 1 khoảng ngày [startMs, endMs]. Lọc theo `kenh` nếu có.
+ *  `fallbackMonth`: nhiều dòng trong "Sale sạch" (nhất là các tháng cũ/nhập bù) KHÔNG có cột "Ngày"
+ *  cụ thể, chỉ có Tháng/Năm -> dateMs = null nên bị loại khỏi mọi khoảng ngày. Khi truyền
+ *  fallbackMonth = {nam, thang}, các dòng KHÔNG có ngày nhưng đúng (Năm, Tháng) đó vẫn được cộng vào
+ *  (dùng cho so sánh theo THÁNG như "cùng kỳ tháng trước", để không bị 0 giả). */
 export function salesByRange(
   txns: SaleTxnLite[],
   startMs: number,
   endMs: number,
-  kenh?: Kenh
+  kenh?: Kenh,
+  fallbackMonth?: { nam: number; thang: number }
 ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const t of txns) {
-    if (t.dateMs != null && t.dateMs >= startMs && t.dateMs <= endMs && (!kenh || t.kenh === kenh)) {
-      out[t.ma] = (out[t.ma] ?? 0) + t.dt;
+    if (kenh && t.kenh !== kenh) continue;
+    let hit = false;
+    if (t.dateMs != null) {
+      hit = t.dateMs >= startMs && t.dateMs <= endMs;
+    } else if (fallbackMonth) {
+      hit = t.nam === fallbackMonth.nam && t.thang === fallbackMonth.thang;
     }
+    if (hit) out[t.ma] = (out[t.ma] ?? 0) + t.dt;
   }
   return out;
 }

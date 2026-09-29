@@ -7,8 +7,10 @@ import { google } from "googleapis";
 // service account ở trên — giống như đã làm với file cung tuyến chính. Nếu chưa share,
 // mọi tab KPI + Doanh số sẽ trống (không đọc được). Có thể đổi ID qua biến môi trường
 // GOOGLE_SHEETS_KPI_SPREADSHEET_ID; nếu không đặt sẽ dùng giá trị mặc định dưới đây.
+// Nguồn KPI: file công ty (ASM) đang cập nhật "Kpis T9 2026 PS Tây Bắc" — đã điền cột Thực hiện/Điểm.
+// (File cũ 1dv0q chỉ có Kế hoạch, các mục "theo sheet" = 0.) Có thể ghi đè bằng biến môi trường.
 const KPI_SPREADSHEET_ID =
-  process.env.GOOGLE_SHEETS_KPI_SPREADSHEET_ID || "1dv0q_SpajvhbaOtNu43ctwetjXhBUURRIaDVv39W5bw";
+  process.env.GOOGLE_SHEETS_KPI_SPREADSHEET_ID || "1xtgnuS1JrN5l6DrNJEqnleGQfDCPqnRMCCQJBsOHMU0";
 
 export function getKpiServiceAccountEmail(): string {
   return process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "(chưa đặt GOOGLE_SERVICE_ACCOUNT_EMAIL)";

@@ -22,7 +22,7 @@ import { getCodeMoiManual } from "./code-moi";
 // vào sheet).
 
 const KPI_SPREADSHEET_ID =
-  process.env.GOOGLE_SHEETS_KPI_SPREADSHEET_ID || "1dv0q_SpajvhbaOtNu43ctwetjXhBUURRIaDVv39W5bw";
+  process.env.GOOGLE_SHEETS_KPI_SPREADSHEET_ID || "1xtgnuS1JrN5l6DrNJEqnleGQfDCPqnRMCCQJBsOHMU0";
 const KPI_SHEET_NAME = process.env.GOOGLE_SHEETS_KPI_MAIN_TAB || "KPIs T09.26 (new)";
 
 // Mốc gốc của Sale detail (di = số ngày kể từ mốc này).
