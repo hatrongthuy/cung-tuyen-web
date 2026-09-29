@@ -110,6 +110,23 @@ function cellToString(v: unknown): string {
   return String(v);
 }
 
+/** Ô ngày trong Google Sheets đọc dạng UNFORMATTED_VALUE trả về SỐ SERIAL (số ngày kể từ
+ * 30/12/1899), vd 45778. Với các cột "Ngày ..." ta đổi số serial này thành chuỗi dd/MM/yyyy để
+ * hiển thị đúng thay vì con số khó hiểu. Chỉ đổi khi giá trị nằm trong khoảng serial hợp lý
+ * (~1994–2079) để không nhầm với các số đếm (vd "Tháng làm việc"). */
+function isDateColumn(name: string): boolean {
+  return /ng[àa]y/i.test(name || "");
+}
+function serialToDateStr(v: unknown): string | null {
+  const n = typeof v === "number" ? v : Number(String(v ?? "").trim().replace(/,/g, ""));
+  if (!Number.isFinite(n) || n < 34700 || n > 65500) return null; // ~1995-01-01 .. ~2079
+  const ms = Math.round((n - 25569) * 86400 * 1000);
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return null;
+  const p = (x: number) => String(x).padStart(2, "0");
+  return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+}
+
 /** Đảm bảo tên cột duy nhất — một số sheet có nhiều cột trùng tên (vd nhiều khối "DS KD-PM" lặp
  * lại chưa đặt tên riêng cho từng cột con). Nếu dùng tên trùng làm khoá object, dữ liệu cột trước sẽ
  * bị cột sau ghi đè mất. Thêm số thứ tự vào các tên trùng để giữ đủ dữ liệu từng cột. */
@@ -146,7 +163,14 @@ async function readKpiTab(tab: KpiTabConfig): Promise<KpiTabData> {
     visibleIdx.forEach((srcIdx, colPos) => {
       const col = columns[colPos];
       if (!col) return;
-      obj[col] = cellToString(row[srcIdx]);
+      const rawCell = row[srcIdx];
+      // Cột ngày: đổi số serial -> dd/MM/yyyy (nếu là serial hợp lệ), còn lại giữ nguyên.
+      if (isDateColumn(col)) {
+        const dstr = serialToDateStr(rawCell);
+        obj[col] = dstr ?? cellToString(rawCell);
+      } else {
+        obj[col] = cellToString(rawCell);
+      }
     });
     rows.push(obj);
   }
