@@ -33,6 +33,15 @@ const FOCUS_KEYWORDS: Record<string, string[]> = {
   Propofol: ["propofol"],
 };
 
+// GỘP MÃ SẢN PHẨM: một số sản phẩm có 2 mã (mã chuẩn hóa mới "TH…" và mã cũ "P…") nhưng thực chất
+// là CÙNG một sản phẩm, cùng quy cách. Gộp về 1 mã chuẩn + 1 tên hiển thị để không bị tách đôi
+// doanh thu/số lượng/khách hàng trong màn Tra cứu Sale. Key = mã gốc trong file, value = mã & tên gộp.
+// Progermila: P01481 (4 vỉ x 5 ống 5ml) và TH00893 (Sol 5ml H4x5) đều là hộp 20 ống 5ml.
+const SP_MERGE: Record<string, { ma: string; ten: string }> = {
+  P01481: { ma: "P01481", ten: "Progermila (gộp mã) - hộp 4 vỉ x 5 ống 5ml" },
+  TH00893: { ma: "P01481", ten: "Progermila (gộp mã) - hộp 4 vỉ x 5 ống 5ml" },
+};
+
 // Sản phẩm CẤP 2 (chuyên khoa PS) — ĐƯỢC GIAO CHỈ ĐỊNH THEO TỪNG NGƯỜI (chỉ Tuyền & Cường có).
 // Khớp theo TÊN sản phẩm (từ khóa, không phân biệt hoa/thường) vì danh mục chưa có mã chuẩn hóa cho
 // các SP này. Web tính Mở mới / Duy trì SP Cấp 2 riêng cho từng nhân viên dựa trên danh sách của họ.
@@ -217,13 +226,17 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
       ]);
     }
 
-    const maSP = String(r[iMaSP] ?? "").trim();
-    if (!maSP) continue;
+    const maSPraw = String(r[iMaSP] ?? "").trim();
+    if (!maSPraw) continue;
+    // Gộp mã sản phẩm (nếu có cấu hình) về 1 mã + tên chuẩn để không tách đôi số liệu.
+    const merged = SP_MERGE[maSPraw];
+    const maSP = merged ? merged.ma : maSPraw;
+    const tenSP = merged ? merged.ten : (iTenSP >= 0 ? String(r[iTenSP] ?? "").trim() : "");
     let pid = prodIdx.get(maSP);
     if (pid === undefined) {
       pid = prod.length;
       prodIdx.set(maSP, pid);
-      prod.push([maSP, iTenSP >= 0 ? String(r[iTenSP] ?? "").trim() : ""]);
+      prod.push([maSP, tenSP]);
     }
 
     const sl = iSL >= 0 ? parseMoney(r[iSL]) : 0;
