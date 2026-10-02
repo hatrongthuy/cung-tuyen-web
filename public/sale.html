@@ -127,6 +127,7 @@ tr.clickable{cursor:pointer}
 .chip.crit{color:var(--crit);background:var(--crit-soft)}
 .chip.good .cd{background:var(--good)}.chip.warn .cd{background:var(--warn)}.chip.crit .cd{background:var(--crit)}
 .tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:5px;background:var(--brand-soft);color:var(--brand-ink);letter-spacing:.02em}
+.gtag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:5px;letter-spacing:.02em;vertical-align:middle}
 
 /* customer search */
 .search-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:2px}
@@ -227,6 +228,10 @@ const FOCUS_COLORS={"Atosiban":"var(--s1)","Proges sup":"var(--s2)","pH Protect"
 const PID2FOCUS={}; FOCUS_ORDER.forEach(l=>FOCUS[l].forEach(p=>PID2FOCUS[p]=l));
 const FOCUS_PIDSET=new Set(Object.keys(PID2FOCUS).map(Number));
 const CAP2=new Set((DATA.cap2Cat||[]).map(Number)); // danh mục SP Cấp 2 của nhóm (Chuyên khoa PS)
+const REPGAM=DATA.repGam||[]; // tid -> nhóm gam hàng NV ("Sản"|"GMHS"|"")
+const PRODGAM=DATA.prodGam||[]; // pid -> nhóm gam hàng SP ("Sản"|"GMHS"|"")
+const GAM_COLORS={"Sản":"#c2457e","GMHS":"#2a78d6"};
+function gamTag(pid){const g=PRODGAM[pid];if(!g)return "";const c=GAM_COLORS[g]||"var(--muted)";return ` <span class="gtag" style="background:${c}1a;color:${c};border:1px solid ${c}55">${g}</span>`;}
 // row cols
 const C={cid:0,tid:1,pid:2,di:3,sl:4,dt:5};
 
@@ -241,13 +246,14 @@ function chip(days){const[c,l]=statusOf(days);return `<span class="chip ${c}"><s
 function momHtml(cur,prev,mom){if(cur===0&&prev===0)return '<span style="color:var(--muted)">—</span>';const cls=mom>=0?"up":"down";return `<span class="delta ${cls}">${mom>=0?"▲":"▼"} ${Math.abs(mom).toFixed(0)}%</span>`;}
 function esc(s){return String(s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
 
-const state={tab:"overview",tdv:-1,tinh:"",mFrom:MONTHS[0],mTo:MONTHS[MONTHS.length-1],focusOnly:false,
+const state={tab:"overview",tdv:-1,tinh:"",gam:"",mFrom:MONTHS[0],mTo:MONTHS[MONTHS.length-1],focusOnly:false,
   ovMetric:"dt",selCust:null,custQuery:"",prodQuery:"",prodSort:"dt",prodDir:-1,selProd:null,mgDim:"prod",mgMetric:"dt",_activeSearch:null,lockTdv:false};
 
 const PROVINCES=[...new Set(CUST.map(c=>c[2]).filter(Boolean))].sort();
 
 function frows(){
   return ROWS.filter(r=>{
+    if(state.gam && REPGAM[r[C.tid]]!==state.gam)return false;
     if(state.tdv>=0 && r[C.tid]!==state.tdv)return false;
     const m=diToMonth(r[C.di]); if(m<state.mFrom||m>state.mTo)return false;
     if(state.tinh && CUST[r[C.cid]][2]!==state.tinh)return false;
@@ -500,7 +506,7 @@ function renderProducts(){
     const foc=PID2FOCUS[o.pid];
     const momCls=o.mom>=0?"up":"down";
     return `<tr class="clickable" data-prod="${o.pid}">
-      <td class="name-cell"><span class="n1">${esc(PROD[o.pid][1])}</span><div class="n2"><span class="mono">${esc(PROD[o.pid][0])}</span>${foc?` <span class="tag">⭐ ${foc}</span>`:""}</div></td>
+      <td class="name-cell"><span class="n1">${esc(PROD[o.pid][1])}</span><div class="n2"><span class="mono">${esc(PROD[o.pid][0])}</span>${foc?` <span class="tag">⭐ ${foc}</span>`:""}${gamTag(o.pid)}</div></td>
       <td class="r num">${vnd(o.dt)}</td><td class="r num">${(o.dt/totDt*100).toFixed(1)}%</td>
       <td class="r num">${o.nKH}</td><td class="r num" style="color:var(--good)">${o.active}</td>
       <td class="num">${dstr(diToDate(o.last))}</td>
@@ -585,13 +591,22 @@ function renderCap2(){
     const mom=prev>0?((cur-prev)/prev*100):(cur>0?100:0);
     return {...o,days:daysSince(o.last),mom,cur,prev,nKH:o.custs.size};
   }).sort((a,b)=>b.dt-a.dt);
-  const prodRows=plist.map(o=>{
+  const oneRow=o=>{
     const foc=PID2FOCUS[o.pid];
     return `<tr class="clickable" data-prod="${o.pid}">
-      <td class="name-cell"><span class="n1">${esc(PROD[o.pid][1])}</span><div class="n2"><span class="mono">${esc(PROD[o.pid][0])}</span>${foc?` <span class="tag">⭐ ${foc}</span>`:""}</div></td>
+      <td class="name-cell"><span class="n1">${esc(PROD[o.pid][1])}</span><div class="n2"><span class="mono">${esc(PROD[o.pid][0])}</span>${foc?` <span class="tag">⭐ ${foc}</span>`:""}${gamTag(o.pid)}</div></td>
       <td class="r num">${vnd(o.dt)}</td><td class="r num">${nf.format(o.sl)}</td>
       <td class="r num">${o.nKH}</td><td class="num">${dstr(diToDate(o.last))}</td>
       <td class="r">${momHtml(o.cur,o.prev,o.mom)}</td><td>${chip(o.days)}</td></tr>`;
+  };
+  // Gom theo nhóm gam hàng Sản / GMHS (SP không rõ nhóm xếp "Khác").
+  const groupsOrder=["Sản","GMHS","Khác"];
+  const byGroup={}; for(const o of plist){const g=PRODGAM[o.pid]||"Khác";(byGroup[g]=byGroup[g]||[]).push(o);}
+  const prodRows=groupsOrder.filter(g=>byGroup[g]&&byGroup[g].length).map(g=>{
+    const items=byGroup[g]; const gdt=items.reduce((a,o)=>a+o.dt,0); const gsl=items.reduce((a,o)=>a+o.sl,0);
+    const col=GAM_COLORS[g]||"var(--muted)";
+    const head=`<tr style="background:${col}12"><td style="font-weight:800;color:${col}">Nhóm ${g} <span style="font-weight:600;color:var(--muted)">(${items.length} SP)</span></td><td class="r num" style="font-weight:700">${vnd(gdt)}</td><td class="r num" style="font-weight:700">${nf.format(gsl)}</td><td colspan="4"></td></tr>`;
+    return head+items.map(oneRow).join("");
   }).join("");
   // --- Bảng gộp: tất cả khách đã đặt bất kỳ SP Cấp 2 ---
   const byC=new Map();
@@ -637,7 +652,9 @@ function renderFocus(){
   const R=frows();
   const monthsInRange=MONTHS.filter(m=>m>=state.mFrom&&m<=state.mTo);
   const lastM=monthsInRange[monthsInRange.length-1],prevM=monthsInRange[monthsInRange.length-2];
-  const cards=FOCUS_ORDER.map(label=>{
+  const labelGam=label=>{const p=(FOCUS[label]||[])[0];return p!=null?(PRODGAM[p]||""):"";};
+  const cardOf={};
+  FOCUS_ORDER.forEach(label=>{
     const pids=new Set(FOCUS[label]);
     const rr=R.filter(r=>pids.has(r[C.pid]));
     const col=FOCUS_COLORS[label];
@@ -653,8 +670,9 @@ function renderFocus(){
     const nNew=lastM?[...firstBuy.values()].filter(di=>diToMonth(di)===lastM).length:0;
     const churn=[...custLast.values()].filter(di=>daysSince(di)>90).length;
     const code=FOCUS[label].map(p=>PROD[p][0]).join(", ");
-    return `<div class="card fcard">
-      <div class="f-top"><div><div class="f-name">⭐ ${label}</div><div class="f-code mono">${esc(code)}</div></div><span class="chip ${active>0?'good':'crit'}"><span class="cd"></span>${active} KH duy trì</span></div>
+    const g=labelGam(label);const gc=GAM_COLORS[g]||"var(--muted)";
+    cardOf[label]=`<div class="card fcard">
+      <div class="f-top"><div><div class="f-name">⭐ ${label}${g?` <span class="gtag" style="background:${gc}1a;color:${gc};border:1px solid ${gc}55">${g}</span>`:""}</div><div class="f-code mono">${esc(code)}</div></div><span class="chip ${active>0?'good':'crit'}"><span class="cd"></span>${active} KH duy trì</span></div>
       <div class="f-big num" style="color:${col}">${compact(dt)}</div>
       <div class="f-row">
         <div class="f-stat"><div class="fs-l">Tháng ${lastM?mLabel(lastM):"—"}</div><div class="fs-v num">${compact(cur)} ${momHtml(cur,prev,mom)}</div></div>
@@ -664,13 +682,22 @@ function renderFocus(){
       </div>
       <div class="spark">${sparkline(monVals,{color:col})}</div>
     </div>`;
+  });
+  // Gom thẻ theo nhóm gam hàng Sản / GMHS.
+  const gorder=["Sản","GMHS",""];
+  const sections=gorder.map(g=>{
+    const labels=FOCUS_ORDER.filter(l=>labelGam(l)===g);
+    if(!labels.length)return "";
+    const gc=GAM_COLORS[g]||"var(--muted)";
+    const head=g?`<div class="sec-head" style="margin:10px 0 8px"><h2 style="font-size:14px;color:${gc}">Nhóm ${g}</h2></div>`:"";
+    return head+`<div class="grid focus-grid">${labels.map(l=>cardOf[l]).join("")}</div>`;
   }).join("");
   // combined multiline
   const series=FOCUS_ORDER.map(label=>{const pids=new Set(FOCUS[label]);const rr=R.filter(r=>pids.has(r[C.pid]));return{name:label,color:FOCUS_COLORS[label],vals:monthsInRange.map(m=>rr.filter(r=>diToMonth(r[C.di])===m).reduce((a,r)=>a+r[C.dt],0))};});
   const legend=FOCUS_ORDER.map(l=>`<div class="li"><span class="lk" style="background:${FOCUS_COLORS[l]}"></span>${l}</div>`).join("");
   return `
-  <div class="note" style="margin-bottom:16px">5 sản phẩm trọng tâm của nhóm. <b>KH mới</b> = khách lần đầu lấy SP này trong tháng gần nhất · <b>KH rớt</b> = khách đã &gt;90 ngày không lấy lại · <b>▲/▼</b> = so tháng liền trước.</div>
-  <div class="grid focus-grid">${cards}</div>
+  <div class="note" style="margin-bottom:16px">5 sản phẩm trọng tâm của nhóm, chia theo nhóm gam hàng (Sản / GMHS). <b>KH mới</b> = khách lần đầu lấy SP này trong tháng gần nhất · <b>KH rớt</b> = khách đã &gt;90 ngày không lấy lại · <b>▲/▼</b> = so tháng liền trước.</div>
+  ${sections}
   <div class="card pad" style="margin-top:16px"><div class="sec-head"><h2>Doanh thu 5 SP trọng tâm theo tháng</h2></div>${multiLine(series,monthsInRange.map(mLabel))}<div class="legend">${legend}</div></div>`;
 }
 
@@ -790,10 +817,14 @@ function renderTabs(){
   document.getElementById("tabs").innerHTML=TABS.map(([k,l])=>`<button class="tab ${state.tab===k?"on":""}" data-tab="${k}">${l}</button>`).join("");
 }
 function renderFilters(){
-  const tdvOpts=`<option value="-1">Tất cả TDV nhóm</option>`+TDV.map((n,i)=>`<option value="${i}" ${state.tdv==i?"selected":""}>${esc(n)}</option>`).join("");
+  // Nếu đã chọn nhóm gam hàng -> danh sách TDV chỉ còn NV của nhóm đó.
+  const tdvIdx=TDV.map((n,i)=>i).filter(i=>!state.gam||REPGAM[i]===state.gam);
+  const tdvOpts=`<option value="-1">Tất cả TDV ${state.gam?"nhóm "+state.gam:"nhóm"}</option>`+tdvIdx.map(i=>`<option value="${i}" ${state.tdv==i?"selected":""}>${esc(TDV[i])}</option>`).join("");
+  const gamOpts=["","Sản","GMHS"].map(g=>`<option value="${g}" ${state.gam===g?"selected":""}>${g||"Tất cả gam hàng"}</option>`).join("");
   const tinhOpts=`<option value="">Tất cả tỉnh</option>`+PROVINCES.map(p=>`<option value="${esc(p)}" ${state.tinh===p?"selected":""}>${esc(p)}</option>`).join("");
   const mOpts=(sel)=>MONTHS.map(m=>`<option value="${m}" ${sel===m?"selected":""}>${mLabel(m)}</option>`).join("");
   document.getElementById("filters").innerHTML=`
+    ${state.lockTdv?"":`<div class="field"><label>Nhóm gam hàng</label><select id="fGam">${gamOpts}</select></div>`}
     ${state.lockTdv?`<div class="field"><label>Trình dược viên</label><div class="lockedtdv">${esc(TDV[state.tdv]||"")}</div></div>`:`<div class="field"><label>Trình dược viên</label><select id="fTdv">${tdvOpts}</select></div>`}
     <div class="field"><label>Tỉnh</label><select id="fTinh">${tinhOpts}</select></div>
     <div class="field"><label>Từ tháng</label><select id="fFrom">${mOpts(state.mFrom)}</select></div>
@@ -861,7 +892,8 @@ document.addEventListener("input",e=>{
   else if(e.target.id==="prodSearch"){state.prodQuery=e.target.value;state._activeSearch="prod";render();}
 });
 document.addEventListener("change",e=>{
-  if(e.target.id==="fTdv"){state.tdv=+e.target.value;state.selCust=null;}
+  if(e.target.id==="fGam"){state.gam=e.target.value;state.selCust=null;state.selProd=null;if(state.gam&&state.tdv>=0&&REPGAM[state.tdv]!==state.gam)state.tdv=-1;}
+  else if(e.target.id==="fTdv"){state.tdv=+e.target.value;state.selCust=null;}
   else if(e.target.id==="fTinh"){state.tinh=e.target.value;state.selCust=null;}
   else if(e.target.id==="fFrom"){state.mFrom=e.target.value;if(state.mFrom>state.mTo)state.mTo=state.mFrom;}
   else if(e.target.id==="fTo"){state.mTo=e.target.value;if(state.mTo<state.mFrom)state.mFrom=state.mTo;}
