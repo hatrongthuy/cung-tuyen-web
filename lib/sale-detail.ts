@@ -38,8 +38,17 @@ const FOCUS_KEYWORDS: Record<string, string[]> = {
 // doanh thu/số lượng/khách hàng trong màn Tra cứu Sale. Key = mã gốc trong file, value = mã & tên gộp.
 // Progermila: P01481 (4 vỉ x 5 ống 5ml) và TH00893 (Sol 5ml H4x5) đều là hộp 20 ống 5ml.
 const SP_MERGE: Record<string, { ma: string; ten: string }> = {
+  // Progermila: P01481 (4 vỉ x 5 ống 5ml) và TH00893 (Sol 5ml H4x5) — cùng hộp 20 ống 5ml.
   P01481: { ma: "P01481", ten: "Progermila (gộp mã) - hộp 4 vỉ x 5 ống 5ml" },
   TH00893: { ma: "P01481", ten: "Progermila (gộp mã) - hộp 4 vỉ x 5 ống 5ml" },
+  // Proges Sup 400mg: P01808 (mã cũ) và TH08183 (mã chuẩn hóa) — cùng hộp 3 vỉ x 5 viên, 400mg.
+  // LƯU Ý: Proges Sup 200mg (P01846) là HÀM LƯỢNG KHÁC, KHÔNG gộp.
+  P01808: { ma: "P01808", ten: "Proges Sup 400mg (gộp mã) - hộp 3 vỉ x 5 viên" },
+  TH08183: { ma: "P01808", ten: "Proges Sup 400mg (gộp mã) - hộp 3 vỉ x 5 viên" },
+  // pH Balance Protect Intimate Gel 200ml: P01879 (mã cũ) và MP09784 (biến thể MP) — cùng 1 sản phẩm.
+  // LƯU Ý: pH Balance thường (P10005), Bio (G01167), Baby (P01899) là SẢN PHẨM KHÁC, KHÔNG gộp.
+  P01879: { ma: "P01879", ten: "pH Balance Protect Intimate Gel (gộp mã) - lọ 200ml" },
+  MP09784: { ma: "P01879", ten: "pH Balance Protect Intimate Gel (gộp mã) - lọ 200ml" },
 };
 
 // Sản phẩm CẤP 2 (chuyên khoa PS) — ĐƯỢC GIAO CHỈ ĐỊNH THEO TỪNG NGƯỜI (chỉ Tuyền & Cường có).
