@@ -3,6 +3,7 @@ import type { Role } from "@/lib/allowlist";
 import SidebarNav, { type NavEntry } from "./SidebarNav";
 
 export type NavKey =
+  | "trang-chu"
   | "cung-tuyen"
   | "hoi-dap"
   | "doi-nhom"
@@ -21,7 +22,8 @@ export type NavKey =
 
 // Menu quản lý — "Báo cáo tuần" + "Báo cáo tháng" gộp trong nhóm "Báo cáo".
 const NAV_ITEMS: NavEntry[] = [
-  { key: "cung-tuyen", label: "Cung tuyến", href: "/quan-ly", icon: "🏠" },
+  { key: "trang-chu", label: "Trang chủ", href: "/quan-ly", icon: "🏠" },
+  { key: "cung-tuyen", label: "Cung tuyến", href: "/quan-ly/cung-tuyen", icon: "📊" },
   { key: "hoi-dap", label: "Trợ lý AI", href: "/quan-ly/hoi-dap", icon: "🤖" },
   { key: "giao-viec", label: "Giao việc", href: "/quan-ly/giao-viec", icon: "📋" },
   { key: "phat-trien", label: "Phát triển cá nhân", href: "/quan-ly/phat-trien", icon: "🌱" },
@@ -47,7 +49,8 @@ const NAV_ITEMS: NavEntry[] = [
 
 // Menu nhân viên — mỗi người chỉ xem dữ liệu cá nhân của mình.
 const EMP_NAV_ITEMS: NavEntry[] = [
-  { key: "cung-tuyen", label: "Cung tuyến", href: "/nhan-vien", icon: "🏠" },
+  { key: "trang-chu", label: "Trang chủ", href: "/nhan-vien", icon: "🏠" },
+  { key: "cung-tuyen", label: "Cung tuyến", href: "/nhan-vien/cung-tuyen", icon: "📊" },
   { key: "giao-viec", label: "Việc được giao", href: "/nhan-vien/giao-viec", icon: "📋" },
   { key: "phat-trien", label: "Phát triển cá nhân", href: "/nhan-vien/phat-trien", icon: "🌱" },
   { key: "hoi-dap", label: "Trợ lý AI", href: "/nhan-vien/hoi-dap", icon: "🤖" },
