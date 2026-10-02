@@ -226,6 +226,7 @@ const FOCUS_ORDER=Object.keys(FOCUS);
 const FOCUS_COLORS={"Atosiban":"var(--s1)","Proges sup":"var(--s2)","pH Protect":"var(--s3)","Progermila":"var(--s4)","Propofol":"var(--s5)"};
 const PID2FOCUS={}; FOCUS_ORDER.forEach(l=>FOCUS[l].forEach(p=>PID2FOCUS[p]=l));
 const FOCUS_PIDSET=new Set(Object.keys(PID2FOCUS).map(Number));
+const CAP2=new Set((DATA.cap2Cat||[]).map(Number)); // danh mục SP Cấp 2 của nhóm (Chuyên khoa PS)
 // row cols
 const C={cid:0,tid:1,pid:2,di:3,sl:4,dt:5};
 
@@ -564,6 +565,74 @@ function renderProdDetail(pid){
   </div>`;
 }
 
+function renderCap2(){
+  // Bấm 1 SP Cấp 2 -> xem khách hàng đã đặt (dùng lại bảng chi tiết sản phẩm).
+  if(state.selProd!=null)return renderProdDetail(state.selProd);
+  const R=frows().filter(r=>CAP2.has(r[C.pid]));
+  const monthsInRange=MONTHS.filter(m=>m>=state.mFrom&&m<=state.mTo);
+  const lastM=monthsInRange[monthsInRange.length-1],prevM=monthsInRange[monthsInRange.length-2];
+  if(CAP2.size===0){
+    return `<div class="card pad"><div class="sec-head"><h2>Sản phẩm Cấp 2 — Chuyên khoa PS</h2></div><div class="empty">Chưa cấu hình danh mục Cấp 2.</div></div>`;
+  }
+  const totDt=R.reduce((a,r)=>a+r[C.dt],0);
+  const totSl=R.reduce((a,r)=>a+r[C.sl],0);
+  const custSet=new Set(R.map(r=>r[C.cid]));
+  const prodSet=new Set(R.map(r=>r[C.pid]));
+  // --- Danh sách SP Cấp 2 (có đơn trong kỳ lọc) ---
+  const agg=productAgg(R);
+  const plist=[...agg.values()].map(o=>{
+    const cur=o.byMonth[lastM]||0,prev=prevM?(o.byMonth[prevM]||0):0;
+    const mom=prev>0?((cur-prev)/prev*100):(cur>0?100:0);
+    return {...o,days:daysSince(o.last),mom,cur,prev,nKH:o.custs.size};
+  }).sort((a,b)=>b.dt-a.dt);
+  const prodRows=plist.map(o=>{
+    const foc=PID2FOCUS[o.pid];
+    return `<tr class="clickable" data-prod="${o.pid}">
+      <td class="name-cell"><span class="n1">${esc(PROD[o.pid][1])}</span><div class="n2"><span class="mono">${esc(PROD[o.pid][0])}</span>${foc?` <span class="tag">⭐ ${foc}</span>`:""}</div></td>
+      <td class="r num">${vnd(o.dt)}</td><td class="r num">${nf.format(o.sl)}</td>
+      <td class="r num">${o.nKH}</td><td class="num">${dstr(diToDate(o.last))}</td>
+      <td class="r">${momHtml(o.cur,o.prev,o.mom)}</td><td>${chip(o.days)}</td></tr>`;
+  }).join("");
+  // --- Bảng gộp: tất cả khách đã đặt bất kỳ SP Cấp 2 ---
+  const byC=new Map();
+  for(const r of R){const cid=r[C.cid];if(!byC.has(cid))byC.set(cid,{cid,dt:0,sl:0,last:-1,pids:new Set()});const o=byC.get(cid);o.dt+=r[C.dt];o.sl+=r[C.sl];o.pids.add(r[C.pid]);if(r[C.di]>o.last)o.last=r[C.di];}
+  const clist=[...byC.values()].sort((a,b)=>b.dt-a.dt);
+  const custRows=clist.map(o=>{
+    const sps=[...o.pids].map(p=>PROD[p][1]).join(", ");
+    return `<tr class="clickable" data-gocust="${o.cid}">
+      <td class="mono">${esc(CUST[o.cid][0])}</td>
+      <td class="name-cell"><span class="n1">${esc(CUST[o.cid][1])}</span></td>
+      <td>${esc(CUST[o.cid][2])}</td>
+      <td class="r num">${o.pids.size}</td><td class="r num">${nf.format(o.sl)}</td><td class="r num">${vnd(o.dt)}</td>
+      <td class="num">${dstr(diToDate(o.last))}</td><td>${chip(daysSince(o.last))}</td>
+      <td style="font-size:11.5px;color:var(--ink-2)">${esc(sps)}</td></tr>`;
+  }).join("");
+  return `
+  <div class="card pad">
+    <div class="sec-head"><h2>Cấp 2 — Chuyên khoa PS</h2><span class="hint">Danh mục ${CAP2.size} SP · ${prodSet.size} SP có đơn · bấm 1 SP để xem khách đã đặt</span></div>
+    <div class="note" style="margin-bottom:12px">Danh mục SP Cấp 2 (Chuyên khoa PS) của nhóm. Số liệu theo bộ lọc TDV / Tỉnh / Từ–Đến tháng ở trên.</div>
+    <div class="mini-kpis">
+      <div class="mini"><div class="m-l">SP Cấp 2 có đơn</div><div class="m-v num">${prodSet.size}<span style="font-size:12px;color:var(--muted)"> / ${CAP2.size}</span></div></div>
+      <div class="mini"><div class="m-l">Khách đã đặt</div><div class="m-v num">${custSet.size}</div></div>
+      <div class="mini"><div class="m-l">Tổng số lượng</div><div class="m-v num">${nf.format(totSl)}</div></div>
+      <div class="mini"><div class="m-l">Doanh thu</div><div class="m-v num">${compact(totDt)}</div></div>
+    </div>
+    <div class="sec-head" style="margin-top:6px"><h2 style="font-size:14px">Sản phẩm Cấp 2</h2></div>
+    <div class="tbl-wrap"><table><thead><tr>
+      <th class="no-sort">Sản phẩm</th><th class="r no-sort">Doanh thu</th><th class="r no-sort">Số lượng</th>
+      <th class="r no-sort">Số KH</th><th class="no-sort">Bán gần nhất</th><th class="r no-sort">Xu hướng</th><th class="no-sort">Trạng thái</th>
+    </tr></thead><tbody>${prodRows||`<tr><td colspan="7"><div class="empty">Không có đơn Cấp 2 trong kỳ lọc</div></td></tr>`}</tbody></table></div>
+  </div>
+  <div class="card pad" style="margin-top:16px">
+    <div class="sec-head"><h2 style="font-size:14px">Khách hàng đã đặt SP Cấp 2 (gộp tất cả)</h2><span class="hint">${clist.length} KH · bấm 1 dòng để xem chi tiết khách</span></div>
+    <div class="tbl-wrap"><table><thead><tr>
+      <th class="no-sort">Mã KH</th><th class="no-sort">Tên khách hàng</th><th class="no-sort">Tỉnh</th>
+      <th class="r no-sort">Số SP</th><th class="r no-sort">Tổng SL</th><th class="r no-sort">Doanh thu</th>
+      <th class="no-sort">Mua gần nhất</th><th class="no-sort">Trạng thái</th><th class="no-sort">SP Cấp 2 đã đặt</th>
+    </tr></thead><tbody>${custRows||`<tr><td colspan="9"><div class="empty">Không có khách nào đặt SP Cấp 2 trong kỳ lọc</div></td></tr>`}</tbody></table></div>
+  </div>`;
+}
+
 function renderFocus(){
   const R=frows();
   const monthsInRange=MONTHS.filter(m=>m>=state.mFrom&&m<=state.mTo);
@@ -702,13 +771,14 @@ function napDonHang(){
     DONS_CACHE=j.dons||[];show(DONS_CACHE);
   }).catch(e=>{box.textContent="Lỗi: "+e.message;});
 }
-const TABS=[["overview","Tổng quan"],["customer","Tra cứu khách hàng"],["products","Sản phẩm"],["focus","Trọng tâm"],["monthly","Thống kê tháng"],["don-hang","🧾 Đơn hàng"]];
+const TABS=[["overview","Tổng quan"],["customer","Tra cứu khách hàng"],["products","Sản phẩm"],["focus","Trọng tâm"],["cap2","🩺 Cấp 2"],["monthly","Thống kê tháng"],["don-hang","🧾 Đơn hàng"]];
 function render(){
   document.getElementById("app").innerHTML=
     state.tab==="overview"?renderOverview():
     state.tab==="customer"?renderCustomer():
     state.tab==="products"?renderProducts():
     state.tab==="focus"?renderFocus():
+    state.tab==="cap2"?renderCap2():
     state.tab==="don-hang"?renderDonHang():renderMonthly();
   if(state.tab==="don-hang")napDonHang();
   if(state.tab==="customer"&&state.selCust!=null)napCustDetail(state.selCust);
@@ -780,6 +850,7 @@ document.addEventListener("click",e=>{
     else if(s==="mgdim"){state.mgDim=seg.dataset.d;}
     else if(s==="mgmet"){state.mgMetric=seg.dataset.m;}
     render();return;}
+  const goc=e.target.closest("[data-gocust]");if(goc){state.tab="customer";state.selCust=+goc.dataset.gocust;state.selProd=null;state._activeSearch=null;renderTabs();render();window.scrollTo({top:0});return;}
   const cust=e.target.closest("[data-cust]");if(cust){state.selCust=+cust.dataset.cust;state._activeSearch=null;render();window.scrollTo({top:0});return;}
   const prod=e.target.closest("[data-prod]");if(prod){state.selProd=+prod.dataset.prod;state._activeSearch=null;render();window.scrollTo({top:0});return;}
   const back=e.target.closest("[data-back]");if(back){if(back.dataset.back==="cust")state.selCust=null;else state.selProd=null;render();return;}
