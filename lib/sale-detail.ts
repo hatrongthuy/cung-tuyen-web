@@ -39,13 +39,9 @@ const FOCUS_KEYWORDS: Record<string, string[]> = {
 // (MP / NB / SĐK / mã cũ...) do cùng 1 sản phẩm nhưng khác lô/đăng ký. Chỉ khớp mã sẽ bỏ sót
 // (ví dụ "pH Balance Baby" mã J00737 của NV Cường). Từ khóa đặt đủ hẹp để KHÔNG bắt nhầm SP
 // trọng tâm (pH Balance Protect, Atosiban, Proges, Progermila, Propofol) — đã kiểm tra khớp 0 SP trọng tâm.
-const CAP2_CAT_CODES: string[] = [
-  // Nhóm Sản
-  "P01899", "G01167", "G01173", "G01058", "P01936", "P10005", "P01882", "V01173", "V02592",
-  // Nhóm GMHS
-  "H01068", "M01740", "N00928", "N00922", "R00464", "S10674", "S01434", "Z00314", "P01597",
-];
-const CAP2_CAT_KEYWORDS: string[] = [
+// Tách danh mục Cấp 2 theo 2 NHÓM GAM HÀNG: "Sản" và "GMHS".
+const CAP2_SAN_CODES = ["P01899", "G01167", "G01173", "G01058", "P01936", "P10005", "P01882", "V01173", "V02592"];
+const CAP2_SAN_KW = [
   "fentizone",
   "ph balance baby", "balance baby intimate",
   "ph balance bio", "balance bio intimate",
@@ -55,9 +51,28 @@ const CAP2_CAT_KEYWORDS: string[] = [
   "ph balance intimate gel", "intimate gel for men",
   "vagidequa",
   "viên đặt ph", "vien dat ph",
-  "hycoba", "mucome baby", "nausazy", "nimovaso", "ropicain",
-  "smartkid", "sugam", "zentokid omega", "premical d3",
 ];
+const CAP2_GMHS_CODES = ["H01068", "M01740", "N00928", "N00922", "R00464", "S10674", "S01434", "Z00314", "P01597"];
+const CAP2_GMHS_KW = ["hycoba", "mucome baby", "nausazy", "nimovaso", "ropicain", "smartkid", "sugam", "zentokid omega", "premical d3"];
+const CAP2_CAT_CODES: string[] = [...CAP2_SAN_CODES, ...CAP2_GMHS_CODES];
+const CAP2_CAT_KEYWORDS: string[] = [...CAP2_SAN_KW, ...CAP2_GMHS_KW];
+
+// NHÓM GAM HÀNG: SS Hà Trọng Thủy phụ trách 2 nhóm.
+//  - "Sản"  : NV Huy (018468), Hà Anh (018757), Cường (020180); Trọng tâm: Atosiban, Proges sup, pH Protect.
+//  - "GMHS" : NV Cao Trung (017886), Tuyền (019484); Trọng tâm: Progermila, Propofol.
+// Mã NV đã bỏ số 0 đầu để khớp normalizeMaNV.
+const REP_GAM: Record<string, string> = {
+  "18468": "Sản", "18757": "Sản", "20180": "Sản",
+  "17886": "GMHS", "19484": "GMHS",
+};
+const FOCUS_GAM: Record<string, string> = {
+  Atosiban: "Sản", "Proges sup": "Sản", "pH Protect": "Sản",
+  Progermila: "GMHS", Propofol: "GMHS",
+};
+const matchProd = (ten: string, ma: string, codes: string[], kws: string[]) => {
+  const t = (ten || "").toLowerCase();
+  return codes.includes(ma) || kws.some((k) => t.includes(k));
+};
 
 // GỘP MÃ SẢN PHẨM: một số sản phẩm có 2 mã (mã chuẩn hóa mới "TH…" và mã cũ "P…") nhưng thực chất
 // là CÙNG một sản phẩm, cùng quy cách. Gộp về 1 mã chuẩn + 1 tên hiển thị để không bị tách đôi
@@ -127,6 +142,8 @@ export interface SaleDetailData {
   focus: Record<string, number[]>; // nhãn -> danh sách chỉ số sản phẩm (SP trọng tâm/SPTT)
   cap2ByTid: number[][]; // theo từng nhân viên (tid) -> danh sách chỉ số SP Cấp 2 được giao cho họ
   cap2Cat: number[]; // DANH MỤC Cấp 2 của NHÓM (Chuyên khoa PS) -> danh sách chỉ số SP (pid)
+  repGam: string[]; // theo tid -> nhóm gam hàng của NV ("Sản" | "GMHS" | "")
+  prodGam: string[]; // theo pid -> nhóm gam hàng của SP ("Sản" | "GMHS" | "") cho SP trọng tâm & Cấp 2
   custFirstDi: number[]; // theo cid -> di lần đầu mã khách xuất hiện trên TOÀN BỘ file (mốc code mới)
   rows: number[][]; // [cid, tid, pid, di, sl, dt]
   error?: string | null;
@@ -142,6 +159,8 @@ const EMPTY = (error: string): SaleDetailData => ({
   focus: {},
   cap2ByTid: [],
   cap2Cat: [],
+  repGam: [],
+  prodGam: [],
   custFirstDi: [],
   rows: [],
   error,
@@ -320,10 +339,24 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
   }
   const cap2Cat = Array.from(cap2CatSet);
 
+  // NHÓM GAM HÀNG theo NV (tid) và theo SP (pid).
+  const repGam: string[] = tidMa.map((ma) => REP_GAM[ma] ?? "");
+  // pid -> nhóm: ưu tiên khớp Cấp 2 (Sản/GMHS), rồi tới SP trọng tâm (theo nhãn focus).
+  const focusGamByPid = new Map<number, string>();
+  for (const [label, pids] of Object.entries(focus)) {
+    const g = FOCUS_GAM[label];
+    if (g) pids.forEach((p) => { if (!focusGamByPid.has(p)) focusGamByPid.set(p, g); });
+  }
+  const prodGam: string[] = prod.map(([ma, ten], pid) => {
+    if (matchProd(ten, ma, CAP2_SAN_CODES, CAP2_SAN_KW)) return "Sản";
+    if (matchProd(ten, ma, CAP2_GMHS_CODES, CAP2_GMHS_KW)) return "GMHS";
+    return focusGamByPid.get(pid) ?? "";
+  });
+
   // Mốc code mới theo từng khách của nhóm (cid) = lần đầu mã khách đó xuất hiện trên toàn bộ file.
   const custFirstDi: number[] = cust.map(([maKH]) => codeFirstDi.get(maKH) ?? 0);
 
-  return { base: BASE_DATE, asofDi: maxDi, tdv, tdvMa: tidMa, cust, prod, focus, cap2ByTid, cap2Cat, custFirstDi, rows, error: null };
+  return { base: BASE_DATE, asofDi: maxDi, tdv, tdvMa: tidMa, cust, prod, focus, cap2ByTid, cap2Cat, repGam, prodGam, custFirstDi, rows, error: null };
 }
 
 // ---------- Bài 3: Triển khai SẢN PHẨM TRỌNG TÂM ----------
