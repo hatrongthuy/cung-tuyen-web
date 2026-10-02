@@ -33,6 +33,17 @@ const FOCUS_KEYWORDS: Record<string, string[]> = {
   Propofol: ["propofol"],
 };
 
+// DANH MỤC SẢN PHẨM CẤP 2 CỦA NHÓM (Chuyên khoa PS) — "Chốt SP cấp 2 Quý 4/2026".
+// Dùng cho tab "Cấp 2" trong màn Tra cứu Sale: liệt kê SP Cấp 2 + khách hàng đã đặt.
+// Khớp theo MÃ sản phẩm chuẩn hóa; thêm từ khóa TÊN cho SP không có mã ổn định (Fentizone).
+const CAP2_CAT_CODES: string[] = [
+  // Nhóm Sản
+  "P01899", "G01167", "G01173", "G01058", "P01936", "P10005", "P01882", "V01173", "V02592",
+  // Nhóm GMHS
+  "H01068", "M01740", "N00928", "N00922", "R00464", "S10674", "S01434", "Z00314", "P01597",
+];
+const CAP2_CAT_KEYWORDS: string[] = ["fentizone"];
+
 // GỘP MÃ SẢN PHẨM: một số sản phẩm có 2 mã (mã chuẩn hóa mới "TH…" và mã cũ "P…") nhưng thực chất
 // là CÙNG một sản phẩm, cùng quy cách. Gộp về 1 mã chuẩn + 1 tên hiển thị để không bị tách đôi
 // doanh thu/số lượng/khách hàng trong màn Tra cứu Sale. Key = mã gốc trong file, value = mã & tên gộp.
@@ -100,6 +111,7 @@ export interface SaleDetailData {
   prod: [string, string][]; // [mã, tên]
   focus: Record<string, number[]>; // nhãn -> danh sách chỉ số sản phẩm (SP trọng tâm/SPTT)
   cap2ByTid: number[][]; // theo từng nhân viên (tid) -> danh sách chỉ số SP Cấp 2 được giao cho họ
+  cap2Cat: number[]; // DANH MỤC Cấp 2 của NHÓM (Chuyên khoa PS) -> danh sách chỉ số SP (pid)
   custFirstDi: number[]; // theo cid -> di lần đầu mã khách xuất hiện trên TOÀN BỘ file (mốc code mới)
   rows: number[][]; // [cid, tid, pid, di, sl, dt]
   error?: string | null;
@@ -114,6 +126,7 @@ const EMPTY = (error: string): SaleDetailData => ({
   prod: [],
   focus: {},
   cap2ByTid: [],
+  cap2Cat: [],
   custFirstDi: [],
   rows: [],
   error,
@@ -281,10 +294,21 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     return idxs;
   });
 
+  // DANH MỤC Cấp 2 của NHÓM: chỉ số các SP (pid) khớp mã trong CAP2_CAT_CODES hoặc từ khóa tên.
+  const cap2CatSet = new Set<number>();
+  CAP2_CAT_CODES.forEach((c) => { const p = prodIdx.get(c); if (p !== undefined) cap2CatSet.add(p); });
+  if (CAP2_CAT_KEYWORDS.length) {
+    prod.forEach(([, ten], pid) => {
+      const t = (ten || "").toLowerCase();
+      if (CAP2_CAT_KEYWORDS.some((k) => t.includes(k))) cap2CatSet.add(pid);
+    });
+  }
+  const cap2Cat = Array.from(cap2CatSet);
+
   // Mốc code mới theo từng khách của nhóm (cid) = lần đầu mã khách đó xuất hiện trên toàn bộ file.
   const custFirstDi: number[] = cust.map(([maKH]) => codeFirstDi.get(maKH) ?? 0);
 
-  return { base: BASE_DATE, asofDi: maxDi, tdv, tdvMa: tidMa, cust, prod, focus, cap2ByTid, custFirstDi, rows, error: null };
+  return { base: BASE_DATE, asofDi: maxDi, tdv, tdvMa: tidMa, cust, prod, focus, cap2ByTid, cap2Cat, custFirstDi, rows, error: null };
 }
 
 // ---------- Bài 3: Triển khai SẢN PHẨM TRỌNG TÂM ----------
