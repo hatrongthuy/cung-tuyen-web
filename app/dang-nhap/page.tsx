@@ -43,6 +43,12 @@ export default async function DangNhapPage({
     <main className="flex flex-1 flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="mb-6 text-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://cpc1hn.com.vn/build/assets/logo-DKjpVJOc.svg"
+            alt="CPC1 Hà Nội"
+            className="mx-auto mb-3 h-14 w-auto"
+          />
           <h1 className="text-xl font-semibold text-slate-900">Cung tuyến tuần</h1>
           <p className="mt-1 text-sm text-slate-500">Nhóm {TEN_NHOM_HIEN_THI}</p>
         </div>
