@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
+import HomeHero from "@/components/HomeHero";
 import StatCard from "@/components/StatCard";
 import AlertBadge from "@/components/AlertBadge";
 import EmployeeBarChart from "@/components/EmployeeBarChart";
@@ -49,7 +50,8 @@ export default async function QuanLyPage() {
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" weekLabel={weekLabel} active="cung-tuyen" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <section className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <HomeHero hoTen={user.name ?? ""} weekLabel={weekLabel} roleLabel="Quản lý nhóm" />
+        <section className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard label="Số nhân viên" value={employees.length} accentColor="#2a78d6" />
           <StatCard
             label="Tổng điểm cung tuyến nhóm"
