@@ -87,6 +87,16 @@ export default function SidebarNav({
               </svg>
             </button>
           ) : null}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://cpc1hn.com.vn/build/assets/logo-DKjpVJOc.svg"
+            onError={(e) => {
+              const t = e.currentTarget;
+              if (t.src.indexOf("apple-touch-icon") < 0) t.src = "https://cpc1hn.com.vn/admin/favicon/apple-touch-icon.png";
+            }}
+            alt="CPC1 Hà Nội"
+            className="h-9 w-9 shrink-0 rounded"
+          />
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-sm font-semibold text-slate-900 sm:text-base">
               QUẢN LÝ {APP_SHORT_NAME.toUpperCase()}
