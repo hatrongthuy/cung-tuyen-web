@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
+import HomeHero from "@/components/HomeHero";
 import StatCard from "@/components/StatCard";
 import AlertBadge from "@/components/AlertBadge";
 import ScoreTrendChart from "@/components/ScoreTrendChart";
@@ -104,7 +105,8 @@ export default async function NhanVienPage() {
     <>
       <AppHeader hoTen={hoTen} role="employee" weekLabel={weekLabel} active="cung-tuyen" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <section className="mb-6 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 shadow-sm">
+        <HomeHero hoTen={hoTen} weekLabel={weekLabel} roleLabel="Nhân viên" />
+        <section className="mb-6 mt-5 rounded-2xl border border-sky-200 bg-sky-50/60 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-900">📋 Việc cần làm tuần này</h2>
           <p className="mt-0.5 mb-3 text-xs text-slate-500">
             Việc quản lý giao cho bạn. Bấm &quot;Hoàn thành&quot; khi xong để quản lý theo dõi.
