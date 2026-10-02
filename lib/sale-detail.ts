@@ -35,14 +35,29 @@ const FOCUS_KEYWORDS: Record<string, string[]> = {
 
 // DANH MỤC SẢN PHẨM CẤP 2 CỦA NHÓM (Chuyên khoa PS) — "Chốt SP cấp 2 Quý 4/2026".
 // Dùng cho tab "Cấp 2" trong màn Tra cứu Sale: liệt kê SP Cấp 2 + khách hàng đã đặt.
-// Khớp theo MÃ sản phẩm chuẩn hóa; thêm từ khóa TÊN cho SP không có mã ổn định (Fentizone).
+// Khớp theo MÃ sản phẩm chuẩn hóa VÀ theo TỪ KHÓA TÊN — vì mỗi SP Cấp 2 có nhiều mã biến thể
+// (MP / NB / SĐK / mã cũ...) do cùng 1 sản phẩm nhưng khác lô/đăng ký. Chỉ khớp mã sẽ bỏ sót
+// (ví dụ "pH Balance Baby" mã J00737 của NV Cường). Từ khóa đặt đủ hẹp để KHÔNG bắt nhầm SP
+// trọng tâm (pH Balance Protect, Atosiban, Proges, Progermila, Propofol) — đã kiểm tra khớp 0 SP trọng tâm.
 const CAP2_CAT_CODES: string[] = [
   // Nhóm Sản
   "P01899", "G01167", "G01173", "G01058", "P01936", "P10005", "P01882", "V01173", "V02592",
   // Nhóm GMHS
   "H01068", "M01740", "N00928", "N00922", "R00464", "S10674", "S01434", "Z00314", "P01597",
 ];
-const CAP2_CAT_KEYWORDS: string[] = ["fentizone"];
+const CAP2_CAT_KEYWORDS: string[] = [
+  "fentizone",
+  "ph balance baby", "balance baby intimate",
+  "ph balance bio", "balance bio intimate",
+  "ph balance mois", "balance mois",
+  "cleanchip", "clean chip",
+  "gravia sup",
+  "ph balance intimate gel", "intimate gel for men",
+  "vagidequa",
+  "viên đặt ph", "vien dat ph",
+  "hycoba", "mucome baby", "nausazy", "nimovaso", "ropicain",
+  "smartkid", "sugam", "zentokid omega", "premical d3",
+];
 
 // GỘP MÃ SẢN PHẨM: một số sản phẩm có 2 mã (mã chuẩn hóa mới "TH…" và mã cũ "P…") nhưng thực chất
 // là CÙNG một sản phẩm, cùng quy cách. Gộp về 1 mã chuẩn + 1 tên hiển thị để không bị tách đôi
