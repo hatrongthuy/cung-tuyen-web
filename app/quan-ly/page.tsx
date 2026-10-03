@@ -10,7 +10,7 @@ export default async function QuanLyHomePage() {
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" active="trang-chu" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
-        <HomeHero hoTen={user.name ?? ""} roleLabel="Quản lý nhóm" />
+        <HomeHero hoTen={user.name ?? ""} role="manager" />
       </main>
     </>
   );
