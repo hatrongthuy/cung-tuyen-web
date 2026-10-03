@@ -9,7 +9,7 @@ export default async function NhanVienHomePage() {
   return (
     <>
       <AppHeader hoTen={user.name ?? ""} role="employee" active="trang-chu" />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+      <main className="flex-1">
         <HomeHero hoTen={user.name ?? ""} role="employee" />
       </main>
     </>
