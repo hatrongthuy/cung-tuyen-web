@@ -103,7 +103,9 @@ export default async function BaoCaoChotThangPage({
     thKpi: number | null;
     kdpm: number | null;
     thau: number | null;
-    diem: number | null;
+    diem: number | null; // điểm tự tính (dự phòng)
+    diemCore: number | null; // điểm chỉ tiêu chính (file)
+    diemFinal: number | null; // điểm cuối gồm thưởng/phạt (file)
   };
   const byNV = new Map<number, NVRow>();
   const ensure = (tid: number): NVRow => {
@@ -124,6 +126,8 @@ export default async function BaoCaoChotThangPage({
         kdpm: null,
         thau: null,
         diem: null,
+        diemCore: null,
+        diemFinal: null,
       };
       byNV.set(tid, r);
     }
@@ -172,6 +176,8 @@ export default async function BaoCaoChotThangPage({
     r.thau = th?.thucHien ?? null;
     r.thKpi = (kd?.thucHien ?? 0) + (th?.thucHien ?? 0) || null;
     r.diem = es.diemDat || null;
+    r.diemCore = es.diemTHCore ?? es.diemDat ?? null;
+    r.diemFinal = es.diemTHFinal ?? es.diemTHCore ?? es.diemDat ?? null;
   }
 
   const order = ["Sản", "GMHS", ""];
@@ -184,7 +190,7 @@ export default async function BaoCaoChotThangPage({
 
   const all = [...byNV.values()].filter((r) => r.lk > 0);
   const totWeek = [0, 0, 0, 0, 0];
-  let totLk = 0, totSptt = 0, totSpxs = 0, totKh = 0, totTh = 0, totKdpm = 0, totThau = 0, totDiem = 0;
+  let totLk = 0, totSptt = 0, totSpxs = 0, totKh = 0, totTh = 0, totKdpm = 0, totThau = 0, totDiem = 0, totDiemCore = 0, totDiemFinal = 0;
   for (const r of all) {
     r.week.forEach((v, i) => (totWeek[i] += v));
     totLk += r.lk;
@@ -195,6 +201,8 @@ export default async function BaoCaoChotThangPage({
     totKdpm += r.kdpm ?? 0;
     totThau += r.thau ?? 0;
     totDiem += r.diem ?? 0;
+    totDiemCore += r.diemCore ?? 0;
+    totDiemFinal += r.diemFinal ?? 0;
   }
   const sanLk = all.filter((r) => r.gam === "Sản").reduce((s, r) => s + r.lk, 0);
   const gmhsLk = all.filter((r) => r.gam === "GMHS").reduce((s, r) => s + r.lk, 0);
@@ -302,7 +310,7 @@ export default async function BaoCaoChotThangPage({
           <td className="px-3 py-1.5 text-right text-xs font-bold tabular-nums" style={{ color: col }}>
             {tr(gLk)}
           </td>
-          <td colSpan={7} />
+          <td colSpan={9} />
         </tr>
         {rows.map((r) => (
           <tr key={r.tid} className="border-b border-slate-100">
@@ -326,8 +334,11 @@ export default async function BaoCaoChotThangPage({
             <td className="px-3 py-2 text-right text-sm text-slate-600">{r.thau != null ? tr(r.thau) : "—"}</td>
             <td className="px-3 py-2 text-right text-sm text-emerald-700">{cell(r.sptt)}</td>
             <td className="px-3 py-2 text-right text-sm text-sky-700">{cell(r.spxs)}</td>
-            <td className="px-3 py-2 text-right text-sm font-bold text-slate-900">
-              {r.diem != null ? r.diem.toLocaleString("vi-VN") : "—"}
+            <td className="px-3 py-2 text-right text-sm text-slate-600">
+              {r.diemCore != null ? r.diemCore.toLocaleString("vi-VN") : "—"}
+            </td>
+            <td className="px-3 py-2 text-right text-sm font-bold text-indigo-700">
+              {r.diemFinal != null ? r.diemFinal.toLocaleString("vi-VN") : "—"}
             </td>
           </tr>
         ))}
@@ -358,10 +369,10 @@ export default async function BaoCaoChotThangPage({
                   <div className="text-[11px] text-white/70">TH KPI vs KH</div>
                 </div>
               )}
-              {totDiem > 0 && (
+              {totDiemFinal > 0 && (
                 <div className="rounded-xl bg-white/10 px-4 py-2 text-center">
-                  <div className="text-lg font-bold">{totDiem.toLocaleString("vi-VN")}</div>
-                  <div className="text-[11px] text-white/70">Tổng điểm KPI</div>
+                  <div className="text-lg font-bold">{totDiemFinal.toLocaleString("vi-VN")}</div>
+                  <div className="text-[11px] text-white/70">Tổng điểm KPI (cuối)</div>
                 </div>
               )}
             </div>
@@ -392,7 +403,7 @@ export default async function BaoCaoChotThangPage({
             DS theo tuần (DATA SALE) → Lũy kế {thangLabel} → KPI chính thức → SPTT/SPXS → Điểm (tr)
           </h2>
           <p className="mb-3 text-xs text-slate-400">
-            TH KPI = DS KĐ-PM + DS thầu theo file KPI · SPTT = SP trọng tâm · SPXS = SP Cấp 2 (Chuyên khoa PS) · Điểm = điểm KPI đạt.
+            TH KPI = DS KĐ-PM + DS thầu · SPTT = SP trọng tâm · SPXS = SP Cấp 2 (Chuyên khoa PS). <b>Điểm chính</b> = tổng điểm KPIs các chỉ tiêu chính; <b>Điểm cuối</b> = điểm KPIs tháng chính thức (đã gồm thưởng/phạt) — lấy thẳng từ file KPI công ty.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1000px] text-sm">
@@ -410,7 +421,8 @@ export default async function BaoCaoChotThangPage({
                   <th className="px-3 py-2 text-right font-semibold">Thầu</th>
                   <th className="px-3 py-2 text-right font-semibold">SPTT</th>
                   <th className="px-3 py-2 text-right font-semibold">SPXS</th>
-                  <th className="px-3 py-2 text-right font-semibold">Điểm</th>
+                  <th className="px-3 py-2 text-right font-semibold">Điểm chính</th>
+                  <th className="px-3 py-2 text-right font-semibold">Điểm cuối</th>
                 </tr>
               </thead>
               <tbody>
@@ -430,7 +442,8 @@ export default async function BaoCaoChotThangPage({
                   <td className="px-3 py-2 text-right text-sm text-slate-600">{totThau > 0 ? tr(totThau) : "—"}</td>
                   <td className="px-3 py-2 text-right text-sm text-emerald-700">{tr(totSptt)}</td>
                   <td className="px-3 py-2 text-right text-sm text-sky-700">{tr(totSpxs)}</td>
-                  <td className="px-3 py-2 text-right text-sm text-slate-900">{totDiem > 0 ? totDiem.toLocaleString("vi-VN") : "—"}</td>
+                  <td className="px-3 py-2 text-right text-sm text-slate-700">{totDiemCore > 0 ? totDiemCore.toLocaleString("vi-VN") : "—"}</td>
+                  <td className="px-3 py-2 text-right text-sm text-indigo-700">{totDiemFinal > 0 ? totDiemFinal.toLocaleString("vi-VN") : "—"}</td>
                 </tr>
               </tbody>
             </table>
