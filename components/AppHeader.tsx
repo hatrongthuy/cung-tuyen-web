@@ -5,6 +5,7 @@ import SidebarNav, { type NavEntry } from "./SidebarNav";
 export type NavKey =
   | "trang-chu"
   | "cung-tuyen"
+  | "chot-thang"
   | "hoi-dap"
   | "doi-nhom"
   | "sp-trong-tam"
@@ -34,6 +35,7 @@ const NAV_ITEMS: NavEntry[] = [
     label: "Báo cáo",
     icon: "📊",
     children: [
+      { key: "chot-thang", label: "Báo cáo chốt tháng", href: "/quan-ly/bao-cao-chot-thang", icon: "📊" },
       { key: "bao-cao-tuan", label: "Báo cáo tuần", href: "/quan-ly/bao-cao-tuan", icon: "📅" },
       { key: "bao-cao-thang", label: "Báo cáo tháng", href: "/quan-ly/bao-cao-thang", icon: "🗓️" },
     ],
