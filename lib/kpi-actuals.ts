@@ -419,23 +419,34 @@ export async function getKpiScorecard(
 
       let thucHien: number | null = null;
       let nguon: MetricScore["nguon"] = "chua-co";
-      // Code mới: KHÔNG tự tính (dữ liệu Sale không đủ tin cậy) — lấy theo số NHÂN VIÊN TỰ NHẬP.
-      if (m.key === "codeMoi") {
-        const v = codeMoiManual.byMa[ma];
-        if (v != null) {
-          thucHien = v;
-          nguon = "nhap-tay";
+      const thSheet = cols.th != null ? numOrNull(info.row[cols.th]) : null;
+      const isDS = m.key === "keDon" || m.key === "thau";
+      if (isDS) {
+        // Doanh số: ưu tiên web TỰ TÍNH từ Sale (cập nhật realtime), dự phòng số công ty nhập.
+        if (isEmp && m.actualKey && actuals.availableKeys.has(m.actualKey)) {
+          thucHien = act ? act[m.actualKey] ?? 0 : 0;
+          nguon = "tu-tinh";
+          if (thucHien > 0) hasAuto = true;
+        } else if (thSheet != null) {
+          thucHien = thSheet;
+          nguon = "sheet";
         }
-      } else if (isEmp && m.actualKey && actuals.availableKeys.has(m.actualKey)) {
-        // Chỉ coi là "tự tính" khi chỉ tiêu có nguồn dữ liệu (VD SP Cấp 2 chỉ auto khi đã cấu hình mã).
-        thucHien = act ? act[m.actualKey] ?? 0 : 0;
-        nguon = "tu-tinh";
-        if (thucHien > 0) hasAuto = true;
       } else {
-        const thSheet = cols.th != null ? numOrNull(info.row[cols.th]) : null;
+        // Các chỉ tiêu ĐẾM (mở mới/duy trì, code, miniapp, coaching, tuyển dụng):
+        // ưu tiên số công ty đã chấm trong FILE KPI; thiếu mới dùng số web/nhân viên nhập.
         if (thSheet != null) {
           thucHien = thSheet;
           nguon = "sheet";
+        } else if (m.key === "codeMoi") {
+          const v = codeMoiManual.byMa[ma];
+          if (v != null) {
+            thucHien = v;
+            nguon = "nhap-tay";
+          }
+        } else if (isEmp && m.actualKey && actuals.availableKeys.has(m.actualKey)) {
+          thucHien = act ? act[m.actualKey] ?? 0 : 0;
+          nguon = "tu-tinh";
+          if (thucHien > 0) hasAuto = true;
         }
       }
 
