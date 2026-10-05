@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
+import ReportDownload from "@/components/ReportDownload";
 import { getSaleDetailData } from "@/lib/sale-detail";
 import { getKpiScorecard, type EmployeeScore, type MetricScore } from "@/lib/kpi-actuals";
 import { TEN_NHOM } from "@/lib/scope";
@@ -350,6 +351,10 @@ export default async function BaoCaoChotThangPage({
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" active="chot-thang" />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+        <div className="mb-3 flex items-center justify-end gap-2">
+          <ReportDownload targetId="bc-content" fileName={`Bao-cao-chot-thang-${thangLabel.replace("/", "-")}`} />
+        </div>
+        <div id="bc-content">
         <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#0b3b40] to-[#0b6e75] p-6 text-white shadow-sm sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -595,6 +600,7 @@ export default async function BaoCaoChotThangPage({
         <section className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
           Nhấp vào <b className="text-teal-700">tên nhân viên</b> ở bảng tổng quan để xem trang chi tiết (biểu đồ tuần · kế hoạch → kết quả · nhận xét). Nguồn: DATA SALE (Sale sạch) + file KPI công ty (tháng {tmonth + 1}/{ty}).
         </section>
+        </div>
       </main>
     </>
   );
