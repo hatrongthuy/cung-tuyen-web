@@ -4,6 +4,7 @@ import DoiNhomView from "@/components/DoiNhomView";
 import { getDanhGiaCungTuyen, getGoiYTapTrung, getXacNhanGoiY, getLichSuGoiY } from "@/lib/data";
 import { buildEmployeeWeekSummaries, buildTonDongTuanTruoc } from "@/lib/aggregate";
 import { getTeamSales } from "@/lib/sales";
+import { getTeamKpiLite } from "@/lib/kpi-actuals";
 import { todayInVN } from "@/lib/report-utils";
 
 import { TEN_NHOM, TEN_NHOM_HIEN_THI } from "@/lib/scope";
@@ -14,20 +15,21 @@ export default async function DoiNhomPage() {
   const session = await auth();
   const user = session!.user!;
 
-  const [danhGia, goiY, xacNhan, lichSu, sales] = await Promise.all([
+  const today = todayInVN();
+  const nam = today.getFullYear();
+  const thang = today.getMonth() + 1; // 1..12
+  const ngay = today.getDate();
+
+  const [danhGia, goiY, xacNhan, lichSu, sales, kpiRows] = await Promise.all([
     getDanhGiaCungTuyen(),
     getGoiYTapTrung(),
     getXacNhanGoiY(),
     getLichSuGoiY(),
     getTeamSales(),
+    getTeamKpiLite(TEN_NHOM, nam, thang).catch(() => []),
   ]);
   const { summaries } = buildEmployeeWeekSummaries(goiY, xacNhan, danhGia);
   const tonDong = buildTonDongTuanTruoc(lichSu, xacNhan);
-
-  const today = todayInVN();
-  const nam = today.getFullYear();
-  const thang = today.getMonth() + 1; // 1..12
-  const ngay = today.getDate();
 
   // Tháng này: 01 -> hôm nay. Cùng kỳ tháng trước: 01 -> cùng ngày (kẹp theo số ngày của tháng trước).
   const monthStartMs = new Date(nam, thang - 1, 1).getTime();
@@ -60,6 +62,7 @@ export default async function DoiNhomPage() {
           salesError={sales.error}
           summaries={summaries}
           tonDong={tonDong}
+          kpiRows={kpiRows}
           ctx={ctx}
         />
       </main>
