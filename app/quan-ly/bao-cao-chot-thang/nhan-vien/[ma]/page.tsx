@@ -273,6 +273,11 @@ export default async function ChiTietNhanVienPage({
               <div className="text-[11px] text-slate-500">SP Cấp 2</div>
             </div>
           </div>
+          {spttDS + spxsDS > lk + 1_000_000 && (
+            <p className="mt-2 text-[11px] text-slate-400">
+              * DS trọng tâm/Cấp 2 có thể cao hơn Lũy kế tháng do trong tháng có đơn trả/điều chỉnh âm ở các sản phẩm ngoài trọng tâm (lũy kế đã trừ phần âm này).
+            </p>
+          )}
         </section>
 
         {/* Kế hoạch → Kết quả (KPI) */}
