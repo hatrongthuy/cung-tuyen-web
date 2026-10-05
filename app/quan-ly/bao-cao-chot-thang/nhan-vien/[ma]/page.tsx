@@ -169,10 +169,11 @@ export default async function ChiTietNhanVienPage({
     kpiErr = e instanceof Error ? e.message : String(e);
   }
 
-  const diemDat = es?.diemDat ?? 0;
-  const diemKHDat = es?.diemKHDat ?? 0;
-  const tongDiemKH = es?.tongDiemKH ?? 0;
-  const pctDiem = diemKHDat > 0 ? Math.round((diemDat / diemKHDat) * 100) : null;
+  // Điểm chính thức từ file công ty (ưu tiên), dự phòng điểm tự tính.
+  const diemCore = es?.diemTHCore ?? es?.diemDat ?? 0;
+  const diemFinal = es?.diemTHFinal ?? es?.diemTHCore ?? es?.diemDat ?? 0;
+  const diemKHFile = es?.diemKHFile ?? es?.tongDiemKH ?? 0;
+  const pctDiem = diemKHFile > 0 ? Math.round((diemFinal / diemKHFile) * 100) : null;
 
   // Nhận xét tự động.
   const nhanXet: string[] = [];
@@ -203,7 +204,7 @@ export default async function ChiTietNhanVienPage({
     nhanXet.push("Chỉ tiêu cần cải thiện: " + weakMetrics.map((m) => m.label).join(", ") + ".");
   }
   if (pctDiem != null) {
-    nhanXet.push(`Điểm KPI đạt ${diemDat.toLocaleString("vi-VN")} (${pctDiem}% so với điểm của các mục đã đo).`);
+    nhanXet.push(`Điểm KPI tháng (chính thức): ${diemFinal.toLocaleString("vi-VN")}/${diemKHFile.toLocaleString("vi-VN")} = ${pctDiem}% (điểm chỉ tiêu chính ${diemCore.toLocaleString("vi-VN")}).`);
   }
 
   const pctBadge = (p: number) => {
@@ -234,10 +235,16 @@ export default async function ChiTietNhanVienPage({
                 <div className="text-lg font-bold">{tr(lk)}tr</div>
                 <div className="text-[11px] text-white/70">DS tháng</div>
               </div>
-              {diemDat > 0 && (
+              {diemFinal > 0 && (
                 <div className="rounded-xl bg-white/10 px-4 py-2 text-center">
-                  <div className="text-lg font-bold">{diemDat.toLocaleString("vi-VN")}</div>
-                  <div className="text-[11px] text-white/70">Điểm KPI</div>
+                  <div className="text-lg font-bold">{diemFinal.toLocaleString("vi-VN")}</div>
+                  <div className="text-[11px] text-white/70">Điểm KPI (cuối)</div>
+                </div>
+              )}
+              {diemCore > 0 && (
+                <div className="rounded-xl bg-white/10 px-4 py-2 text-center">
+                  <div className="text-lg font-bold">{diemCore.toLocaleString("vi-VN")}</div>
+                  <div className="text-[11px] text-white/70">Điểm chính</div>
                 </div>
               )}
             </div>
@@ -284,8 +291,8 @@ export default async function ChiTietNhanVienPage({
         <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <h2 className="mb-1 text-sm font-semibold text-slate-900">🎯 Kế hoạch → Kết quả (KPI {thangLabel})</h2>
           <p className="mb-3 text-xs text-slate-400">
-            Tổng điểm KPI đạt <b>{diemDat.toLocaleString("vi-VN")}</b>
-            {pctDiem != null ? <> · {pctDiem}% điểm của các mục đã đo</> : null} · điểm KH tối đa {tongDiemKH.toLocaleString("vi-VN")}.
+            Điểm KPI tháng (chính thức, gồm thưởng/phạt): <b>{diemFinal.toLocaleString("vi-VN")}</b>
+            {pctDiem != null ? <> = {pctDiem}% mục tiêu {diemKHFile.toLocaleString("vi-VN")}</> : null} · điểm chỉ tiêu chính {diemCore.toLocaleString("vi-VN")}. Số điểm lấy từ file KPI công ty.
           </p>
           {es ? (
             <div className="overflow-x-auto">
