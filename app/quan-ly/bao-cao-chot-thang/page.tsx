@@ -181,8 +181,9 @@ export default async function BaoCaoChotThangPage({
     r.thau = th?.thucHien ?? null;
     r.thKpi = (kd?.thucHien ?? 0) + (th?.thucHien ?? 0) || null;
     r.diem = es.diemDat || null;
-    r.diemCore = es.diemTHCore ?? es.diemDat ?? null;
-    r.diemFinal = es.diemTHFinal ?? es.diemTHCore ?? es.diemDat ?? null;
+    const rnd = (v: number | null | undefined) => (v == null ? null : Math.round(v));
+    r.diemCore = rnd(es.diemTHCore ?? es.diemDat ?? null);
+    r.diemFinal = rnd(es.diemTHFinal ?? es.diemTHCore ?? es.diemDat ?? null);
   }
 
   const order = ["Sản", "GMHS", ""];
