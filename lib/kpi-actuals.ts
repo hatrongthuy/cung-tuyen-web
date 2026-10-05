@@ -117,6 +117,10 @@ export interface EmployeeScore {
   diemDat: number;
   /** Tổng Điểm KH của riêng các mục đã đo được (mẫu số để ra % điểm). */
   diemKHDat: number;
+  /** ĐIỂM CHÍNH THỨC đọc thẳng từ file KPI công ty (null nếu file chưa có cột tổng). */
+  diemKHFile: number | null; // Tổng điểm KPIs KH (mục tiêu, thường = 1000)
+  diemTHCore: number | null; // Tổng điểm KPIs TH — chỉ tiêu chính (chưa thưởng/phạt)
+  diemTHFinal: number | null; // Tổng điểm KPIs TH — điểm cuối (đã gồm thưởng/phạt)
 }
 
 export interface KpiScorecardResult {
@@ -129,13 +133,22 @@ export interface KpiScorecardResult {
 
 interface MetricColumns {
   kh: number | null;
-  diem: number | null;
-  th: number | null;
+  diem: number | null; // cột Điểm KH
+  th: number | null; // cột Thực hiện
+  diemTh: number | null; // cột Điểm Thực hiện (điểm chính thức công ty chấm)
+}
+
+/** Vị trí các cột TỔNG điểm trong file KPI (chung cho mọi nhân viên). */
+interface TotalCols {
+  kh: number | null; // Tổng điểm KPIs KH
+  thCore: number | null; // Tổng điểm KPIs TH (xuất hiện đầu — điểm chỉ tiêu chính)
+  thFinal: number | null; // Tổng điểm KPIs TH (xuất hiện cuối — gồm cả thưởng/phạt)
 }
 
 async function readKpiSheetTargets(
   teamName: string | string[]
-): Promise<{ byMa: Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>; error: string | null }> {
+): Promise<{ byMa: Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>; totalCols: TotalCols; error: string | null }> {
+  const emptyTotals: TotalCols = { kh: null, thCore: null, thFinal: null };
   let raw: string[][];
   try {
     const sheets = google.sheets({ version: "v4", auth: getAuth() });
@@ -147,7 +160,7 @@ async function readKpiSheetTargets(
     raw = (res.data.values as string[][] | undefined) ?? [];
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { byMa: new Map(), error: `Không đọc được file KPI để tính điểm: ${msg}` };
+    return { byMa: new Map(), totalCols: emptyTotals, error: `Không đọc được file KPI để tính điểm: ${msg}` };
   }
 
   const cell = (r: string[] | undefined, j: number) => String(r?.[j] ?? "").trim();
@@ -161,7 +174,7 @@ async function readKpiSheetTargets(
       break;
     }
   }
-  if (metricRowIdx < 0) return { byMa: new Map(), error: `Không tìm thấy dòng tiêu đề trong tab "${KPI_SHEET_NAME}".` };
+  if (metricRowIdx < 0) return { byMa: new Map(), totalCols: emptyTotals, error: `Không tìm thấy dòng tiêu đề trong tab "${KPI_SHEET_NAME}".` };
 
   let subRowIdx = -1;
   for (let i = metricRowIdx + 1; i < Math.min(metricRowIdx + 4, raw.length); i++) {
@@ -171,7 +184,7 @@ async function readKpiSheetTargets(
       break;
     }
   }
-  if (subRowIdx < 0) return { byMa: new Map(), error: `Không tìm thấy dòng tiêu đề phụ (Kế hoạch/Thực hiện) trong tab "${KPI_SHEET_NAME}".` };
+  if (subRowIdx < 0) return { byMa: new Map(), totalCols: emptyTotals, error: `Không tìm thấy dòng tiêu đề phụ (Kế hoạch/Thực hiện) trong tab "${KPI_SHEET_NAME}".` };
 
   const metricRow = raw[metricRowIdx] ?? [];
   const subRow = raw[subRowIdx] ?? [];
@@ -188,18 +201,31 @@ async function readKpiSheetTargets(
   // rồi phân loại cột con theo subRow (Kế hoạch / Điểm KH / Thực hiện).
   function metricColumnsFor(sheetMetric: string): MetricColumns {
     const target = norm(sheetMetric);
-    const out: MetricColumns = { kh: null, diem: null, th: null };
+    const out: MetricColumns = { kh: null, diem: null, th: null, diemTh: null };
     for (let j = 0; j < nCol; j++) {
       if (norm(String(metricRow[j] ?? "")) !== target) continue;
       const sub = norm(String(subRow[j] ?? ""));
       if (sub === "kế hoạch" && out.kh === null) out.kh = j;
       else if (sub === "thực hiện" && out.th === null) out.th = j;
       else if (sub === "điểm kh" && out.diem === null) out.diem = j;
+      else if ((sub === "điểm thực hiện" || sub === "điểm th") && out.diemTh === null) out.diemTh = j;
     }
     return out;
   }
   const metricCols: Record<string, MetricColumns> = {};
   for (const m of METRICS) metricCols[m.key] = metricColumnsFor(m.sheetMetric);
+
+  // Cột TỔNG điểm (theo tên ở dòng tiêu đề chỉ tiêu). "Tổng điểm KPIs TH" xuất hiện 2 lần:
+  // lần đầu = điểm chỉ tiêu chính, lần cuối = điểm cuối (đã gồm thưởng/phạt).
+  const totalCols: TotalCols = { kh: null, thCore: null, thFinal: null };
+  for (let j = 0; j < nCol; j++) {
+    const name = norm(String(metricRow[j] ?? ""));
+    if (name === "tổng điểm kpis kh" && totalCols.kh === null) totalCols.kh = j;
+    else if (name === "tổng điểm kpis th") {
+      if (totalCols.thCore === null) totalCols.thCore = j;
+      totalCols.thFinal = j; // luôn cập nhật -> giữ cột cuối cùng
+    }
+  }
 
   const byMa = new Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>();
   for (let i = subRowIdx + 1; i < raw.length; i++) {
@@ -215,7 +241,7 @@ async function readKpiSheetTargets(
     if (byMa.has(ma)) continue; // giữ dòng hợp lệ đầu tiên
     byMa.set(ma, { ten: cell(r, jTen) || ma, cols: metricCols, row: r.map((x) => String(x ?? "")) });
   }
-  return { byMa, error: null };
+  return { byMa, totalCols, error: null };
 }
 
 interface Actuals {
@@ -387,7 +413,7 @@ export async function getKpiScorecard(
     const act = actuals.byMa[ma];
     const isEmp = empSet.has(ma);
     const metrics: MetricScore[] = METRICS.map((m) => {
-      const cols = info.cols[m.key] ?? { kh: null, diem: null, th: null };
+      const cols = info.cols[m.key] ?? { kh: null, diem: null, th: null, diemTh: null };
       const keHoach = cols.kh != null ? numOrNull(info.row[cols.kh]) : null;
       const diemKH = cols.diem != null ? numOrNull(info.row[cols.diem]) : null;
 
@@ -419,7 +445,11 @@ export async function getKpiScorecard(
       // Điểm thực hiện tạm tính: % đạt (trần 100%) × Điểm KH.
       // Chỉ tính khi có Điểm KH, có Kế hoạch > 0 và đã có số Thực hiện.
       let diemTH: number | null = null;
-      if (diemKH != null && keHoach != null && keHoach > 0 && thucHien != null) {
+      // Ưu tiên ĐIỂM THỰC HIỆN công ty đã chấm trong file (không chặn trần 100%).
+      const diemThFile = cols.diemTh != null ? numOrNull(info.row[cols.diemTh]) : null;
+      if (diemThFile != null) {
+        diemTH = diemThFile;
+      } else if (diemKH != null && keHoach != null && keHoach > 0 && thucHien != null) {
         const ratio = Math.min(thucHien / keHoach, 1);
         diemTH = Math.round(ratio * diemKH);
       }
@@ -430,10 +460,15 @@ export async function getKpiScorecard(
     const tongDiemKH = metrics.reduce((s, x) => s + (x.diemKH ?? 0), 0);
     const diemDat = metrics.reduce((s, x) => s + (x.diemTH ?? 0), 0);
     const diemKHDat = metrics.reduce((s, x) => s + (x.diemTH != null ? x.diemKH ?? 0 : 0), 0);
-    rows.push({ ma, ten: info.ten, metrics, tongDiemKH, diemDat, diemKHDat });
+    const tc = targets.totalCols;
+    const diemKHFile = tc.kh != null ? numOrNull(info.row[tc.kh]) : null;
+    const diemTHCore = tc.thCore != null ? numOrNull(info.row[tc.thCore]) : null;
+    const diemTHFinal = tc.thFinal != null ? numOrNull(info.row[tc.thFinal]) : null;
+    rows.push({ ma, ten: info.ten, metrics, tongDiemKH, diemDat, diemKHDat, diemKHFile, diemTHCore, diemTHFinal });
   }
 
-  // Sắp theo điểm ĐẠT ĐƯỢC giảm dần (người đang đạt cao lên trước); hòa thì theo điểm KH.
-  rows.sort((a, b) => b.diemDat - a.diemDat || b.tongDiemKH - a.tongDiemKH);
+  // Sắp theo điểm chính thức (điểm cuối) giảm dần; không có thì theo điểm tự tính.
+  const diemSort = (r: EmployeeScore) => r.diemTHFinal ?? r.diemTHCore ?? r.diemDat;
+  rows.sort((a, b) => diemSort(b) - diemSort(a) || b.tongDiemKH - a.tongDiemKH);
   return { rows, monthLabel, error, hasAuto };
 }
