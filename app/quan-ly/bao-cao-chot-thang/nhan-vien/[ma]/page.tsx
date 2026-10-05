@@ -169,10 +169,10 @@ export default async function ChiTietNhanVienPage({
     kpiErr = e instanceof Error ? e.message : String(e);
   }
 
-  // Điểm chính thức từ file công ty (ưu tiên), dự phòng điểm tự tính.
-  const diemCore = es?.diemTHCore ?? es?.diemDat ?? 0;
-  const diemFinal = es?.diemTHFinal ?? es?.diemTHCore ?? es?.diemDat ?? 0;
-  const diemKHFile = es?.diemKHFile ?? es?.tongDiemKH ?? 0;
+  // Điểm chính thức từ file công ty (ưu tiên), dự phòng điểm tự tính. Làm tròn số nguyên.
+  const diemCore = Math.round(es?.diemTHCore ?? es?.diemDat ?? 0);
+  const diemFinal = Math.round(es?.diemTHFinal ?? es?.diemTHCore ?? es?.diemDat ?? 0);
+  const diemKHFile = Math.round(es?.diemKHFile ?? es?.tongDiemKH ?? 0);
   const pctDiem = diemKHFile > 0 ? Math.round((diemFinal / diemKHFile) * 100) : null;
 
   // Nhận xét tự động.
@@ -317,8 +317,8 @@ export default async function ChiTietNhanVienPage({
                         <td className="px-3 py-2 text-right text-sm text-slate-600">{fmtVal(m, m.keHoach)}</td>
                         <td className="px-3 py-2 text-right text-sm font-medium text-slate-900">{fmtVal(m, m.thucHien)}</td>
                         <td className="px-3 py-2 text-center">{p != null ? pctBadge(p) : <span className="text-slate-300">—</span>}</td>
-                        <td className="px-3 py-2 text-right text-sm text-slate-500">{m.diemKH != null ? m.diemKH.toLocaleString("vi-VN") : "—"}</td>
-                        <td className="px-3 py-2 text-right text-sm font-semibold text-slate-900">{m.diemTH != null ? m.diemTH.toLocaleString("vi-VN") : "—"}</td>
+                        <td className="px-3 py-2 text-right text-sm text-slate-500">{m.diemKH != null ? Math.round(m.diemKH).toLocaleString("vi-VN") : "—"}</td>
+                        <td className="px-3 py-2 text-right text-sm font-semibold text-slate-900">{m.diemTH != null ? Math.round(m.diemTH).toLocaleString("vi-VN") : "—"}</td>
                         <td className="px-3 py-2 text-left text-[11px] text-slate-400">{NGUON_LABEL[m.nguon] ?? m.nguon}</td>
                       </tr>
                     );
