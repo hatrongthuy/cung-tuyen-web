@@ -3,7 +3,7 @@ import AppHeader from "@/components/AppHeader";
 import KpiView from "@/components/KpiView";
 import KpiScorecard from "@/components/KpiScorecard";
 import CodeMoiInput from "@/components/CodeMoiInput";
-import { KPI_TABS, getAllKpiTabsData } from "@/lib/kpi";
+import { getAllKpiTabsData } from "@/lib/kpi";
 import { getKpiScorecard } from "@/lib/kpi-actuals";
 import { getCodeMoiManual } from "@/lib/code-moi";
 import { getTeamSales } from "@/lib/sales";
@@ -25,11 +25,10 @@ export default async function KpiNhanVienPage() {
   const user = session!.user!;
   const meMa = normalizeMaNV(user.maNhanVien);
 
-  const [{ dataByTab, error }, sales] = await Promise.all([
+  const [{ dataByTab, error, tabs }, sales] = await Promise.all([
     getAllKpiTabsData(TEN_NHOM),
     getTeamSales(),
   ]);
-  const tabs = KPI_TABS.map((t) => ({ key: t.key, label: t.label }));
 
   // Lọc mỗi tab về đúng dòng của nhân viên đang đăng nhập (theo Mã NV).
   const myDataByTab: Record<string, { columns: string[]; rows: Record<string, string>[] }> = {};
