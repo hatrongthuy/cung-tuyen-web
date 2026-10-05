@@ -25,6 +25,18 @@ const KPI_SPREADSHEET_ID =
   process.env.GOOGLE_SHEETS_KPI_SPREADSHEET_ID || "1xtgnuS1JrN5l6DrNJEqnleGQfDCPqnRMCCQJBsOHMU0";
 const KPI_SHEET_NAME = process.env.GOOGLE_SHEETS_KPI_MAIN_TAB || "KPIs T09.26 (new)";
 
+// File KPI THÁNG 10 (bản mới) — cấu trúc khác (không còn dòng tiêu đề chữ cho các chỉ tiêu),
+// đọc theo VỊ TRÍ CỘT cố định. Áp dụng từ tháng 10/2026 trở đi; tháng 9 & trước vẫn dùng file cũ.
+const KPI_T10_SPREADSHEET_ID =
+  process.env.GOOGLE_SHEETS_KPI_T10_SPREADSHEET_ID || "1yegEG6DkHWG5gPMRjEkFD3RJ1kRUPK5HiMLJMZCDjn0";
+const KPI_T10_SHEET_NAME = process.env.GOOGLE_SHEETS_KPI_T10_MAIN_TAB || "KPIs (new)";
+// Cột bắt đầu của từng chỉ tiêu trong tab "KPIs (new)" (mỗi khối: KH=s, TH=s+1, Điểm KH=s+3, Điểm TH=s+4).
+const T10_METRIC_START: Record<string, number> = {
+  keDon: 11, thau: 16, coaching: 21, codeMoi: 26, miniapp: 31,
+  moMoiSptt: 37, duyTriSptt: 42, moMoiC2: 48, duyTriC2: 53, tuyenDung: 59,
+};
+const T10_COL = { ma: 1, ten: 2, nhom: 3, totalKH: 69, totalTHcore: 70, totalTHfinal: 88 };
+
 // Mốc gốc của Sale detail (di = số ngày kể từ mốc này).
 const BASE_DATE = "2025-01-01";
 
@@ -244,6 +256,54 @@ async function readKpiSheetTargets(
   return { byMa, totalCols, error: null };
 }
 
+/**
+ * Đọc file KPI THÁNG 10 (bản mới) theo VỊ TRÍ CỘT cố định — tab "KPIs (new)" không còn
+ * dòng tiêu đề chữ cho các chỉ tiêu, nhưng vị trí cột trùng khớp với file cũ.
+ */
+async function readKpiTargetsNew(
+  spreadsheetId: string,
+  sheetName: string,
+  teamName: string | string[]
+): Promise<{ byMa: Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>; totalCols: TotalCols; error: string | null }> {
+  const emptyTotals: TotalCols = { kh: null, thCore: null, thFinal: null };
+  let raw: string[][];
+  try {
+    const sheets = google.sheets({ version: "v4", auth: getAuth() });
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${sheetName}'`,
+      valueRenderOption: "UNFORMATTED_VALUE",
+    });
+    raw = (res.data.values as string[][] | undefined) ?? [];
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { byMa: new Map(), totalCols: emptyTotals, error: `Không đọc được file KPI (T10) để tính điểm: ${msg}` };
+  }
+
+  // Cột con cho mỗi chỉ tiêu theo vị trí bắt đầu.
+  const metricCols: Record<string, MetricColumns> = {};
+  for (const m of METRICS) {
+    const s = T10_METRIC_START[m.key];
+    metricCols[m.key] = s == null ? { kh: null, diem: null, th: null, diemTh: null } : { kh: s, th: s + 1, diem: s + 3, diemTh: s + 4 };
+  }
+  const totalCols: TotalCols = { kh: T10_COL.totalKH, thCore: T10_COL.totalTHcore, thFinal: T10_COL.totalTHfinal };
+
+  const byMa = new Map<string, { ten: string; cols: Record<string, MetricColumns>; row: string[] }>();
+  for (const r of raw) {
+    if (!r) continue;
+    const nhom = String(r[T10_COL.nhom] ?? "").trim();
+    if (!matchesTeamName(nhom, teamName)) continue; // bỏ dòng tiêu đề & nhóm khác
+    const ma = normalizeMaNV(r[T10_COL.ma]);
+    if (!ma) continue;
+    // Bỏ dòng rác: yêu cầu Kế hoạch DS KĐ-PM là số > 0.
+    const dsKH = numOrNull(r[T10_METRIC_START.keDon]);
+    if (dsKH === null || dsKH <= 0) continue;
+    if (byMa.has(ma)) continue;
+    byMa.set(ma, { ten: String(r[T10_COL.ten] ?? "") || ma, cols: metricCols, row: r.map((x) => String(x ?? "")) });
+  }
+  return { byMa, totalCols, error: null };
+}
+
 interface Actuals {
   keDon: number;
   thau: number;
@@ -393,8 +453,12 @@ export async function getKpiScorecard(
   thang: number
 ): Promise<KpiScorecardResult> {
   const monthLabel = `${String(thang).padStart(2, "0")}/${nam}`;
+  // Từ tháng 10/2026 dùng file KPI mới (đọc theo vị trí cột); trước đó dùng file cũ (đọc theo tên cột).
+  const useNewKpi = nam > 2026 || (nam === 2026 && thang >= 10);
   const [targets, actuals, codeMoiManual] = await Promise.all([
-    readKpiSheetTargets(teamName),
+    useNewKpi
+      ? readKpiTargetsNew(KPI_T10_SPREADSHEET_ID, KPI_T10_SHEET_NAME, teamName)
+      : readKpiSheetTargets(teamName),
     computeActuals(nam, thang),
     getCodeMoiManual(nam, thang),
   ]);
