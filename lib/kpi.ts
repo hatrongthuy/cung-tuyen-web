@@ -11,6 +11,9 @@ import { google } from "googleapis";
 // (File cũ 1dv0q chỉ có Kế hoạch, các mục "theo sheet" = 0.) Có thể ghi đè bằng biến môi trường.
 const KPI_SPREADSHEET_ID =
   process.env.GOOGLE_SHEETS_KPI_SPREADSHEET_ID || "1xtgnuS1JrN5l6DrNJEqnleGQfDCPqnRMCCQJBsOHMU0";
+// File KPI THÁNG 10 (bản mới) — tên tab & vị trí tiêu đề khác file cũ.
+const KPI_SPREADSHEET_ID_T10 =
+  process.env.GOOGLE_SHEETS_KPI_T10_SPREADSHEET_ID || "1yegEG6DkHWG5gPMRjEkFD3RJ1kRUPK5HiMLJMZCDjn0";
 
 export function getKpiServiceAccountEmail(): string {
   return process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "(chưa đặt GOOGLE_SERVICE_ACCOUNT_EMAIL)";
@@ -41,10 +44,10 @@ function friendlyError(err: unknown): string {
   return msg;
 }
 
-async function getRawValues(sheetName: string): Promise<string[][]> {
+async function getRawValues(sheetName: string, spreadsheetId: string = KPI_SPREADSHEET_ID): Promise<string[][]> {
   const sheets = google.sheets({ version: "v4", auth: getAuth() });
   const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: KPI_SPREADSHEET_ID,
+    spreadsheetId,
     range: `'${sheetName}'`,
     valueRenderOption: "UNFORMATTED_VALUE",
   });
@@ -54,12 +57,12 @@ async function getRawValues(sheetName: string): Promise<string[][]> {
 /** Một số tab (vd "Doanh so T9") có kèm theo các cột tổng hợp/tham chiếu đã bị ẩn (hidden columns)
  * dùng nội bộ trong sheet — không nên hiển thị lẫn với dữ liệu chính cho người dùng. Hàm này lấy
  * danh sách chỉ số cột đang bị ẩn (ẩn tay) để loại ra khi build bảng hiển thị. */
-async function getHiddenColumnIndexes(sheetName: string): Promise<Set<number>> {
+async function getHiddenColumnIndexes(sheetName: string, spreadsheetId: string = KPI_SPREADSHEET_ID): Promise<Set<number>> {
   const sheets = google.sheets({ version: "v4", auth: getAuth() });
   const hidden = new Set<number>();
   try {
     const res = await sheets.spreadsheets.get({
-      spreadsheetId: KPI_SPREADSHEET_ID,
+      spreadsheetId,
       ranges: [`'${sheetName}'`],
       includeGridData: true,
       fields: "sheets(data(columnMetadata(hiddenByUser)))",
@@ -97,6 +100,27 @@ export const KPI_TABS: KpiTabConfig[] = [
   { key: "duy-tri-cap-2", label: "Duy trì SP cấp 2", sheetName: "Duy trì SP cấp 2", headerRowIndex: 1, dataStartIndex: 2, teamColumn: "Nhóm SS" },
   { key: "tuyen-dung", label: "Tuyen dung", sheetName: "Tuyen dung", headerRowIndex: 0, dataStartIndex: 1, teamColumn: "Nhóm SS" },
 ];
+
+// Tab của FILE KPI THÁNG 10 (bản mới) — tên tab & vị trí tiêu đề đã đổi; 2 tab "Doanh so"/"Khung DS"
+// trong file mới đang lỗi (#REF) nên không liệt kê ở đây để tránh hiển thị lỗi.
+const KPI_TABS_T10: KpiTabConfig[] = [
+  { key: "kpis", label: "KPIs (new)", sheetName: "KPIs (new)", headerRowIndex: 1, dataStartIndex: 3, teamColumn: "Nhóm SS" },
+  { key: "code-moi", label: "Code mới", sheetName: "Code moi", headerRowIndex: 0, dataStartIndex: 1, teamColumn: "Nhóm SS" },
+  { key: "miniapp", label: "Zalo / Miniapp", sheetName: "Nhóm Zalo", headerRowIndex: 0, dataStartIndex: 1, teamColumn: "Nhóm SS" },
+  { key: "mo-moi-sptt", label: "Mở mới SPTT", sheetName: "Momoi SPTT", headerRowIndex: 0, dataStartIndex: 1, teamColumn: "Nhóm SS" },
+  { key: "duy-tri-sptt", label: "Duy trì SPTT", sheetName: "Duytri SPTT", headerRowIndex: 0, dataStartIndex: 2, teamColumn: "Nhóm SS" },
+  { key: "mo-moi-cap-2", label: "Mở mới SP Cấp 2", sheetName: "Momoi SP2", headerRowIndex: 0, dataStartIndex: 2, teamColumn: "Nhóm SS" },
+  { key: "duy-tri-cap-2", label: "Duy trì SP cấp 2", sheetName: "Duytri SP2", headerRowIndex: 0, dataStartIndex: 2, teamColumn: "Nhóm SS" },
+  { key: "tuyen-dung", label: "Tuyển dụng", sheetName: "Tuyen dung", headerRowIndex: 0, dataStartIndex: 1, teamColumn: "Nhóm SS" },
+];
+
+/** Chọn nguồn KPI theo tháng: từ 10/2026 dùng file mới (tab khác), trước đó dùng file cũ. */
+function pickKpiSource(nam: number, thang: number): { spreadsheetId: string; tabs: KpiTabConfig[] } {
+  const useNew = nam > 2026 || (nam === 2026 && thang >= 10);
+  return useNew
+    ? { spreadsheetId: KPI_SPREADSHEET_ID_T10, tabs: KPI_TABS_T10 }
+    : { spreadsheetId: KPI_SPREADSHEET_ID, tabs: KPI_TABS };
+}
 
 export interface KpiTabData {
   columns: string[];
@@ -140,11 +164,11 @@ function dedupeNames(names: string[]): string[] {
   });
 }
 
-async function readKpiTab(tab: KpiTabConfig): Promise<KpiTabData> {
+async function readKpiTab(tab: KpiTabConfig, spreadsheetId: string = KPI_SPREADSHEET_ID): Promise<KpiTabData> {
   let raw: string[][];
   let hidden: Set<number>;
   try {
-    [raw, hidden] = await Promise.all([getRawValues(tab.sheetName), getHiddenColumnIndexes(tab.sheetName)]);
+    [raw, hidden] = await Promise.all([getRawValues(tab.sheetName, spreadsheetId), getHiddenColumnIndexes(tab.sheetName, spreadsheetId)]);
   } catch (err) {
     return { columns: [], rows: [], error: friendlyError(err) };
   }
@@ -200,20 +224,38 @@ export interface AllKpiResult {
   /** Lỗi chung (nếu có tab nào đọc thất bại — thường do chưa share file cho service account). */
   error: string | null;
   serviceAccountEmail: string;
+  /** Danh sách tab tương ứng tháng đang xem (để hiển thị đúng nhãn). */
+  tabs: { key: string; label: string }[];
+  /** Nhãn tháng nguồn (MM/yyyy) — cho biết đang đọc file tháng nào. */
+  sourceLabel: string;
 }
 
-/** Đọc dữ liệu tất cả các tab KPI cùng lúc, đã lọc theo Nhóm SS. */
-export async function getAllKpiTabsData(teamName: string | string[]): Promise<AllKpiResult> {
+/** Đọc dữ liệu tất cả các tab KPI cùng lúc, đã lọc theo Nhóm SS.
+ *  Theo tháng (nam, thang): từ 10/2026 đọc file KPI mới; mặc định = tháng hiện tại. */
+export async function getAllKpiTabsData(
+  teamName: string | string[],
+  nam?: number,
+  thang?: number
+): Promise<AllKpiResult> {
+  const now = new Date();
+  const y = nam ?? now.getFullYear();
+  const m = thang ?? now.getMonth() + 1;
+  const { spreadsheetId, tabs } = pickKpiSource(y, m);
   const entries = await Promise.all(
-    KPI_TABS.map(async (tab) => {
-      const data = await readKpiTab(tab);
+    tabs.map(async (tab) => {
+      const data = await readKpiTab(tab, spreadsheetId);
       if (data.error) return [tab.key, data] as const;
       const rows = data.rows.filter((r) => matchesTeamName(r[tab.teamColumn] ?? "", teamName));
       return [tab.key, { columns: data.columns, rows, error: null }] as const;
     })
   );
   const dataByTab = Object.fromEntries(entries);
-  // Lấy lỗi đầu tiên gặp được (nếu có) làm lỗi chung để hiển thị banner cảnh báo.
   const firstError = entries.map(([, d]) => d.error).find((e): e is string => !!e) ?? null;
-  return { dataByTab, error: firstError, serviceAccountEmail: getKpiServiceAccountEmail() };
+  return {
+    dataByTab,
+    error: firstError,
+    serviceAccountEmail: getKpiServiceAccountEmail(),
+    tabs: tabs.map((t) => ({ key: t.key, label: t.label })),
+    sourceLabel: `${String(m).padStart(2, "0")}/${y}`,
+  };
 }
