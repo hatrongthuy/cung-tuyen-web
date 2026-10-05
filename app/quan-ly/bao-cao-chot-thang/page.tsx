@@ -10,6 +10,10 @@ export const dynamic = "force-dynamic";
 
 const MS = 86400000;
 const GAM_COLORS: Record<string, string> = { Sản: "#c2457e", GMHS: "#2a78d6" };
+const GAM_SP: Record<string, string> = {
+  Sản: "Atosiban, Proges, pH Protect",
+  GMHS: "Progermila, Propofol",
+};
 
 function tr(v: number | null | undefined): string {
   if (v == null) return "—";
@@ -245,6 +249,43 @@ export default async function BaoCaoChotThangPage({
   ];
   const fmtCount = (n: number | null | undefined) =>
     n == null ? "—" : Number.isInteger(n) ? n.toLocaleString("vi-VN") : n.toLocaleString("vi-VN", { maximumFractionDigits: 1 });
+
+  // ---- Kế hoạch tuần tới: tự suy từ khoảng cách KH–TH của từng NV ----
+  type Act = { text: string; urgent: boolean };
+  const genActions = (r: NVRow): Act[] => {
+    const es = scoreByMa.get(normMa(r.ma));
+    const acts: Act[] = [];
+    // Doanh số
+    if (r.kh != null && r.kh > 0 && r.thKpi != null) {
+      if (r.thKpi < r.kh) {
+        acts.push({
+          text: `Bù doanh số ~${tr(r.kh - r.thKpi)}tr để đạt KH tháng (hiện ${tr(r.thKpi)}/${tr(r.kh)}tr).`,
+          urgent: r.thKpi <= 0 || r.thKpi < r.kh * 0.5,
+        });
+      } else {
+        acts.push({
+          text: `Giữ nhịp doanh số (đã ${Math.round((r.thKpi / r.kh) * 100)}% KH); khai thác thêm khách mới.`,
+          urgent: false,
+        });
+      }
+    }
+    const gapMetric = (key: string, label: string) => {
+      const m = es?.metrics.find((x) => x.key === key);
+      if (m && m.keHoach != null && m.keHoach > 0) {
+        const th = m.thucHien ?? 0;
+        if (th < m.keHoach) acts.push({ text: `${label}: còn thiếu ${m.keHoach - th} (hiện ${th}/${m.keHoach}).`, urgent: false });
+      }
+    };
+    gapMetric("duyTriSptt", "Duy trì SPTT — gặp lại khách đã dùng");
+    gapMetric("moMoiSptt", `Mở mới SPTT — chào gam ${GAM_SP[r.gam] || "trọng tâm"} cho khách mới`);
+    gapMetric("moMoiC2", "Mở mới SP Cấp 2 (Chuyên khoa PS)");
+    gapMetric("duyTriC2", "Duy trì SP Cấp 2");
+    gapMetric("codeMoi", "Phát triển khách/code mới");
+    gapMetric("miniapp", "Zalo miniapp — thêm khách");
+    if (!acts.length) acts.push({ text: "Đã đạt các chỉ tiêu tháng — duy trì phong độ, hỗ trợ đồng đội.", urgent: false });
+    return acts.slice(0, 4);
+  };
+  const urgentNV = nvCols.filter((r) => (r.thKpi ?? 0) <= 0 || (r.kh != null && r.kh > 0 && (r.thKpi ?? 0) < r.kh * 0.5));
 
   const cell = (v: number) =>
     v > 0 ? <span className="tabular-nums">{tr(v)}</span> : <span className="text-slate-300">·</span>;
@@ -594,6 +635,48 @@ export default async function BaoCaoChotThangPage({
           </div>
           <p className="mt-2 text-xs text-slate-400">
             Code mới · Mở mới/Duy trì SPTT · Mở mới/Duy trì C2 web tự tính từ DATA SALE; Zalo miniapp · Coaching · Tuyển dụng lấy ô Thực hiện công ty nhập (— nếu chưa nhập). Chỉ tiêu Tranh 3D chưa có trong file KPI nên không hiển thị.
+          </p>
+        </section>
+
+        {/* ---- Kế hoạch tuần tới (suy từ kết quả chốt tháng) ---- */}
+        <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-1 text-sm font-semibold text-slate-900">📌 Kế hoạch tuần tới — từ kết quả chốt tháng {thangLabel}</h2>
+          <p className="mb-3 text-xs text-slate-400">Việc cần ưu tiên cho tuần tới của từng nhân viên, tự suy ra từ khoảng cách Kế hoạch – Thực hiện tháng {thangLabel}.</p>
+          {urgentNV.length > 0 && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              🔴 <b>Ưu tiên khẩn của nhóm:</b> {urgentNV.map((r) => r.ten).join(", ")} — doanh số tháng còn thấp/chưa phát sinh, cần làm việc riêng ngay đầu tuần.
+            </div>
+          )}
+          <div className="grid gap-3 md:grid-cols-2">
+            {nvCols.map((r) => {
+              const acts = genActions(r);
+              const col = GAM_COLORS[r.gam] || "#64748b";
+              return (
+                <div key={r.tid} className="rounded-xl border border-slate-200 p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <a
+                      href={`/quan-ly/bao-cao-chot-thang/nhan-vien/${encodeURIComponent(r.ma)}?thang=${ty}-${tmonth + 1}`}
+                      className="text-sm font-semibold text-teal-700 hover:underline"
+                    >
+                      {r.ten}
+                    </a>
+                    <span className="rounded px-1.5 py-0.5 text-[11px] font-medium" style={{ backgroundColor: `${col}1a`, color: col }}>
+                      {r.gam || "—"}{r.diemFinal != null ? ` · ${r.diemFinal.toLocaleString("vi-VN")}đ` : ""}
+                    </span>
+                  </div>
+                  <ul className="space-y-1">
+                    {acts.map((a, i) => (
+                      <li key={i} className={`text-xs ${a.urgent ? "font-medium text-red-600" : "text-slate-600"}`}>
+                        {a.urgent ? "🔴 " : "• "}{a.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-3 text-xs text-slate-400">
+            Gợi ý tự động theo số liệu; SS điều chỉnh theo tình hình thực tế. Chỉ tiêu thầu toàn nhóm còn {totKh > 0 ? `~${tr(Math.max(0, totKh - totTh))}tr` : ""} so với KH — cần bám các gói thầu.
           </p>
         </section>
 
