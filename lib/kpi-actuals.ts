@@ -446,6 +446,38 @@ async function computeActuals(
   return { byMa, availableKeys, error: null };
 }
 
+/** Dữ liệu KPI gọn cho trang Quản lý đội nhóm: chỉ tiêu DS + điểm + các chỉ tiêu đếm đang hụt. */
+export interface KpiRowLite {
+  ma: string;
+  khDS: number; // VND: Kế hoạch DS KĐ-PM + thầu
+  diem: number | null; // điểm KPI cuối
+  gaps: { label: string; th: number; kh: number }[];
+}
+const GAP_METRICS: [string, string][] = [
+  ["moMoiSptt", "Mở mới SPTT"],
+  ["duyTriSptt", "Duy trì SPTT"],
+  ["moMoiC2", "Mở mới C2"],
+  ["duyTriC2", "Duy trì C2"],
+  ["codeMoi", "Code mới"],
+  ["miniapp", "Zalo"],
+];
+export async function getTeamKpiLite(
+  teamName: string | string[],
+  nam: number,
+  thang: number
+): Promise<KpiRowLite[]> {
+  const sc = await getKpiScorecard(teamName, nam, thang);
+  return sc.rows.map((es) => {
+    const m = (k: string) => es.metrics.find((x) => x.key === k);
+    const khDS = (m("keDon")?.keHoach ?? 0) + (m("thau")?.keHoach ?? 0);
+    const gaps = GAP_METRICS.map(([k, label]) => {
+      const mm = m(k);
+      return mm ? { label, th: mm.thucHien ?? 0, kh: mm.keHoach ?? 0 } : null;
+    }).filter((g): g is { label: string; th: number; kh: number } => !!g && g.kh > 0);
+    return { ma: es.ma, khDS, diem: es.diemTHFinal, gaps };
+  });
+}
+
 /** Xây bảng điểm KPI theo nhân viên cho nhóm `teamName`, tháng (nam, thang). */
 export async function getKpiScorecard(
   teamName: string | string[],
