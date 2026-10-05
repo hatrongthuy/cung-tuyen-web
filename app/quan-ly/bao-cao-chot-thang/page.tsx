@@ -91,6 +91,7 @@ export default async function BaoCaoChotThangPage({
 
   type NVRow = {
     tid: number;
+    ma: string;
     ten: string;
     gam: string;
     week: number[];
@@ -110,6 +111,7 @@ export default async function BaoCaoChotThangPage({
     if (!r) {
       r = {
         tid,
+        ma: d.tdvMa[tid] ?? "",
         ten: d.tdv[tid] ?? "",
         gam: d.repGam[tid] ?? "",
         week: [0, 0, 0, 0, 0],
@@ -128,16 +130,34 @@ export default async function BaoCaoChotThangPage({
     return r;
   };
 
+  // Ma trận: pid -> (tid -> doanh thu) cho các SP trọng tâm & Cấp 2.
+  const prodNV = new Map<number, Map<number, number>>();
+  const addPN = (pid: number, tid: number, val: number) => {
+    let m = prodNV.get(pid);
+    if (!m) {
+      m = new Map();
+      prodNV.set(pid, m);
+    }
+    m.set(tid, (m.get(tid) ?? 0) + val);
+  };
+
   for (const row of d.rows) {
     const dt = new Date(baseMs + row[C.di] * MS);
     if (dt.getFullYear() !== ty || dt.getMonth() !== tmonth) continue;
-    const r = ensure(row[C.tid]);
+    const tid = row[C.tid];
+    const pid = row[C.pid];
+    const r = ensure(tid);
     const val = row[C.dt];
     r.week[womIndex(dt.getDate())] += val;
     r.lk += val;
     r.khach.add(row[C.cid]);
-    if (sptt.has(row[C.pid])) r.sptt += val;
-    else if (spxs.has(row[C.pid])) r.spxs += val;
+    if (sptt.has(pid)) {
+      r.sptt += val;
+      addPN(pid, tid, val);
+    } else if (spxs.has(pid)) {
+      r.spxs += val;
+      addPN(pid, tid, val);
+    }
   }
 
   // Ghép KPI chính thức theo mã NV.
@@ -182,6 +202,41 @@ export default async function BaoCaoChotThangPage({
   const lowNV = [...all].sort((a, b) => a.lk - b.lk)[0];
   const pctKh = totKh > 0 ? Math.round((totTh / totKh) * 100) : null;
 
+  // ---- Ma trận SP × nhân viên ----
+  const nvCols = groups.flatMap((g) => g.rows); // đã sắp theo Sản → GMHS → Khác, mỗi nhóm giảm dần DS
+  const pnSum = (pid: number, tid: number) => prodNV.get(pid)?.get(tid) ?? 0;
+  const pnRowTotal = (pid: number) => {
+    let s = 0;
+    for (const v of prodNV.get(pid)?.values() ?? []) s += v;
+    return s;
+  };
+  // SPTT theo nhóm trọng tâm (nhãn focus) → sản phẩm có phát sinh.
+  const spttGroups = Object.entries(d.focus)
+    .map(([label, pids]) => ({
+      label,
+      prods: pids.filter((pid) => pnRowTotal(pid) > 0).sort((a, b) => pnRowTotal(b) - pnRowTotal(a)),
+    }))
+    .filter((g) => g.prods.length > 0);
+  // SPXS (Cấp 2) → sản phẩm có phát sinh, nhóm theo gam hàng.
+  const spxsProds = d.cap2Cat.filter((pid) => pnRowTotal(pid) > 0).sort((a, b) => pnRowTotal(b) - pnRowTotal(a));
+  const spxsByGam = ["Sản", "GMHS", ""]
+    .map((g) => ({ gam: g, prods: spxsProds.filter((pid) => (d.prodGam[pid] || "") === g) }))
+    .filter((x) => x.prods.length > 0);
+
+  // ---- Chỉ tiêu KPI chi tiết (mở mới · duy trì · zalo · nhân sự) ----
+  const DETAIL_METRICS = [
+    { key: "codeMoi", label: "Code mới" },
+    { key: "moMoiSptt", label: "Mở mới SPTT" },
+    { key: "duyTriSptt", label: "Duy trì SPTT" },
+    { key: "moMoiC2", label: "Mở mới C2" },
+    { key: "duyTriC2", label: "Duy trì C2" },
+    { key: "miniapp", label: "Zalo miniapp" },
+    { key: "coaching", label: "Coaching" },
+    { key: "tuyenDung", label: "Tuyển dụng" },
+  ];
+  const fmtCount = (n: number | null | undefined) =>
+    n == null ? "—" : Number.isInteger(n) ? n.toLocaleString("vi-VN") : n.toLocaleString("vi-VN", { maximumFractionDigits: 1 });
+
   const cell = (v: number) =>
     v > 0 ? <span className="tabular-nums">{tr(v)}</span> : <span className="text-slate-300">·</span>;
   const pctBadge = (kh: number | null, th: number | null) => {
@@ -194,6 +249,46 @@ export default async function BaoCaoChotThangPage({
       </span>
     );
   };
+
+  const MatrixGroup = ({
+    title,
+    color,
+    prods,
+    nvCols,
+    prod,
+    pnSum,
+    pnRowTotal,
+  }: {
+    title: string;
+    color: string;
+    prods: number[];
+    nvCols: NVRow[];
+    prod: [string, string][];
+    pnSum: (pid: number, tid: number) => number;
+    pnRowTotal: (pid: number) => number;
+  }) => (
+    <>
+      <tr style={{ backgroundColor: `${color}10` }}>
+        <td className="px-3 py-1.5 text-xs font-bold" style={{ color }} colSpan={nvCols.length + 2}>
+          {title}
+        </td>
+      </tr>
+      {prods.map((pid) => (
+        <tr key={pid} className="border-b border-slate-100">
+          <td className="px-3 py-2 text-sm text-slate-700">{prod[pid]?.[1] ?? `#${pid}`}</td>
+          {nvCols.map((n) => {
+            const v = pnSum(pid, n.tid);
+            return (
+              <td key={n.tid} className="px-2 py-2 text-right text-sm text-slate-600">
+                {v > 0 ? <span className="tabular-nums">{tr(v)}</span> : <span className="text-slate-300">·</span>}
+              </td>
+            );
+          })}
+          <td className="px-3 py-2 text-right text-sm font-semibold" style={{ color }}>{tr(pnRowTotal(pid))}</td>
+        </tr>
+      ))}
+    </>
+  );
 
   const NVBlock = ({ gam, rows }: { gam: string; rows: NVRow[] }) => {
     const col = GAM_COLORS[gam] || "#64748b";
@@ -212,7 +307,12 @@ export default async function BaoCaoChotThangPage({
         {rows.map((r) => (
           <tr key={r.tid} className="border-b border-slate-100">
             <td className="px-3 py-2">
-              <div className="text-sm font-medium text-slate-900">{r.ten}</div>
+              <a
+                href={`/quan-ly/bao-cao-chot-thang/nhan-vien/${encodeURIComponent(r.ma)}?thang=${ty}-${tmonth + 1}`}
+                className="text-sm font-medium text-teal-700 hover:underline"
+              >
+                {r.ten}
+              </a>
               <div className="text-[11px] text-slate-400">{r.gam || "—"} · {r.khach.size} KH</div>
             </td>
             {r.week.map((v, i) => (
@@ -353,8 +453,134 @@ export default async function BaoCaoChotThangPage({
           </ul>
         </section>
 
+        {/* ---- Ma trận SP × nhân viên ---- */}
+        <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-1 text-sm font-semibold text-slate-900">🧬 Ma trận SP trọng tâm & SP Cấp 2 (theo nhân viên)</h2>
+          <p className="mb-3 text-xs text-slate-400">Doanh thu từng sản phẩm (triệu đồng) theo từng nhân viên · chỉ hiện SP có phát sinh trong {thangLabel}.</p>
+
+          <h3 className="mb-1 mt-1 text-xs font-bold" style={{ color: "#059669" }}>⭐ SP trọng tâm (SPTT)</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-xs text-slate-500">
+                  <th className="px-3 py-2 text-left font-semibold">Sản phẩm</th>
+                  {nvCols.map((n) => (
+                    <th key={n.tid} className="px-2 py-2 text-right font-semibold">{n.ten.split(" ").slice(-2).join(" ")}</th>
+                  ))}
+                  <th className="px-3 py-2 text-right font-semibold">Tổng</th>
+                </tr>
+              </thead>
+              <tbody>
+                {spttGroups.map((g) => (
+                  <MatrixGroup
+                    key={g.label}
+                    title={g.label}
+                    color="#059669"
+                    prods={g.prods}
+                    nvCols={nvCols}
+                    prod={d.prod}
+                    pnSum={pnSum}
+                    pnRowTotal={pnRowTotal}
+                  />
+                ))}
+                <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
+                  <td className="px-3 py-2 text-sm text-slate-900">TỔNG SPTT</td>
+                  {nvCols.map((n) => (
+                    <td key={n.tid} className="px-2 py-2 text-right text-sm text-slate-700">{n.sptt > 0 ? tr(n.sptt) : <span className="text-slate-300">·</span>}</td>
+                  ))}
+                  <td className="px-3 py-2 text-right text-sm text-emerald-700">{tr(totSptt)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 className="mb-1 mt-5 text-xs font-bold" style={{ color: "#0284c7" }}>🩺 SP Cấp 2 — Chuyên khoa PS (SPXS)</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-xs text-slate-500">
+                  <th className="px-3 py-2 text-left font-semibold">Sản phẩm</th>
+                  {nvCols.map((n) => (
+                    <th key={n.tid} className="px-2 py-2 text-right font-semibold">{n.ten.split(" ").slice(-2).join(" ")}</th>
+                  ))}
+                  <th className="px-3 py-2 text-right font-semibold">Tổng</th>
+                </tr>
+              </thead>
+              <tbody>
+                {spxsByGam.map((g) => (
+                  <MatrixGroup
+                    key={g.gam || "khac"}
+                    title={`Nhóm ${g.gam || "Khác"}`}
+                    color={GAM_COLORS[g.gam] || "#0284c7"}
+                    prods={g.prods}
+                    nvCols={nvCols}
+                    prod={d.prod}
+                    pnSum={pnSum}
+                    pnRowTotal={pnRowTotal}
+                  />
+                ))}
+                <tr className="border-t-2 border-slate-300 bg-slate-50 font-bold">
+                  <td className="px-3 py-2 text-sm text-slate-900">TỔNG SPXS</td>
+                  {nvCols.map((n) => (
+                    <td key={n.tid} className="px-2 py-2 text-right text-sm text-slate-700">{n.spxs > 0 ? tr(n.spxs) : <span className="text-slate-300">·</span>}</td>
+                  ))}
+                  <td className="px-3 py-2 text-right text-sm text-sky-700">{tr(totSpxs)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* ---- Chỉ tiêu KPI chi tiết ---- */}
+        <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-1 text-sm font-semibold text-slate-900">🎯 Chỉ tiêu KPI: Mở mới · Duy trì · Zalo miniapp · Nhân sự</h2>
+          <p className="mb-3 text-xs text-slate-400">Định dạng ô: <b>Thực hiện / Kế hoạch</b> (theo file KPI công ty {thangLabel}). Xanh = đạt/vượt KH.</p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-xs text-slate-500">
+                  <th className="px-3 py-2 text-left font-semibold">Nhân viên</th>
+                  {DETAIL_METRICS.map((m) => (
+                    <th key={m.key} className="px-2 py-2 text-center font-semibold">{m.label}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {nvCols.map((n) => {
+                  const es = scoreByMa.get(normMa(n.ma));
+                  return (
+                    <tr key={n.tid} className="border-b border-slate-100">
+                      <td className="px-3 py-2 text-sm font-medium text-slate-900">{n.ten}</td>
+                      {DETAIL_METRICS.map((m) => {
+                        const ms = metric(es, m.key);
+                        const th = ms?.thucHien ?? null;
+                        const kh = ms?.keHoach ?? null;
+                        const dat = th != null && kh != null && kh > 0 && th >= kh;
+                        return (
+                          <td key={m.key} className="px-2 py-2 text-center text-xs">
+                            {th == null && kh == null ? (
+                              <span className="text-slate-300">—</span>
+                            ) : (
+                              <span className={dat ? "font-semibold text-emerald-700" : "text-slate-600"}>
+                                {fmtCount(th)}<span className="text-slate-300"> / {fmtCount(kh)}</span>
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs text-slate-400">
+            Code mới · Mở mới/Duy trì SPTT · Mở mới/Duy trì C2 web tự tính từ DATA SALE; Zalo miniapp · Coaching · Tuyển dụng lấy ô Thực hiện công ty nhập (— nếu chưa nhập). Chỉ tiêu Tranh 3D chưa có trong file KPI nên không hiển thị.
+          </p>
+        </section>
+
         <section className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
-          <b className="text-slate-700">Đang hoàn thiện:</b> Ma trận SPTT & SPXS (SP × nhân viên), mục <b>Mở mới</b> · <b>Duy trì</b> · <b>Zalo</b> · <b>Tranh 3D</b>, và trang <b>chi tiết từng nhân viên</b> — sẽ bổ sung ở các bước tiếp theo. Cột KPI lấy từ file KPI công ty (tháng {tmonth + 1}).
+          Nhấp vào <b className="text-teal-700">tên nhân viên</b> ở bảng tổng quan để xem trang chi tiết (biểu đồ tuần · kế hoạch → kết quả · nhận xét). Nguồn: DATA SALE (Sale sạch) + file KPI công ty (tháng {tmonth + 1}/{ty}).
         </section>
       </main>
     </>
