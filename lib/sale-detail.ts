@@ -224,6 +224,13 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
   });
 
   const baseMs = new Date(BASE_DATE + "T00:00:00").getTime();
+  // Nhân viên đã nghỉ: ẩn giao dịch từ ngày nghỉ trở đi (giữ lịch sử trước đó).
+  const departedCutDi = new Map<string, number>();
+  team.forEach((e) => {
+    if (!e.nghiTu) return;
+    const ms = new Date(e.nghiTu + "T00:00:00").getTime();
+    if (!Number.isNaN(ms)) departedCutDi.set(normalizeMaNV(e.maNhanVien), Math.round((ms - baseMs) / 86400000));
+  });
   const custIdx = new Map<string, number>();
   const cust: [string, string, string, string][] = [];
   const prodIdx = new Map<string, number>();
@@ -269,6 +276,10 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     const ma = normalizeMaNV(r[iMaNV]);
     const tid = teamMa.get(ma);
     if (tid === undefined) continue;
+
+    // Ẩn giao dịch của nhân viên đã nghỉ, từ ngày nghỉ trở đi.
+    const depCut = departedCutDi.get(ma);
+    if (depCut !== undefined && di >= depCut) continue;
 
     let cid = custIdx.get(maKH);
     if (cid === undefined) {

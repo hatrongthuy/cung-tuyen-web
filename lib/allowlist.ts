@@ -25,6 +25,9 @@ export interface AllowlistEntry {
   /** Tên SS phụ trách (cột "Nhóm SS" trong sheet) — chỉ để hiển thị/tham khảo, KHÔNG dùng
    *  để giới hạn quyền xem (quản lý xem được số liệu của nhau theo yêu cầu). */
   nhomSS?: string;
+  /** Ngày nghỉ việc (YYYY-MM-DD). Nếu có: ẨN mọi giao dịch của NV từ ngày này trở đi
+   *  (giữ nguyên lịch sử trước đó), để từ tháng nghỉ không còn hiện tên trong báo cáo. */
+  nghiTu?: string;
 }
 
 export const COMPANY_DOMAIN = "cpc1hn.com.vn";
@@ -72,6 +75,7 @@ const ALLOWLIST_PHU_THO: AllowlistEntry[] = [
     hoTen: "Phan Văn Tuyền",
     role: "employee",
     maNhanVien: "019484",
+    nghiTu: "2026-10-01", // nghỉ việc 05/10/2026 — ẩn khỏi dữ liệu từ tháng 10
   },
   {
     email: "Cuongtntn100@gmail.com",
@@ -131,7 +135,7 @@ const ALLOWLIST_TAY_BAC: AllowlistEntry[] = [
   { email: "017886@cung-tuyen.local", hoTen: "Đỗ Cao Trung", role: "employee", maNhanVien: "017886", nhomSS: "Hà Trọng Thủy" },
   { email: "018468@cung-tuyen.local", hoTen: "Nguyễn Quang Huy", role: "employee", maNhanVien: "018468", nhomSS: "Hà Trọng Thủy" },
   { email: "018757@cung-tuyen.local", hoTen: "Hà Thị Lan Anh", role: "employee", maNhanVien: "018757", nhomSS: "Hà Trọng Thủy" },
-  { email: "019484@cung-tuyen.local", hoTen: "Phan Văn Tuyền", role: "employee", maNhanVien: "019484", nhomSS: "Hà Trọng Thủy" },
+  { email: "019484@cung-tuyen.local", hoTen: "Phan Văn Tuyền", role: "employee", maNhanVien: "019484", nhomSS: "Hà Trọng Thủy", nghiTu: "2026-10-01" },
   { email: "020180@cung-tuyen.local", hoTen: "Hoàng Văn Cường", role: "employee", maNhanVien: "020180", nhomSS: "Hà Trọng Thủy" },
 ];
 

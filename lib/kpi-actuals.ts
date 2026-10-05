@@ -478,8 +478,21 @@ export async function getKpiScorecard(
     rows.push({ ma, ten: info.ten, metrics, tongDiemKH, diemDat, diemKHDat, diemKHFile, diemTHCore, diemTHFinal });
   }
 
+  // Ẩn nhân viên đã nghỉ khỏi tháng nghỉ trở đi (giữ các tháng trước đó).
+  const departed = new Map<string, { y: number; m: number }>();
+  allEmployees().forEach((e) => {
+    if (!e.nghiTu) return;
+    const [y, m] = e.nghiTu.split("-").map(Number);
+    if (y && m) departed.set(normalizeMaNV(e.maNhanVien), { y, m });
+  });
+  const activeRows = rows.filter((r) => {
+    const d = departed.get(normalizeMaNV(r.ma));
+    if (!d) return true;
+    return nam < d.y || (nam === d.y && thang < d.m);
+  });
+
   // Sắp theo điểm chính thức (điểm cuối) giảm dần; không có thì theo điểm tự tính.
   const diemSort = (r: EmployeeScore) => r.diemTHFinal ?? r.diemTHCore ?? r.diemDat;
-  rows.sort((a, b) => diemSort(b) - diemSort(a) || b.tongDiemKH - a.tongDiemKH);
-  return { rows, monthLabel, error, hasAuto };
+  activeRows.sort((a, b) => diemSort(b) - diemSort(a) || b.tongDiemKH - a.tongDiemKH);
+  return { rows: activeRows, monthLabel, error, hasAuto };
 }
