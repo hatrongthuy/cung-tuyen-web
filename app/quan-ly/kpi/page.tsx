@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import KpiView from "@/components/KpiView";
 import KpiScorecard from "@/components/KpiScorecard";
-import { KPI_TABS, getAllKpiTabsData } from "@/lib/kpi";
+import { getAllKpiTabsData } from "@/lib/kpi";
 import { getKpiScorecard } from "@/lib/kpi-actuals";
 import { getTeamSales } from "@/lib/sales";
 import { salesByMonth, normalizeMaNV, todayInVN } from "@/lib/report-utils";
@@ -18,11 +18,10 @@ export default async function KpiPage() {
   const session = await auth();
   const user = session!.user!;
 
-  const [{ dataByTab, error }, sales] = await Promise.all([
+  const [{ dataByTab, error, tabs }, sales] = await Promise.all([
     getAllKpiTabsData(TEN_NHOM),
     getTeamSales(),
   ]);
-  const tabs = KPI_TABS.map((t) => ({ key: t.key, label: t.label }));
 
   // Doanh số THỰC HIỆN (từ file Sale) — lấy tháng mới nhất có dữ liệu, tách kê đơn / thầu.
   const latest = sales.txns.reduce(
@@ -44,14 +43,20 @@ export default async function KpiPage() {
   const salesSummary = {
     monthLabel: `${String(latest.thang).padStart(2, "0")}/${latest.nam}`,
     error: sales.error,
-    rows: allEmployees().map((e) => {
-      const ma = normalizeMaNV(e.maNhanVien);
-      return {
-        ten: e.hoTen,
-        keDon: keDonByCode[ma] ?? 0,
-        thau: thauByCode[ma] ?? 0,
-      };
-    }),
+    rows: allEmployees()
+      .filter((e) => {
+        if (!e.nghiTu) return true;
+        const [y, m] = e.nghiTu.split("-").map(Number);
+        return latest.nam < y || (latest.nam === y && latest.thang < m);
+      })
+      .map((e) => {
+        const ma = normalizeMaNV(e.maNhanVien);
+        return {
+          ten: e.hoTen,
+          keDon: keDonByCode[ma] ?? 0,
+          thau: thauByCode[ma] ?? 0,
+        };
+      }),
   };
 
   return (
