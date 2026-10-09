@@ -107,7 +107,14 @@ export default function WeeklyReportView({
     for (const r of weekRows) byMa.set(normalizeMaNV(r[C.ma]), r);
     const order: { ma: string; ten: string }[] = [];
     const seen = new Set<string>();
+    // NV đã nghỉ chỉ loại khỏi danh sách cố định nếu tuần đang xem bắt đầu từ ngày nghỉ trở đi;
+    // các tuần cũ (trước ngày nghỉ) vẫn giữ tên qua dữ liệu đánh giá của chính tuần đó.
+    const weekStart = parseWeekStart(week);
     for (const emp of allEmployees()) {
+      if (emp.nghiTu && weekStart) {
+        const dep = new Date(emp.nghiTu + "T00:00:00").getTime();
+        if (!Number.isNaN(dep) && weekStart.getTime() >= dep) continue;
+      }
       const ma = normalizeMaNV(emp.maNhanVien);
       order.push({ ma, ten: emp.hoTen });
       seen.add(ma);
@@ -132,7 +139,7 @@ export default function WeeklyReportView({
         };
       })
       .sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem);
-  }, [weekRows, keDonByMa, thauByMa]);
+  }, [weekRows, keDonByMa, thauByMa, week]);
 
   const tong = useMemo(
     () =>

@@ -101,7 +101,13 @@ export default function BaoCaoTuanReport({
     const covByMa = new Map<string, EmployeeWeekSummary>();
     for (const s of summaries) covByMa.set(normalizeMaNV(s.maNhanVien), s);
 
-    return allEmployees().map((e) => {
+    return allEmployees()
+      .filter((e) => {
+        if (!e.nghiTu) return true;
+        const [y, m] = e.nghiTu.split("-").map(Number);
+        return ctx.nam < y || (ctx.nam === y && ctx.thang < m);
+      })
+      .map((e) => {
       const ma = normalizeMaNV(e.maNhanVien);
       const plan = planByMa.get(ma) ?? { kd: 0, thau: 0, dia: "" };
       const kdTH = kdNow[ma] ?? 0;
