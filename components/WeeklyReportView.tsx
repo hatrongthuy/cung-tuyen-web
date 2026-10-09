@@ -81,6 +81,21 @@ export default function WeeklyReportView({
   }, [rows, todayWeekLabel]);
   const [week, setWeek] = useState<string>(todayWeekLabel ?? weeks[0] ?? "");
 
+  // Mã NV đã nghỉ tính tới hiện tại — dùng để loại khỏi dữ liệu gợi ý / tồn đọng của tuần hiện tại
+  // (dữ liệu gợi ý trên sheet luôn là của tuần đang chạy, nhưng có thể còn sót tên NV đã nghỉ).
+  const departedMa = useMemo(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const s = new Set<string>();
+    for (const e of allEmployees()) {
+      if (!e.nghiTu) continue;
+      const [dy, dm] = e.nghiTu.split("-").map(Number);
+      if (dy < y || (dy === y && dm <= m)) s.add(normalizeMaNV(e.maNhanVien));
+    }
+    return s;
+  }, []);
+
   // Tuần liền trước tuần đang chọn (để so sánh).
   const prevWeek = useMemo(() => {
     const idx = weeks.indexOf(week);
@@ -189,7 +204,9 @@ export default function WeeklyReportView({
   const laTuanHienTai = !!nhanTuanHienTai && week === nhanTuanHienTai;
   const tongGoiY = useMemo(() => {
     if (!laTuanHienTai) return null;
-    return summaries.reduce(
+    return summaries
+      .filter((s) => !departedMa.has(normalizeMaNV(s.maNhanVien)))
+      .reduce(
       (a, s) => ({
         soGoiY: a.soGoiY + s.soGoiY,
         soDaXacNhan: a.soDaXacNhan + s.soDaXacNhan,
@@ -197,7 +214,7 @@ export default function WeeklyReportView({
       }),
       { soGoiY: 0, soDaXacNhan: 0, soDongY: 0 }
     );
-  }, [summaries, laTuanHienTai]);
+  }, [summaries, laTuanHienTai, departedMa]);
 
   const [openTonDong, setOpenTonDong] = useState<string | null>(null);
   const [openPrev, setOpenPrev] = useState<string | null>(null);
@@ -224,14 +241,14 @@ export default function WeeklyReportView({
     }
     if (laTuanHienTai && summaries.length) {
       lines.push("TÌNH HÌNH GẶP THEO GỢI Ý (tuần hiện tại):");
-      for (const s of summaries) {
+      for (const s of summaries.filter((x) => !departedMa.has(normalizeMaNV(x.maNhanVien)))) {
         const chuaGap = s.soGoiY - s.soDaXacNhan;
         lines.push(`- ${s.hoTen}: đã đồng ý/gặp ${s.soDongY}/${s.soGoiY}, đã phản hồi ${s.soDaXacNhan}/${s.soGoiY}, còn tồn đọng (chưa phản hồi) ${chuaGap}.`);
       }
     }
     if (tonDongTuanTruoc) {
       lines.push(`TỒN ĐỌNG TỪ TUẦN TRƯỚC (gợi ý ngày ${tonDongTuanTruoc.ngayTruoc}) — khách chưa xử lý:`);
-      for (const e of tonDongTuanTruoc.perEmp) {
+      for (const e of tonDongTuanTruoc.perEmp.filter((x) => !departedMa.has(normalizeMaNV(x.maNhanVien)))) {
         if (e.khachChuaXuLy.length) {
           lines.push(`- ${e.hoTen}: ${e.khachChuaXuLy.length} khách (${e.khachChuaXuLy.map((k) => k.tenKH).join(", ")}).`);
         }
@@ -381,7 +398,7 @@ export default function WeeklyReportView({
                     </tr>
                   </thead>
                   <tbody>
-                    {summaries.map((s) => {
+                    {summaries.filter((s) => !departedMa.has(normalizeMaNV(s.maNhanVien))).map((s) => {
                       const chuaXuLy = s.khachGoiY.filter((k) => !k.trangThai);
                       const open = openTonDong === s.maNhanVien;
                       return (
@@ -443,7 +460,7 @@ export default function WeeklyReportView({
                     </tr>
                   </thead>
                   <tbody>
-                    {tonDongTuanTruoc.perEmp.map((e) => {
+                    {tonDongTuanTruoc.perEmp.filter((e) => !departedMa.has(normalizeMaNV(e.maNhanVien))).map((e) => {
                       const open = openPrev === e.maNhanVien;
                       return (
                         <Fragment key={e.maNhanVien}>
