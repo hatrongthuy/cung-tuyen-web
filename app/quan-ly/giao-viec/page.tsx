@@ -3,7 +3,7 @@ import AppHeader from "@/components/AppHeader";
 import GiaoViecManager from "@/components/GiaoViecManager";
 import { listGiaoViec } from "@/lib/giao-viec";
 import { buildGoiYGiaoViec } from "@/lib/goi-y-giao-viec";
-import { allEmployees } from "@/lib/allowlist";
+import { activeEmployees } from "@/lib/allowlist";
 import { isoWeekKey } from "@/lib/tuan";
 import { todayInVN } from "@/lib/report-utils";
 
@@ -18,7 +18,7 @@ export default async function GiaoViecQuanLyPage() {
     listGiaoViec(),
     buildGoiYGiaoViec(tuan),
   ]);
-  const employees = allEmployees()
+  const employees = activeEmployees()
     .map((e) => ({ ma: e.maNhanVien ?? "", hoTen: e.hoTen }))
     .filter((e) => e.ma);
 
