@@ -152,6 +152,33 @@ export function allEmployees(): AllowlistEntry[] {
   return ALLOWLIST.filter((e) => e.role === "employee");
 }
 
+/**
+ * NV đã nghỉ tính tới tháng (nam, thang) đang xem?
+ * True nếu tháng xem >= tháng nghỉ (ẩn khỏi tháng nghỉ trở đi; giữ nguyên các tháng trước).
+ */
+export function isDepartedInMonth(
+  entry: AllowlistEntry,
+  nam: number,
+  thang: number
+): boolean {
+  if (!entry.nghiTu) return false;
+  const [y, m] = entry.nghiTu.split("-").map(Number);
+  if (!y || !m) return false;
+  return nam > y || (nam === y && thang >= m);
+}
+
+/**
+ * Danh sách nhân viên ĐANG làm việc trong tháng (nam, thang).
+ * Bỏ trống tham số = tháng hiện tại (theo giờ máy chủ, đủ dùng cho ranh giới tháng).
+ * Dùng cho MỌI nơi hiển thị danh sách NV để không còn hiện tên người đã nghỉ.
+ */
+export function activeEmployees(nam?: number, thang?: number): AllowlistEntry[] {
+  const now = new Date();
+  const y = nam ?? now.getFullYear();
+  const m = thang ?? now.getMonth() + 1;
+  return allEmployees().filter((e) => !isDepartedInMonth(e, y, m));
+}
+
 /** Chuẩn hoá tên để so khớp: bỏ dấu, thường hoá, gộp khoảng trắng. */
 function normalizeName(s: string): string {
   return s

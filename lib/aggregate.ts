@@ -1,4 +1,4 @@
-import { allEmployees } from "./allowlist";
+import { activeEmployees } from "./allowlist";
 import { chuanHoaMaNV, latestWeekLabel, parseWeekStart } from "./data";
 import type {
   DanhGiaCungTuyenRow,
@@ -96,7 +96,9 @@ export function buildEmployeeWeekSummaries(
       })
     : xacNhan;
 
-  const summaries: EmployeeWeekSummary[] = allEmployees().map((emp) => {
+  // Chỉ tổng hợp NV đang làm việc (đã lọc người nghỉ theo tháng hiện tại) — dữ liệu gợi ý/cung tuyến
+  // luôn là của tuần đang chạy nên dùng tháng hiện tại là đúng.
+  const summaries: EmployeeWeekSummary[] = activeEmployees().map((emp) => {
     const maChuan = chuanHoaMaNV(emp.maNhanVien);
 
     const goiYCuaNV = goiY
@@ -232,7 +234,7 @@ export function buildTonDongTuanTruoc(
   const daGap = (maChuan: string, maKH: string) =>
     latest.get(`${maChuan}__${maKH}`)?.status === "Đồng ý";
 
-  const perEmp: TonDongNV[] = allEmployees().map((emp) => {
+  const perEmp: TonDongNV[] = activeEmployees().map((emp) => {
     const maChuan = chuanHoaMaNV(emp.maNhanVien);
     const khachTuanTruoc = lichSu.filter(
       (r) => (r["Ngày lập"] || "").trim() === ngayTruoc && chuanHoaMaNV(r["Mã nhân viên"]) === maChuan
