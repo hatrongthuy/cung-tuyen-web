@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import ChatManagerView from "@/components/ChatManagerView";
 import { chuanHoaMaNV, getTroChuyen } from "@/lib/data";
-import { allEmployees } from "@/lib/allowlist";
+import { activeEmployees } from "@/lib/allowlist";
 import type { ChatMessage } from "@/components/ChatBox";
 
 export default async function TroChuyenPage() {
@@ -10,7 +10,7 @@ export default async function TroChuyenPage() {
   const user = session!.user!;
 
   const rows = await getTroChuyen();
-  const employees = allEmployees().map((e) => ({ maNhanVien: e.maNhanVien ?? "", hoTen: e.hoTen }));
+  const employees = activeEmployees().map((e) => ({ maNhanVien: e.maNhanVien ?? "", hoTen: e.hoTen }));
 
   const toMessage = (r: (typeof rows)[number]): ChatMessage => ({
     thoiGian: r["Thời gian"],
