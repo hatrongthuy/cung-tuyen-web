@@ -15,7 +15,7 @@ import {
 } from "@/lib/data";
 import { buildEmployeeWeekSummaries } from "@/lib/aggregate";
 import { getGoiYCungTuyen } from "@/lib/sale-care";
-import { allEmployees } from "@/lib/allowlist";
+import { activeEmployees } from "@/lib/allowlist";
 import { colorForIndex } from "@/lib/colors";
 
 // Số khách gợi ý tối đa cho mỗi nhân viên trong 1 tuần (đồng bộ với GoiYTuDong).
@@ -35,7 +35,7 @@ export default async function QuanLyCungTuyenPage() {
   ]);
 
   const { weekLabel, summaries } = buildEmployeeWeekSummaries(goiY, xacNhan, danhGia);
-  const employees = allEmployees();
+  const employees = activeEmployees();
   const careByEmp = await getGoiYCungTuyen(chuaVT, khChet, spNghi, Date.now());
   const goiYOrder = employees
     .filter((e) => e.role === "employee")
