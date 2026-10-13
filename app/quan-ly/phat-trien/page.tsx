@@ -2,7 +2,7 @@ import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import PhatTrienManager from "@/components/PhatTrienManager";
 import { getPhatTrien } from "@/lib/phat-trien";
-import { allEmployees } from "@/lib/allowlist";
+import { activeEmployees } from "@/lib/allowlist";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export default async function PhatTrienQuanLyPage() {
   const user = session!.user!;
 
   const { hoSoByMa, nguyenVongByMa, error } = await getPhatTrien();
-  const employees = allEmployees()
+  const employees = activeEmployees()
     .map((e) => ({ ma: e.maNhanVien ?? "", hoTen: e.hoTen }))
     .filter((e) => e.ma);
 
