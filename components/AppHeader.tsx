@@ -11,6 +11,7 @@ export type NavKey =
   | "sp-trong-tam"
   | "bao-cao-tuan"
   | "bao-cao-thang"
+  | "tang-truong-sp"
   | "bao-cao-thau"
   | "kpi"
   | "doanh-so"
@@ -38,6 +39,7 @@ const NAV_ITEMS: NavEntry[] = [
       { key: "chot-thang", label: "Báo cáo chốt tháng", href: "/quan-ly/bao-cao-chot-thang", icon: "📊" },
       { key: "bao-cao-tuan", label: "Báo cáo tuần", href: "/quan-ly/bao-cao-tuan", icon: "📅" },
       { key: "bao-cao-thang", label: "Báo cáo tháng", href: "/quan-ly/bao-cao-thang", icon: "🗓️" },
+      { key: "tang-truong-sp", label: "Tăng trưởng sản phẩm", href: "/quan-ly/bao-cao-tang-truong-sp", icon: "📈" },
     ],
   },
   { key: "bao-cao-thau", label: "Báo cáo thầu", href: "/quan-ly/bao-cao-thau", icon: "🏛️" },
@@ -68,6 +70,7 @@ const EMP_NAV_ITEMS: NavEntry[] = [
     children: [
       { key: "bao-cao-tuan", label: "Báo cáo tuần", href: "/nhan-vien/bao-cao-tuan", icon: "📅" },
       { key: "bao-cao-thang", label: "Báo cáo tháng", href: "/nhan-vien/bao-cao-thang", icon: "🗓️" },
+      { key: "tang-truong-sp", label: "Tăng trưởng sản phẩm", href: "/nhan-vien/bao-cao-tang-truong-sp", icon: "📈" },
     ],
   },
   { key: "bao-cao-thau", label: "Báo cáo thầu", href: "/nhan-vien/bao-cao-thau", icon: "🏛️" },
