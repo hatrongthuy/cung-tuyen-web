@@ -16,6 +16,7 @@ import ReportToolbar from "@/components/ReportToolbar";
 import { formatVnd, formatShortVnd, parseMoney, pct } from "@/lib/format";
 import { normalizeMaNV } from "@/lib/report-utils";
 import { downloadCsv } from "@/lib/csv";
+import { allEmployees, isDepartedInMonth } from "@/lib/allowlist";
 
 interface Props {
   columns: string[];
@@ -67,13 +68,34 @@ export default function DoanhSoView({
     };
   }, [columns]);
 
+  // Ẩn NV đã nghỉ theo tháng đang xem (so khớp Mã NV). Giữ nguyên các tháng trước ngày nghỉ.
+  const departedMa = useMemo(() => {
+    const [mm, yy] = (actualMonthLabel || "").split("/").map(Number);
+    const s = new Set<string>();
+    if (mm && yy) {
+      for (const e of allEmployees()) {
+        if (isDepartedInMonth(e, yy, mm)) s.add(normalizeMaNV(e.maNhanVien));
+      }
+    }
+    return s;
+  }, [actualMonthLabel]);
+
+  // Danh sách dòng đã bỏ NV nghỉ — dùng cho cả biểu đồ lẫn bảng "Xem tất cả cột".
+  const activeRows = useMemo(() => {
+    if (departedMa.size === 0) return rows;
+    return rows.filter((r) => {
+      const ma = cols.maNV ? normalizeMaNV(r[cols.maNV]) : "";
+      return !ma || !departedMa.has(ma);
+    });
+  }, [rows, cols.maNV, departedMa]);
+
   // Chỉ lấy dòng nhân viên kinh doanh (NVKD) để tính tổng đội; nếu không nhận diện được
   // cột Vị trí thì dùng toàn bộ dòng.
   const nvkdRows = useMemo(() => {
-    if (!cols.viTri) return rows;
-    const only = rows.filter((r) => (r[cols.viTri] ?? "").trim().toUpperCase() === "NVKD");
-    return only.length > 0 ? only : rows;
-  }, [rows, cols.viTri]);
+    if (!cols.viTri) return activeRows;
+    const only = activeRows.filter((r) => (r[cols.viTri] ?? "").trim().toUpperCase() === "NVKD");
+    return only.length > 0 ? only : activeRows;
+  }, [activeRows, cols.viTri]);
 
   const perEmp = useMemo(() => {
     return nvkdRows.map((r) => {
@@ -263,7 +285,7 @@ export default function DoanhSoView({
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((r, i) => (
+                    {activeRows.map((r, i) => (
                       <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
                         {columns.map((c) => (
                           <td key={c} className="whitespace-nowrap px-3 py-2 text-slate-700">{r[c] ?? ""}</td>
