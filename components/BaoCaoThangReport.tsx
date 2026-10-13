@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { allEmployees } from "@/lib/allowlist";
+import { allEmployees, isDepartedInMonth } from "@/lib/allowlist";
 import { formatVnd, formatShortVnd, pct, parseMoney } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
 import {
@@ -158,7 +158,10 @@ export default function BaoCaoThangReport({
   const dsPrevByMa = useMemo(() => salesByMonth(salesTxns, namT, thangT), [salesTxns, namT, thangT]);
 
   const emps = useMemo<EmpMonth[]>(() => {
-    return allEmployees().map((e) => {
+    // Ẩn NV đã nghỉ kể từ tháng nghỉ; tháng trước đó (vd T9) vẫn giữ nguyên tên.
+    return allEmployees()
+      .filter((e) => !(nam && thang) || !isDepartedInMonth(e, nam, thang))
+      .map((e) => {
       const ma = normalizeMaNV(e.maNhanVien);
       const plan = planByMa.get(ma) ?? { kd: 0, thau: 0, dia: "" };
       const kdTH = kdNow[ma] ?? 0;
@@ -187,7 +190,7 @@ export default function BaoCaoThangReport({
         doanhThuTruoc: dsPrevByMa[ma] ?? 0,
       };
     }).sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem);
-  }, [planByMa, kdNow, thauNow, kdPrev, dsPrevByMa, ctByMonth]);
+  }, [planByMa, kdNow, thauNow, kdPrev, dsPrevByMa, ctByMonth, nam, thang]);
 
   const g = useMemo(() => {
     const sum = (f: (e: EmpMonth) => number) => emps.reduce((a, e) => a + f(e), 0);
