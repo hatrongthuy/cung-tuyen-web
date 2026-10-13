@@ -249,13 +249,20 @@ export default function BaoCaoThangReport({
     return out;
   }, [emps, g, pctThoiGian]);
 
-  // Tổng điểm KPIs theo NV (tab "kpis").
+  // Tổng điểm KPIs theo NV (tab "kpis"). Ẩn NV đã nghỉ theo tháng đang xem (so khớp theo TÊN).
   const kpiDiem = useMemo(() => {
     const cols = kpis.columns;
     const ten = findColumn(cols, ["tên nhân"]) ?? "";
     const diemTH = findColumn(cols, ["tổng điểm kpis th"]) ?? findColumn(cols, ["tổng điểm kpis"]);
-    return kpis.rows.map((r) => ({ ten: ten ? r[ten] : "", diem: diemTH ? parseInt0(r[diemTH]) : 0 })).filter((r) => r.ten);
-  }, [kpis]);
+    const departedNames = new Set(
+      allEmployees()
+        .filter((e) => nam && thang && isDepartedInMonth(e, nam, thang))
+        .map((e) => e.hoTen.trim().toLowerCase())
+    );
+    return kpis.rows
+      .map((r) => ({ ten: ten ? r[ten] : "", diem: diemTH ? parseInt0(r[diemTH]) : 0 }))
+      .filter((r) => r.ten && !departedNames.has(String(r.ten).trim().toLowerCase()));
+  }, [kpis, nam, thang]);
 
   // ---- Gemini AI ----
   const [aiLoading, setAiLoading] = useState(false);
