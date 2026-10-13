@@ -7,6 +7,7 @@
 // Nguồn dữ liệu: getSaleDetailData() (tab "Sale sạch") — đã phân loại focus (SPTT) & cap2Cat.
 
 import type { SaleDetailData } from "./sale-detail";
+import { allEmployees, isDepartedInMonth, type AllowlistEntry } from "./allowlist";
 
 export const GROWTH_TARGET = 1.1; // +10% so quý trước
 
@@ -220,6 +221,16 @@ export function buildProductGrowth(data: SaleDetailData, today: Date): ProductGr
 
   const team = scopeOf(teamTT, teamC2);
 
+  // NV đã nghỉ tính tới quý hiện tại: KHÔNG hiện thẻ theo dõi của họ (họ không thể đóng góp cho quý này),
+  // nhưng VẪN giữ doanh số lịch sử của họ trong TỔNG NHÓM để làm nền tăng trưởng của cả đội.
+  const nowMonth = new Date(quarter.nowToMs);
+  const depMaSet = new Set<string>();
+  for (const e of allEmployees() as AllowlistEntry[]) {
+    if (isDepartedInMonth(e, nowMonth.getFullYear(), nowMonth.getMonth() + 1)) {
+      depMaSet.add(String(e.maNhanVien ?? "").trim().replace(/^0+(?=\d)/, ""));
+    }
+  }
+
   const byTdv: GrowTdv[] = data.tdv
     .map((ten, tid) => ({
       tid,
@@ -228,7 +239,8 @@ export function buildProductGrowth(data: SaleDetailData, today: Date): ProductGr
       gam: data.repGam[tid] ?? "",
       scope: scopeOf(tdvTT[tid], tdvC2[tid]),
     }))
-    // Chỉ giữ TDV có hoạt động ở ít nhất 1 loại (tránh hiện người không phụ trách SP nào).
+    // Bỏ NV đã nghỉ; chỉ giữ TDV có hoạt động ở ít nhất 1 loại (tránh hiện người không phụ trách SP nào).
+    .filter((t) => !depMaSet.has(String(t.ma).trim().replace(/^0+(?=\d)/, "")))
     .filter((t) => t.scope.rowsTT.length > 0 || t.scope.rowsC2.length > 0);
 
   return { quarter, team, byTdv, error: null };
