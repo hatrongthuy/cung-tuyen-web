@@ -83,6 +83,13 @@ const ALLOWLIST_PHU_THO: AllowlistEntry[] = [
     role: "employee",
     maNhanVien: "020180",
   },
+  {
+    // TDV mới, địa bàn Phú Thọ, vào làm 16/10/2026 (thay địa bàn của Vũ Mạnh Chung).
+    email: "tamvo1809@gmail.com",
+    hoTen: "Võ Minh Tâm",
+    role: "employee",
+    maNhanVien: "020548",
+  },
 ];
 
 // ---- Scope "tay-bac" — web nhân bản, CẢ NHÓM Tây Bắc (3 SS) ----
@@ -137,6 +144,7 @@ const ALLOWLIST_TAY_BAC: AllowlistEntry[] = [
   { email: "018757@cung-tuyen.local", hoTen: "Hà Thị Lan Anh", role: "employee", maNhanVien: "018757", nhomSS: "Hà Trọng Thủy" },
   { email: "019484@cung-tuyen.local", hoTen: "Phan Văn Tuyền", role: "employee", maNhanVien: "019484", nhomSS: "Hà Trọng Thủy", nghiTu: "2026-10-01" },
   { email: "020180@cung-tuyen.local", hoTen: "Hoàng Văn Cường", role: "employee", maNhanVien: "020180", nhomSS: "Hà Trọng Thủy" },
+  { email: "020548@cung-tuyen.local", hoTen: "Võ Minh Tâm", role: "employee", maNhanVien: "020548", nhomSS: "Hà Trọng Thủy" },
 ];
 
 export const ALLOWLIST: AllowlistEntry[] =
