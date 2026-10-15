@@ -10,6 +10,8 @@ export type NavKey =
   | "hoi-dap"
   | "doi-nhom"
   | "sp-trong-tam"
+  | "khach-hang"
+  | "canh-bao-bat-thuong"
   | "bao-cao-tuan"
   | "bao-cao-thang"
   | "tang-truong-sp"
@@ -33,6 +35,8 @@ const NAV_ITEMS: NavEntry[] = [
   { key: "phat-trien", label: "Phát triển cá nhân", href: "/quan-ly/phat-trien", icon: "🌱" },
   { key: "doi-nhom", label: "Quản lý đội nhóm", href: "/quan-ly/doi-nhom", icon: "👥" },
   { key: "sp-trong-tam", label: "SP trọng tâm", href: "/quan-ly/sp-trong-tam", icon: "⭐" },
+  { key: "khach-hang", label: "Phân tích khách hàng", href: "/quan-ly/khach-hang", icon: "🧑‍⚕️" },
+  { key: "canh-bao-bat-thuong", label: "Cảnh báo bất thường", href: "/quan-ly/canh-bao-bat-thuong", icon: "🚨" },
   {
     group: "bao-cao",
     label: "Báo cáo",
@@ -63,6 +67,8 @@ const EMP_NAV_ITEMS: NavEntry[] = [
   { key: "hoi-dap", label: "Trợ lý AI", href: "/nhan-vien/hoi-dap", icon: "🤖" },
   { key: "doi-nhom", label: "Kết quả của tôi", href: "/nhan-vien/doi-nhom", icon: "📈" },
   { key: "sp-trong-tam", label: "SP trọng tâm", href: "/nhan-vien/sp-trong-tam", icon: "⭐" },
+  { key: "khach-hang", label: "Phân tích khách hàng", href: "/nhan-vien/khach-hang", icon: "🧑‍⚕️" },
+  { key: "canh-bao-bat-thuong", label: "Cảnh báo bất thường", href: "/nhan-vien/canh-bao-bat-thuong", icon: "🚨" },
   { key: "tra-cuu-sale", label: "Tra cứu Sale", href: "/nhan-vien/tra-cuu-sale", icon: "🔎" },
   { key: "kpi", label: "KPI", href: "/nhan-vien/kpi", icon: "🎯" },
   { key: "doanh-so", label: "Doanh số", href: "/nhan-vien/doanh-so", icon: "💰" },
