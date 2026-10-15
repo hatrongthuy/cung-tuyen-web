@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { allEmployees } from "./allowlist";
+import { allEmployees, REASSIGN_MA } from "./allowlist";
 import { parseMoney } from "./format";
 
 // File dữ liệu Sale "sạch" (đã chia sẻ công khai quyền xem) — chứa doanh số THỰC HIỆN
@@ -112,11 +112,14 @@ export async function getTeamSales(): Promise<SalesResult> {
   }
 
   const team = new Set(allEmployees().map((e) => normalizeMaNV(e.maNhanVien)));
+  const nameByMa = new Map(allEmployees().map((e) => [normalizeMaNV(e.maNhanVien), e.hoTen]));
   const txns: SaleTxn[] = [];
   for (let i = hdrIdx + 1; i < rows.length; i++) {
     const r = rows[i];
     if (!r) continue;
-    const ma = normalizeMaNV(r[iMa]);
+    // Bàn giao địa bàn: remap mã NV đã chuyển -> NV tiếp nhận trước khi lọc nhóm.
+    const maGoc = normalizeMaNV(r[iMa]);
+    const ma = REASSIGN_MA[maGoc] ?? maGoc;
     if (!team.has(ma)) continue;
     const dateMs = iNgay >= 0 ? toDateMs(r[iNgay]) : null;
     const nam = iNam >= 0 ? Number(r[iNam]) || (dateMs ? new Date(dateMs).getFullYear() : 0) : 0;
@@ -126,7 +129,8 @@ export async function getTeamSales(): Promise<SalesResult> {
     const kenh: Kenh = nhom.includes("thầu") ? "thau" : "keDon";
     txns.push({
       ma,
-      ten: String(r[iTen] ?? ""),
+      // Nếu đã bàn giao, hiển thị tên NV tiếp nhận thay vì tên NV cũ trên file.
+      ten: maGoc !== ma ? (nameByMa.get(ma) ?? String(r[iTen] ?? "")) : String(r[iTen] ?? ""),
       dateMs,
       nam,
       thang,

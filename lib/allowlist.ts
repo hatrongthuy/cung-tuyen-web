@@ -161,6 +161,16 @@ export function allEmployees(): AllowlistEntry[] {
 }
 
 /**
+ * BÀN GIAO ĐỊA BÀN: gán giao dịch của NV đã chuyển đi sang NV mới tiếp nhận.
+ * Key/value là MÃ NHÂN VIÊN đã chuẩn hoá (bỏ số 0 đầu). Áp khi đọc file Sale, TRƯỚC khi lọc nhóm,
+ * nên toàn bộ khách hàng + lịch sử của NV cũ sẽ hiện dưới tên NV mới (không sửa file gốc).
+ *   018608 Vũ Mạnh Chung (đã chuyển) -> 020548 Võ Minh Tâm (tiếp nhận địa bàn Phú Thọ, 16/10/2026)
+ */
+export const REASSIGN_MA: Record<string, string> = {
+  "18608": "20548",
+};
+
+/**
  * NV đã nghỉ tính tới tháng (nam, thang) đang xem?
  * True nếu tháng xem >= tháng nghỉ (ẩn khỏi tháng nghỉ trở đi; giữ nguyên các tháng trước).
  */

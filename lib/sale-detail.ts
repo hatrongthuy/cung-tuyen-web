@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { allEmployees } from "./allowlist";
+import { allEmployees, REASSIGN_MA } from "./allowlist";
 import { parseMoney } from "./format";
 
 // Sinh dữ liệu chi tiết cho màn "Tra cứu Sale" (public/sale.html) TRỰC TIẾP từ Google Sheet
@@ -63,7 +63,7 @@ const CAP2_CAT_KEYWORDS: string[] = [...CAP2_SAN_KW, ...CAP2_GMHS_KW];
 // Mã NV đã bỏ số 0 đầu để khớp normalizeMaNV.
 const REP_GAM: Record<string, string> = {
   "18468": "Sản", "18757": "Sản", "20180": "Sản",
-  "17886": "GMHS", "19484": "GMHS",
+  "17886": "GMHS", "19484": "GMHS", "20548": "GMHS", // Võ Minh Tâm (GMHS)
 };
 const FOCUS_GAM: Record<string, string> = {
   Atosiban: "Sản", "Proges sup": "Sản", "pH Protect": "Sản",
@@ -273,7 +273,9 @@ export async function getSaleDetailData(): Promise<SaleDetailData> {
     if (prevFirst === undefined || di < prevFirst) codeFirstDi.set(maKH, di);
 
     // Từ đây chỉ giữ giao dịch của nhân viên trong nhóm.
-    const ma = normalizeMaNV(r[iMaNV]);
+    // Bàn giao địa bàn: remap mã NV đã chuyển -> NV tiếp nhận trước khi lọc nhóm.
+    const maGoc = normalizeMaNV(r[iMaNV]);
+    const ma = REASSIGN_MA[maGoc] ?? maGoc;
     const tid = teamMa.get(ma);
     if (tid === undefined) continue;
 
