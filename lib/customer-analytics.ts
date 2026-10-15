@@ -5,8 +5,33 @@
 // Bản nhân viên: truyền onlyMa để chỉ tính khách/giao dịch của chính TDV đó.
 
 import type { SaleDetailData } from "./sale-detail";
+import { allEmployees, isDepartedInMonth } from "./allowlist";
 
 const DAY = 86400000;
+
+const normMa = (s: unknown) => String(s ?? "").trim().replace(/^0+(?=\d)/, "");
+
+/** Tập tid (chỉ số TDV trong data.tdv) của những NV đã nghỉ tính tới tháng hiện tại. */
+function departedTidSet(data: SaleDetailData): Set<number> {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const depMa = new Set<string>();
+  for (const e of allEmployees()) if (isDepartedInMonth(e, y, m)) depMa.add(normMa(e.maNhanVien));
+  const s = new Set<number>();
+  data.tdvMa.forEach((ma, tid) => { if (depMa.has(normMa(ma))) s.add(tid); });
+  return s;
+}
+
+const BAN_GIAO = "(đã bàn giao)";
+
+/** Tên TDV đang phụ trách: ưu tiên TDV còn làm việc có doanh số cao nhất; nếu chỉ còn NV đã nghỉ -> "(đã bàn giao)". */
+function repNameOf(data: SaleDetailData, repDt: Map<number, number>, depTid: Set<number>): string {
+  const entries = [...repDt.entries()].sort((x, y) => y[1] - x[1]);
+  const active = entries.find(([tid]) => !depTid.has(tid));
+  if (active) return data.tdv[active[0]] ?? "";
+  return entries.length ? BAN_GIAO : "";
+}
 
 // ---------- RFM + 360° ----------
 export interface SpUsage {
@@ -89,6 +114,7 @@ export function buildCustomerRFM(data: SaleDetailData, onlyMa?: string, maxCusto
   if (onlyTid === -1) return { asofLabel: labelOfDi(baseMs, asof), segments: [], customers: [] };
 
   const win12 = asof - 365;
+  const depTid = departedTidSet(data);
 
   type Agg = {
     lastDi: number;
@@ -138,7 +164,7 @@ export function buildCustomerRFM(data: SaleDetailData, onlyMa?: string, maxCusto
     .filter(([, a]) => a.total > 0)
     .map(([cid, a]) => {
       const info = data.cust[cid] ?? ["", "", "", ""];
-      const repTid = [...a.repDt.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? -1;
+      const repTen = repNameOf(data, a.repDt, depTid);
       const sps: SpUsage[] = [...a.sp.entries()]
         .map(([pid, v]) => ({ ten: data.prod[pid]?.[1] || data.prod[pid]?.[0] || `SP#${pid}`, dt: v.dt, sl: v.sl, lanCuoiNgay: asof - v.lastDi }))
         .sort((x, y) => y.dt - x.dt)
@@ -149,7 +175,7 @@ export function buildCustomerRFM(data: SaleDetailData, onlyMa?: string, maxCusto
         tenKH: info[1] || info[0] || `KH#${cid}`,
         tinh: info[2] || "",
         nhomKH: info[3] || "",
-        repTen: repTid >= 0 ? data.tdv[repTid] ?? "" : "",
+        repTen,
         recencyDays: asof - a.lastDi,
         freq: a.freqDays.size,
         monetary: a.monetary12,
@@ -233,6 +259,7 @@ export function buildAnomaly(
   const onlyTid = resolveTid(data, onlyMa);
   if (onlyTid === -1) return { asofLabel: labelOfDi(baseMs, asof), windowLabel: "", khach: [], sanpham: [] };
 
+  const depTid = departedTidSet(data);
   const nguongKhach = opts.nguongKhach ?? 2_000_000;
   const nguongSP = opts.nguongSP ?? 5_000_000;
   const tyLeGiam = opts.tyLeGiam ?? 0.5; // recent < 50% baseline => tụt mạnh
@@ -273,11 +300,10 @@ export function buildAnomaly(
       const baseline = a.prev / 3; // trung bình mỗi 30 ngày
       if (baseline < nguong) continue; // bỏ qua khách/SP nhỏ
       if (a.recent >= baseline * tyLeGiam) continue; // chưa tụt đủ mạnh
-      const repTid = [...a.rep.entries()].sort((x, y) => y[1] - x[1])[0]?.[0] ?? -1;
       out.push({
         ten: nameOf(id),
         phu: phuOf(id),
-        rep: repTid >= 0 ? data.tdv[repTid] ?? "" : "",
+        rep: repNameOf(data, a.rep, depTid),
         recent: a.recent,
         baseline,
         drop: baseline - a.recent,
