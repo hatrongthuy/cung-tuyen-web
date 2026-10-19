@@ -69,7 +69,9 @@ export default async function NhanVienBaoCaoTuanPage() {
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-8 px-4 py-6">
         <BaoCaoTuanReport
           teamName={TEN_NHOM_HIEN_THI}
-          weekRangeLabel={weekRangeLabelOf(weekLabel, todayWeekLabel)}
+          weekRangeLabel={weekRangeLabelOf(todayWeekLabel, todayWeekLabel)}
+          cungTuyenWeekLabel={weekRangeLabelOf(weekLabel, weekLabel)}
+          cungTuyenStale={!!weekLabel && weekLabel !== todayWeekLabel}
           salesTxns={sales.txns}
           salesError={sales.error}
           kpiCols={kpiDoanhSo.columns}
