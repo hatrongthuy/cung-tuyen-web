@@ -55,6 +55,8 @@ function tenGoi(hoTen: string): string {
 export default function BaoCaoTuanReport({
   teamName,
   weekRangeLabel,
+  cungTuyenWeekLabel,
+  cungTuyenStale = false,
   salesTxns = [],
   salesError,
   kpiCols = [],
@@ -66,6 +68,8 @@ export default function BaoCaoTuanReport({
 }: {
   teamName: string;
   weekRangeLabel: string;
+  cungTuyenWeekLabel?: string;
+  cungTuyenStale?: boolean;
   salesTxns?: SaleTxnLite[];
   salesError?: string | null;
   kpiCols?: string[];
@@ -382,7 +386,9 @@ export default function BaoCaoTuanReport({
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
               Báo Cáo Tuần — Đội Kinh Doanh
             </h1>
-            <p className="mt-1 text-sm text-slate-500">Tổng quan hiệu suất &amp; tiến độ theo chỉ tiêu</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Doanh số: lũy kế tháng {String(ctx.thang).padStart(2, "0")}/{ctx.nam} tới hôm nay · chỉ tiêu theo mốc thời gian
+            </p>
           </div>
           <div className="text-right">
             <p className="text-sm font-semibold text-slate-700">Quản lý: {teamName}</p>
@@ -391,6 +397,14 @@ export default function BaoCaoTuanReport({
             </p>
           </div>
         </div>
+
+        {cungTuyenStale && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            ⓘ <b>Doanh số</b> là số <b>lũy kế tháng {String(ctx.thang).padStart(2, "0")}/{ctx.nam}</b> tới hôm nay (cập nhật hằng ngày).
+            Phần <b>cung tuyến / coverage / khách bỏ sót</b> lấy theo tuần được chấm điểm gần nhất
+            {cungTuyenWeekLabel ? <> (<b>{cungTuyenWeekLabel}</b>)</> : null} — hệ thống chấm cung tuyến tự động (20h thứ 7) chưa chạy cho tuần hiện tại.
+          </div>
+        )}
 
         {(salesError || kpiError) && (
           <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
