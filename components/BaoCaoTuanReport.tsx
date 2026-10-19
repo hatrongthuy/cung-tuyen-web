@@ -11,6 +11,7 @@ import {
   type CareItem,
 } from "@/lib/report-utils";
 import type { EmployeeWeekSummary } from "@/lib/aggregate";
+import { keHoachDsNhom } from "@/lib/scope";
 
 interface DateCtx {
   nam: number;
@@ -143,8 +144,12 @@ export default function BaoCaoTuanReport({
 
   const g = useMemo(() => {
     const sum = (f: (e: EmpRow) => number) => emps.reduce((a, e) => a + f(e), 0);
-    const kdTH = sum((e) => e.kdTH), kdKH = sum((e) => e.kdKH);
-    const thauTH = sum((e) => e.thauTH), thauKH = sum((e) => e.thauKH);
+    const kdTH = sum((e) => e.kdTH);
+    const thauTH = sum((e) => e.thauTH);
+    // Chỉ tiêu nhóm: dùng kế hoạch RIÊNG của SS nếu tháng này có khai báo, nếu không thì cộng TDV.
+    const keNhom = keHoachDsNhom(ctx.nam, ctx.thang);
+    const kdKH = keNhom ? keNhom.keDon : sum((e) => e.kdKH);
+    const thauKH = keNhom ? keNhom.thau : sum((e) => e.thauKH);
     const covVals = emps.map((e) => e.coverage).filter((c): c is number => c !== null);
     const coverage = covVals.length ? covVals.reduce((a, b) => a + b, 0) / covVals.length : null;
     const boSot = sum((e) => e.soChuaGap);
@@ -155,9 +160,9 @@ export default function BaoCaoTuanReport({
     return {
       kdTH, kdKH, kdPct: pct(kdTH, kdKH), kdPctTruoc: pct(kdPrevTotal, kdKH),
       thauTH, thauKH, thauPct: pct(thauTH, thauKH), thauPctTruoc: pct(thauPrevTotal, thauKH),
-      coverage, boSot, covMin, covMax,
+      coverage, boSot, covMin, covMax, keNhom: !!keNhom,
     };
-  }, [emps]);
+  }, [emps, ctx]);
 
   // Danh sách bỏ sót theo NV (để hiện "Trung 12 · Huy 6")
   const boSotBreak = useMemo(

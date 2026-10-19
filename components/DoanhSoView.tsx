@@ -17,6 +17,7 @@ import { formatVnd, formatShortVnd, parseMoney, pct } from "@/lib/format";
 import { normalizeMaNV } from "@/lib/report-utils";
 import { downloadCsv } from "@/lib/csv";
 import { allEmployees, isDepartedInMonth } from "@/lib/allowlist";
+import { keHoachDsNhom } from "@/lib/scope";
 
 interface Props {
   columns: string[];
@@ -117,8 +118,16 @@ export default function DoanhSoView({
     });
   }, [nvkdRows, cols, keDonByCode, thauByCode]);
 
+  // Chỉ tiêu RIÊNG của nhóm (SS) cho tháng đang xem — nếu có khai báo thì tổng nhóm dùng số này
+  // thay vì cộng chỉ tiêu từng TDV (chỉ tiêu từng TDV ở các dòng vẫn giữ nguyên).
+  const groupPlan = useMemo(() => {
+    const [mm, yy] = (actualMonthLabel || "").split("/").map(Number);
+    if (!mm || !yy) return null;
+    return keHoachDsNhom(yy, mm);
+  }, [actualMonthLabel]);
+
   const tong = useMemo(() => {
-    return perEmp.reduce(
+    const t = perEmp.reduce(
       (a, e) => ({
         kdKH: a.kdKH + e.kdKH,
         kdTH: a.kdTH + e.kdTH,
@@ -127,7 +136,12 @@ export default function DoanhSoView({
       }),
       { kdKH: 0, kdTH: 0, thauKH: 0, thauTH: 0 }
     );
-  }, [perEmp]);
+    if (groupPlan) {
+      t.kdKH = groupPlan.keDon;
+      t.thauKH = groupPlan.thau;
+    }
+    return t;
+  }, [perEmp, groupPlan]);
 
   const chartData = perEmp.map((e) => ({
     ten: e.ten,
@@ -190,6 +204,13 @@ export default function DoanhSoView({
             <StatCard label="Thầu — Thực hiện" value={formatShortVnd(tong.thauTH)} hint={`Đạt ${Math.round(pct(tong.thauTH, tong.thauKH))}%`} accentColor="#eb6834" />
           </section>
 
+          {groupPlan && (
+            <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+              ⓘ Chỉ tiêu <b>TỔNG nhóm</b> (kê đơn {formatShortVnd(groupPlan.keDon)} · thầu {formatShortVnd(groupPlan.thau)})
+              theo kế hoạch KPI riêng của SS <b>Hà Trọng Thủy</b>, có thể cao hơn tổng chỉ tiêu từng TDV cộng lại
+              (phần dự phòng của SS). Chỉ tiêu từng TDV ở các dòng bên dưới giữ nguyên.
+            </p>
+          )}
           {salesError && (
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
               Không đọc được doanh số thực hiện từ file Sale: {salesError}

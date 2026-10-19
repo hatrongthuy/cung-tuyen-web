@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { allEmployees, isDepartedInMonth } from "@/lib/allowlist";
+import { keHoachDsNhom } from "@/lib/scope";
 import { formatVnd, formatShortVnd, pct, parseMoney } from "@/lib/format";
 import { downloadCsv } from "@/lib/csv";
 import {
@@ -192,10 +193,16 @@ export default function BaoCaoThangReport({
     }).sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem);
   }, [planByMa, kdNow, thauNow, kdPrev, dsPrevByMa, ctByMonth, nam, thang]);
 
+  // Chỉ tiêu RIÊNG của nhóm (SS) cho tháng đang xem — nếu có khai báo thì tổng nhóm dùng số này
+  // thay vì cộng chỉ tiêu từng TDV. Chỉ tiêu từng TDV (ở các dòng) giữ nguyên.
+  const groupPlan = useMemo(() => (nam && thang ? keHoachDsNhom(nam, thang) : null), [nam, thang]);
+
   const g = useMemo(() => {
     const sum = (f: (e: EmpMonth) => number) => emps.reduce((a, e) => a + f(e), 0);
-    const kdTH = sum((e) => e.kdTH), kdKH = sum((e) => e.kdKH);
-    const thauTH = sum((e) => e.thauTH), thauKH = sum((e) => e.thauKH);
+    const kdTH = sum((e) => e.kdTH);
+    const thauTH = sum((e) => e.thauTH);
+    const kdKH = groupPlan ? groupPlan.keDon : sum((e) => e.kdKH);
+    const thauKH = groupPlan ? groupPlan.thau : sum((e) => e.thauKH);
     const kdPrevTotal = sumValues(kdPrev);
     return {
       kdTH, kdKH, kdPct: pct(kdTH, kdKH), kdPctTruoc: pct(kdPrevTotal, kdKH),
@@ -204,7 +211,7 @@ export default function BaoCaoThangReport({
       diem: sum((e) => e.diem), diemTruoc: sum((e) => e.diemTruoc),
       doanhThu: kdTH + thauTH, doanhThuTruoc: sumValues(dsPrevByMa),
     };
-  }, [emps, kdPrev, dsPrevByMa]);
+  }, [emps, kdPrev, dsPrevByMa, groupPlan]);
 
   const hasEval = useMemo(() => emps.some((e) => e.soTuan > 0), [emps]);
 
@@ -418,6 +425,13 @@ export default function BaoCaoThangReport({
           <KpiCard accent={C.violet} label="Điểm cung tuyến" value={hasEval ? String(g.diem) : "—"} sub={`Gặp ${g.gap} · Sale ${g.sale}`}
             tag={hasEval ? (dmNum(g.diem, g.diemTruoc) ?? "—") : "Chưa chấm điểm"} tagColor={g.diem >= g.diemTruoc ? "green" : "amber"} />
         </div>
+
+        {groupPlan && (
+          <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+            ⓘ Chỉ tiêu <b>TỔNG nhóm</b> tháng {month} (kê đơn {formatShortVnd(groupPlan.keDon)} · thầu {formatShortVnd(groupPlan.thau)})
+            theo kế hoạch KPI riêng của SS <b>Hà Trọng Thủy</b>, có thể cao hơn tổng chỉ tiêu từng TDV cộng lại. Chỉ tiêu từng TDV giữ nguyên.
+          </p>
+        )}
 
         {/* Tiến độ KĐ + Thầu theo NV */}
         <div className="grid gap-4 lg:grid-cols-2">
