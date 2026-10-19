@@ -33,6 +33,23 @@ export const APP_DESCRIPTION =
     ? "Quản lý cung tuyến, doanh số, KPI — Nhóm Tây Bắc"
     : "Quản lý cung tuyến, doanh số, KPI — Nhóm Hà Trọng Thủy";
 
+/** Chỉ tiêu DOANH SỐ RIÊNG của NHÓM (do SS Hà Trọng Thủy cam kết), tách khỏi tổng chỉ tiêu
+ *  của từng TDV cộng lại. Theo kế hoạch KPI của SS, tổng nhóm có thể LỚN HƠN tổng TDV (phần dự
+ *  phòng của SS). Key = "YYYY-MM". Chỉ áp cho tháng có khai báo; tháng khác vẫn lấy tổng TDV.
+ *  Đơn vị: VNĐ. */
+export const KE_HOACH_DS_NHOM: Record<string, { keDon: number; thau: number }> = {
+  "2026-10": { keDon: 650_000_000, thau: 200_000_000 },
+};
+
+/** Trả về chỉ tiêu DS riêng của nhóm cho tháng (nam, thang), hoặc null nếu tháng đó chưa khai báo
+ *  (khi đó dùng tổng chỉ tiêu của các TDV như cũ). */
+export function keHoachDsNhom(
+  nam: number,
+  thang: number
+): { keDon: number; thau: number } | null {
+  return KE_HOACH_DS_NHOM[`${nam}-${String(thang).padStart(2, "0")}`] ?? null;
+}
+
 /** So khớp giá trị cột "Nhóm SS" trong sheet với scope hiện tại (hỗ trợ cả 1 nhóm và nhiều nhóm). */
 export function matchesTenNhom(cellValue: string): boolean {
   const v = (cellValue ?? "").trim().toLowerCase();
