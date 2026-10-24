@@ -65,6 +65,8 @@ export default function BaoCaoTuanReport({
   kpiError,
   summaries = [],
   careByEmp = {},
+  cap12ByMa = {},
+  cap12Error,
   ctx,
 }: {
   teamName: string;
@@ -78,6 +80,8 @@ export default function BaoCaoTuanReport({
   kpiError?: string | null;
   summaries?: EmployeeWeekSummary[];
   careByEmp?: Record<string, CareItem[]>;
+  cap12ByMa?: Record<string, { cap1: { dt: number; sl: number; kh: number }; cap2: { dt: number; sl: number; kh: number } }>;
+  cap12Error?: string | null;
   ctx: DateCtx;
 }) {
   const pctThoiGian = (ctx.ngay / ctx.soNgayThang) * 100;
@@ -288,6 +292,21 @@ export default function BaoCaoTuanReport({
   // kê tên để không bị "mất" khỏi báo cáo; doanh số thực vẫn tính vào tổng nhóm.
   const noPlanRows = [...emps].filter((e) => e.kdKH === 0 && e.thauKH === 0);
 
+  // Đơn hàng SP cấp 1 (trọng tâm) / cấp 2 theo NV — trong tuần báo cáo.
+  const ZERO = { dt: 0, sl: 0, kh: 0 };
+  const cap12List = emps.map((e) => {
+    const c = cap12ByMa[e.ma] ?? { cap1: ZERO, cap2: ZERO };
+    return { ma: e.ma, ten: e.ten, cap1: c.cap1, cap2: c.cap2 };
+  });
+  const cap12Tong = cap12List.reduce(
+    (a, r) => ({
+      cap1: { dt: a.cap1.dt + r.cap1.dt, sl: a.cap1.sl + r.cap1.sl, kh: a.cap1.kh + r.cap1.kh },
+      cap2: { dt: a.cap2.dt + r.cap2.dt, sl: a.cap2.sl + r.cap2.sl, kh: a.cap2.kh + r.cap2.kh },
+    }),
+    { cap1: { ...ZERO }, cap2: { ...ZERO } }
+  );
+  const coCap12 = cap12Tong.cap1.dt > 0 || cap12Tong.cap1.sl > 0 || cap12Tong.cap2.dt > 0 || cap12Tong.cap2.sl > 0;
+
   // ----- Phân tích AI (Gemini) -----
   const [aiLoading, setAiLoading] = useState(false);
   const [aiText, setAiText] = useState<string>("");
@@ -489,6 +508,58 @@ export default function BaoCaoTuanReport({
             </div>
           </Card>
         </div>
+
+        {/* ===== Đơn hàng SP cấp 1 / cấp 2 theo nhân viên (trong tuần) ===== */}
+        <Card title="Đơn hàng SP cấp 1 / cấp 2 theo nhân viên" sub={`Trong tuần ${weekRangeLabel} · Cấp 1 = SP trọng tâm, Cấp 2 = SP Cấp 2 · DT = doanh thu, SL = sản lượng, KH = số khách đặt`}>
+          {cap12Error ? (
+            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Không đọc được dữ liệu chi tiết Sale: {cap12Error}</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[720px] text-left text-xs">
+                <thead>
+                  <tr className="text-slate-500">
+                    <th className="py-1 pr-3 font-medium" rowSpan={2}>Nhân viên</th>
+                    <th className="border-l border-slate-200 py-1 px-3 text-center font-semibold text-emerald-700" colSpan={3}>Cấp 1 — SP trọng tâm</th>
+                    <th className="border-l border-slate-200 py-1 px-3 text-center font-semibold text-blue-700" colSpan={3}>Cấp 2 — SP Cấp 2</th>
+                  </tr>
+                  <tr className="border-b border-slate-200 text-slate-400">
+                    <th className="border-l border-slate-200 py-1 px-3 text-right font-medium">DT</th>
+                    <th className="py-1 px-3 text-right font-medium">SL</th>
+                    <th className="py-1 px-3 text-right font-medium">KH</th>
+                    <th className="border-l border-slate-200 py-1 px-3 text-right font-medium">DT</th>
+                    <th className="py-1 px-3 text-right font-medium">SL</th>
+                    <th className="py-1 px-3 text-right font-medium">KH</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cap12List.map((r) => (
+                    <tr key={r.ma} className="border-b border-slate-100">
+                      <td className="py-2 pr-3 font-medium text-slate-800">{r.ten}</td>
+                      <td className="border-l border-slate-200 py-2 px-3 text-right text-slate-700">{formatShortVnd(r.cap1.dt)}</td>
+                      <td className="py-2 px-3 text-right text-slate-600">{r.cap1.sl.toLocaleString("vi-VN")}</td>
+                      <td className="py-2 px-3 text-right text-slate-600">{r.cap1.kh}</td>
+                      <td className="border-l border-slate-200 py-2 px-3 text-right text-slate-700">{formatShortVnd(r.cap2.dt)}</td>
+                      <td className="py-2 px-3 text-right text-slate-600">{r.cap2.sl.toLocaleString("vi-VN")}</td>
+                      <td className="py-2 px-3 text-right text-slate-600">{r.cap2.kh}</td>
+                    </tr>
+                  ))}
+                  <tr className="border-t-2 border-slate-300 font-semibold">
+                    <td className="py-2 pr-3 text-slate-900">TỔNG</td>
+                    <td className="border-l border-slate-200 py-2 px-3 text-right text-slate-900">{formatShortVnd(cap12Tong.cap1.dt)}</td>
+                    <td className="py-2 px-3 text-right text-slate-900">{cap12Tong.cap1.sl.toLocaleString("vi-VN")}</td>
+                    <td className="py-2 px-3 text-right text-slate-900">{cap12Tong.cap1.kh}</td>
+                    <td className="border-l border-slate-200 py-2 px-3 text-right text-slate-900">{formatShortVnd(cap12Tong.cap2.dt)}</td>
+                    <td className="py-2 px-3 text-right text-slate-900">{cap12Tong.cap2.sl.toLocaleString("vi-VN")}</td>
+                    <td className="py-2 px-3 text-right text-slate-900">{cap12Tong.cap2.kh}</td>
+                  </tr>
+                </tbody>
+              </table>
+              {!coCap12 && (
+                <p className="mt-2 text-xs text-slate-400">Chưa có đơn SP cấp 1 / cấp 2 phát sinh trong tuần này.</p>
+              )}
+            </div>
+          )}
+        </Card>
 
         {/* ===== 2 cột: nổi bật/cần cải thiện | tồn đọng ===== */}
         <div className="grid gap-4 lg:grid-cols-2">
