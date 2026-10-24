@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { allEmployees } from "@/lib/allowlist";
 import { formatShortVnd, pct, parseMoney } from "@/lib/format";
 import {
@@ -11,6 +11,7 @@ import {
   type CareItem,
 } from "@/lib/report-utils";
 import type { EmployeeWeekSummary } from "@/lib/aggregate";
+import type { Cap12Nv } from "@/lib/sale-detail";
 import { keHoachDsNhom } from "@/lib/scope";
 
 interface DateCtx {
@@ -81,7 +82,7 @@ export default function BaoCaoTuanReport({
   kpiError?: string | null;
   summaries?: EmployeeWeekSummary[];
   careByEmp?: Record<string, CareItem[]>;
-  cap12ByMa?: Record<string, { cap1: { dt: number; sl: number; kh: number }; cap2: { dt: number; sl: number; kh: number } }>;
+  cap12ByMa?: Record<string, Cap12Nv>;
   cap12Error?: string | null;
   cap12WeekLabel?: string;
   ctx: DateCtx;
@@ -260,6 +261,7 @@ export default function BaoCaoTuanReport({
   // ---- Tải ảnh PNG / In ----
   const reportRef = useRef<HTMLDivElement>(null);
   const [dangTaiAnh, setDangTaiAnh] = useState(false);
+  const [cap12Open, setCap12Open] = useState<string | null>(null); // mã NV đang mở chi tiết SP cấp 1/2
   const tenFile = `bao-cao-tuan_${ctx.ngay}-${ctx.thang}-${ctx.nam}`;
   async function taiAnh() {
     const node = reportRef.current;
@@ -295,7 +297,7 @@ export default function BaoCaoTuanReport({
   const noPlanRows = [...emps].filter((e) => e.kdKH === 0 && e.thauKH === 0);
 
   // Đơn hàng SP cấp 1 (trọng tâm) / cấp 2 theo NV — trong tuần báo cáo.
-  const ZERO = { dt: 0, sl: 0, kh: 0 };
+  const ZERO: Cap12Nv["cap1"] = { dt: 0, sl: 0, kh: 0, sp: [], custs: [] };
   const cap12List = emps.map((e) => {
     const c = cap12ByMa[e.ma] ?? { cap1: ZERO, cap2: ZERO };
     return { ma: e.ma, ten: e.ten, cap1: c.cap1, cap2: c.cap2 };
@@ -305,7 +307,7 @@ export default function BaoCaoTuanReport({
       cap1: { dt: a.cap1.dt + r.cap1.dt, sl: a.cap1.sl + r.cap1.sl, kh: a.cap1.kh + r.cap1.kh },
       cap2: { dt: a.cap2.dt + r.cap2.dt, sl: a.cap2.sl + r.cap2.sl, kh: a.cap2.kh + r.cap2.kh },
     }),
-    { cap1: { ...ZERO }, cap2: { ...ZERO } }
+    { cap1: { dt: 0, sl: 0, kh: 0 }, cap2: { dt: 0, sl: 0, kh: 0 } }
   );
   const coCap12 = cap12Tong.cap1.dt > 0 || cap12Tong.cap1.sl > 0 || cap12Tong.cap2.dt > 0 || cap12Tong.cap2.sl > 0;
 
@@ -512,7 +514,7 @@ export default function BaoCaoTuanReport({
         </div>
 
         {/* ===== Đơn hàng SP cấp 1 / cấp 2 theo nhân viên (trong tuần) ===== */}
-        <Card title="Đơn hàng SP cấp 1 / cấp 2 theo nhân viên" sub={`Trong tuần ${cap12WeekLabel ?? weekRangeLabel} (Thứ 2–Chủ nhật) · Cấp 1 = SP trọng tâm, Cấp 2 = SP Cấp 2 · DT = doanh thu, SL = sản lượng, KH = số khách đặt`}>
+        <Card title="Đơn hàng SP cấp 1 / cấp 2 theo nhân viên" sub={`Trong tuần ${cap12WeekLabel ?? weekRangeLabel} (Thứ 2–Chủ nhật) · Cấp 1 = SP trọng tâm, Cấp 2 = SP Cấp 2 · DT = doanh thu, SL = sản lượng, KH = số khách đặt · Bấm vào tên nhân viên để xem chi tiết sản phẩm & khách hàng`}>
           {cap12Error ? (
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Không đọc được dữ liệu chi tiết Sale: {cap12Error}</p>
           ) : (
@@ -534,17 +536,39 @@ export default function BaoCaoTuanReport({
                   </tr>
                 </thead>
                 <tbody>
-                  {cap12List.map((r) => (
-                    <tr key={r.ma} className="border-b border-slate-100">
-                      <td className="py-2 pr-3 font-medium text-slate-800">{r.ten}</td>
-                      <td className="border-l border-slate-200 py-2 px-3 text-right text-slate-700">{formatShortVnd(r.cap1.dt)}</td>
-                      <td className="py-2 px-3 text-right text-slate-600">{r.cap1.sl.toLocaleString("vi-VN")}</td>
-                      <td className="py-2 px-3 text-right text-slate-600">{r.cap1.kh}</td>
-                      <td className="border-l border-slate-200 py-2 px-3 text-right text-slate-700">{formatShortVnd(r.cap2.dt)}</td>
-                      <td className="py-2 px-3 text-right text-slate-600">{r.cap2.sl.toLocaleString("vi-VN")}</td>
-                      <td className="py-2 px-3 text-right text-slate-600">{r.cap2.kh}</td>
-                    </tr>
-                  ))}
+                  {cap12List.map((r) => {
+                    const open = cap12Open === r.ma;
+                    const coDon = r.cap1.dt || r.cap1.sl || r.cap2.dt || r.cap2.sl;
+                    return (
+                      <Fragment key={r.ma}>
+                        <tr
+                          className={`border-b border-slate-100 ${coDon ? "cursor-pointer hover:bg-slate-50" : ""}`}
+                          onClick={() => coDon && setCap12Open(open ? null : r.ma)}
+                        >
+                          <td className="py-2 pr-3 font-medium text-slate-800">
+                            {coDon && <span className="mr-1 inline-block text-slate-400">{open ? "▾" : "▸"}</span>}
+                            {r.ten}
+                          </td>
+                          <td className="border-l border-slate-200 py-2 px-3 text-right text-slate-700">{formatShortVnd(r.cap1.dt)}</td>
+                          <td className="py-2 px-3 text-right text-slate-600">{r.cap1.sl.toLocaleString("vi-VN")}</td>
+                          <td className="py-2 px-3 text-right text-slate-600">{r.cap1.kh}</td>
+                          <td className="border-l border-slate-200 py-2 px-3 text-right text-slate-700">{formatShortVnd(r.cap2.dt)}</td>
+                          <td className="py-2 px-3 text-right text-slate-600">{r.cap2.sl.toLocaleString("vi-VN")}</td>
+                          <td className="py-2 px-3 text-right text-slate-600">{r.cap2.kh}</td>
+                        </tr>
+                        {open && (
+                          <tr className="border-b border-slate-100 bg-slate-50/60">
+                            <td colSpan={7} className="px-3 py-3">
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <Cap12Detail title="Cấp 1 — SP trọng tâm" accent="text-emerald-700" sp={r.cap1.sp} custs={r.cap1.custs} />
+                                <Cap12Detail title="Cấp 2 — SP Cấp 2" accent="text-blue-700" sp={r.cap2.sp} custs={r.cap2.custs} />
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                   <tr className="border-t-2 border-slate-300 font-semibold">
                     <td className="py-2 pr-3 text-slate-900">TỔNG</td>
                     <td className="border-l border-slate-200 py-2 px-3 text-right text-slate-900">{formatShortVnd(cap12Tong.cap1.dt)}</td>
@@ -723,6 +747,70 @@ export default function BaoCaoTuanReport({
           Báo cáo tổng hợp tuần {weekRangeLabel} · Đội KD do {teamName} quản lý · Đơn vị: tr = triệu VNĐ
         </p>
       </div>
+    </div>
+  );
+}
+
+function Cap12Detail({
+  title,
+  accent,
+  sp,
+  custs,
+}: {
+  title: string;
+  accent: string;
+  sp: { ten: string; dt: number; sl: number; kh: number }[];
+  custs: { ten: string; tinh: string; dt: number; sl: number }[];
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <p className={`text-xs font-semibold ${accent}`}>{title}</p>
+      {sp.length === 0 ? (
+        <p className="mt-2 text-xs text-slate-400">Không có đơn trong tuần.</p>
+      ) : (
+        <>
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Theo sản phẩm</p>
+          <table className="mt-1 w-full text-left text-xs">
+            <thead>
+              <tr className="text-slate-400">
+                <th className="py-1 pr-2 font-medium">Sản phẩm</th>
+                <th className="py-1 px-2 text-right font-medium">DT</th>
+                <th className="py-1 px-2 text-right font-medium">SL</th>
+                <th className="py-1 pl-2 text-right font-medium">KH</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sp.map((p, i) => (
+                <tr key={i} className="border-t border-slate-100">
+                  <td className="py-1 pr-2 text-slate-700">{p.ten}</td>
+                  <td className="py-1 px-2 text-right text-slate-700">{formatShortVnd(p.dt)}</td>
+                  <td className="py-1 px-2 text-right text-slate-600">{p.sl.toLocaleString("vi-VN")}</td>
+                  <td className="py-1 pl-2 text-right text-slate-600">{p.kh}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Theo khách hàng</p>
+          <table className="mt-1 w-full text-left text-xs">
+            <thead>
+              <tr className="text-slate-400">
+                <th className="py-1 pr-2 font-medium">Khách hàng</th>
+                <th className="py-1 px-2 text-right font-medium">DT</th>
+                <th className="py-1 pl-2 text-right font-medium">SL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {custs.map((c, i) => (
+                <tr key={i} className="border-t border-slate-100">
+                  <td className="py-1 pr-2 text-slate-700">{c.ten}{c.tinh ? <span className="text-slate-400"> · {c.tinh}</span> : null}</td>
+                  <td className="py-1 px-2 text-right text-slate-700">{formatShortVnd(c.dt)}</td>
+                  <td className="py-1 pl-2 text-right text-slate-600">{c.sl.toLocaleString("vi-VN")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }
