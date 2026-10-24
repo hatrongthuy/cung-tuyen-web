@@ -25,7 +25,10 @@ import { getSaleDetailData, buildCap12ByMa } from "@/lib/sale-detail";
 import { getKpiTabData } from "@/lib/kpi";
 import { currentWeekLabel as computeCurrentWeek, todayInVN, buildCareByEmp } from "@/lib/report-utils";
 
-import { TEN_NHOM, TEN_NHOM_HIEN_THI } from "@/lib/scope";
+import { TEN_NHOM, TEN_NHOM_HIEN_THI, APP_SHORT_NAME } from "@/lib/scope";
+
+// Tiêu đề riêng cho trang — cũng là dòng tiêu đề trình duyệt chèn khi IN / lưu PDF.
+export const metadata = { title: `Báo cáo tuần — ${APP_SHORT_NAME}` };
 
 export const dynamic = "force-dynamic";
 
