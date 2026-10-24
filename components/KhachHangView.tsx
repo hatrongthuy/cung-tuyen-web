@@ -35,8 +35,50 @@ function MiniBars({ data }: { data: { k: string; dt: number }[] }) {
 }
 
 function Detail360({ c }: { c: CustomerRow }) {
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiText, setAiText] = useState("");
+  const [aiError, setAiError] = useState("");
+
+  function buildTomTat(): string {
+    const L: string[] = [];
+    L.push(`KHÁCH HÀNG: ${c.tenKH}${c.maKH ? ` (mã ${c.maKH})` : ""}${c.tinh ? ` · ${c.tinh}` : ""}${c.nhomKH ? ` · ${c.nhomKH}` : ""}${c.repTen ? ` · TDV phụ trách ${c.repTen}` : ""}`);
+    L.push(`Phân hạng RFM: ${c.segment} (R·F·M ${c.R}·${c.F}·${c.M}).`);
+    L.push(`Giá trị 12 tháng: ${formatShortVnd(c.monetary)}; tổng lịch sử: ${formatShortVnd(c.totalDt)}; số lần mua (12T): ${c.freq}; lần mua gần nhất: ${c.recencyDays} ngày trước.`);
+    const mm = c.monthly.filter((m) => m.dt > 0);
+    L.push(`DOANH THU 12 THÁNG (tháng: giá trị): ${c.monthly.map((m) => `${m.k} ${formatShortVnd(m.dt)}`).join(", ")}${mm.length === 0 ? " (không phát sinh)" : ""}.`);
+    if (c.sps.length) {
+      L.push("SẢN PHẨM ĐÃ MUA (12T) — tên: doanh thu, sản lượng, lần mua gần nhất (ngày trước):");
+      for (const s of c.sps) L.push(`- ${s.ten}: ${formatShortVnd(s.dt)}, SL ${Math.round(s.sl)}, lần cuối ${s.lanCuoiNgay} ngày.`);
+      L.push("(SP có 'lần cuối' lớn = có dấu hiệu đã ngừng / giãn mua — cân nhắc chào lại.)");
+    } else {
+      L.push("SẢN PHẨM ĐÃ MUA (12T): không có.");
+    }
+    return L.join("\n");
+  }
+
+  async function phanTichAI() {
+    setAiLoading(true);
+    setAiError("");
+    setAiText("");
+    try {
+      const res = await fetch("/api/phan-tich-tuan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tomTat: buildTomTat(), linhVuc: "khach-hang" }),
+      });
+      const data = await res.json();
+      if (!res.ok) setAiError(data?.error || "Lỗi phân tích.");
+      else setAiText(data?.text || "");
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="space-y-3">
+      <div className="grid gap-4 lg:grid-cols-2">
       <div>
         <p className="text-xs font-semibold text-slate-600">Doanh thu 12 tháng gần nhất</p>
         <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
@@ -77,6 +119,31 @@ function Detail360({ c }: { c: CustomerRow }) {
               ))}
             </tbody>
           </table>
+        )}
+      </div>
+      </div>
+
+      {/* Phân tích AI cho riêng khách này */}
+      <div className="rounded-xl border border-violet-200 bg-violet-50/50 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-violet-900">Phân tích khách hàng bằng AI (Gemini)</p>
+          <div className="flex items-center gap-2">
+            {(aiText || aiError) && (
+              <button onClick={() => { setAiText(""); setAiError(""); }} className="text-[11px] text-slate-400 hover:text-slate-600">Xóa</button>
+            )}
+            <button
+              onClick={phanTichAI}
+              disabled={aiLoading}
+              className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+            >
+              ✨ {aiLoading ? "Đang phân tích…" : "Phân tích khách này"}
+            </button>
+          </div>
+        </div>
+        {aiError && <p className="mt-2 text-xs text-red-700">{aiError}</p>}
+        {aiText && <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{aiText}</div>}
+        {!aiText && !aiError && !aiLoading && (
+          <p className="mt-1 text-[11px] text-slate-400">AI sẽ gợi ý sản phẩm nên chào lại/chào mới và hành động cho lần gặp tới, dựa trên lịch sử mua của khách này.</p>
         )}
       </div>
     </div>
