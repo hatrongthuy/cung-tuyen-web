@@ -464,20 +464,20 @@ export default function BaoCaoTuanReport({
               {kdRows.map((e) => (
                 <BarRow key={e.ma} name={e.ten} pctVal={e.kdPct} ceiling={130} marker={pctThoiGian} color={e.kdPct >= pctThoiGian ? C.cov : e.kdPct > 0 ? C.thau : C.red} />
               ))}
+              {noPlanRows.map((e) => (
+                <div key={e.ma} className="flex items-center justify-between gap-2 border-t border-dashed border-slate-200 pt-2">
+                  <span className="text-sm font-medium text-slate-800">
+                    {e.ten}
+                    <span className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">chưa có chỉ tiêu KPI</span>
+                  </span>
+                  <span className="text-xs text-slate-500">KĐ TH {formatShortVnd(e.kdTH)} · thầu {formatShortVnd(e.thauTH)}</span>
+                </div>
+              ))}
             </div>
-            <p className="mt-3 text-xs text-slate-400">Thanh dài = 130% (mức trần biểu đồ). Vạch dọc = mốc tiến độ thời gian {pctThoiGian.toFixed(0)}%.</p>
-            {noPlanRows.length > 0 && (
-              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5">
-                <p className="text-[11px] font-semibold text-amber-800">Chưa có chỉ tiêu KPI (chờ công ty cập nhật file KPI)</p>
-                <ul className="mt-1 space-y-0.5">
-                  {noPlanRows.map((e) => (
-                    <li key={e.ma} className="text-xs text-slate-600">
-                      <span className="font-medium text-slate-800">{e.ten}</span> — KĐ thực hiện {formatShortVnd(e.kdTH)}, thầu {formatShortVnd(e.thauTH)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <p className="mt-3 text-xs text-slate-400">
+              Thanh dài = 130% (mức trần biểu đồ). Vạch dọc = mốc tiến độ thời gian {pctThoiGian.toFixed(0)}%.
+              {noPlanRows.length > 0 && " Nhân viên 'chưa có chỉ tiêu KPI' sẽ có đủ % khi công ty cập nhật mã vào file KPI."}
+            </p>
           </Card>
 
           <Card title="Tỷ lệ phủ khách hàng (Coverage)" sub="Tỷ lệ khách trong tuyến đã được gặp trong tuần">
