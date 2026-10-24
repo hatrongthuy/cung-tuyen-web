@@ -496,17 +496,41 @@ export function buildSptt(
 // Dùng cho mục mới trong Báo cáo tuần. Cấp 1 = tất cả SP trọng tâm (focus); Cấp 2 = danh mục
 // SP Cấp 2 của nhóm (cap2Cat), loại trừ SP đã nằm trong Cấp 1 để không đếm trùng.
 // ------------------------------------------------------------------
+/** 1 sản phẩm trong phần chi tiết của 1 cấp. */
+export interface Cap12Item {
+  ten: string; // tên sản phẩm
+  dt: number;
+  sl: number;
+  kh: number; // số khách khác nhau đặt SP này
+}
+/** 1 khách hàng trong phần chi tiết của 1 cấp. */
+export interface Cap12Cust {
+  ten: string;
+  tinh: string;
+  dt: number;
+  sl: number;
+}
 export interface Cap12Metric {
   dt: number; // doanh thu
   sl: number; // sản lượng
   kh: number; // số khách đặt (điểm bán) — số mã khách khác nhau
+  sp: Cap12Item[]; // chi tiết theo sản phẩm (ẩn, bấm mới hiện)
+  custs: Cap12Cust[]; // chi tiết theo khách hàng (ẩn, bấm mới hiện)
 }
 export interface Cap12Nv {
   cap1: Cap12Metric;
   cap2: Cap12Metric;
 }
 
-/** Trả về Map mã NV (đã chuẩn hóa) -> { cap1, cap2 } trong khoảng [fromMs, toMs]. */
+interface Cap12Acc {
+  dt: number;
+  sl: number;
+  kh: Set<number>;
+  sp: Map<number, { dt: number; sl: number; kh: Set<number> }>; // pid -> số liệu
+  cust: Map<number, { dt: number; sl: number }>; // cid -> số liệu
+}
+
+/** Trả về Map mã NV (đã chuẩn hóa) -> { cap1, cap2 } trong khoảng [fromMs, toMs], kèm chi tiết SP & khách. */
 export function buildCap12ByMa(
   data: SaleDetailData,
   fromMs: number,
@@ -521,11 +545,11 @@ export function buildCap12ByMa(
   const cap2Set = new Set<number>();
   for (const pid of data.cap2Cat) if (!cap1Set.has(pid)) cap2Set.add(pid);
 
-  // Theo tid: gom dt/sl + tập khách riêng cho cấp 1 và cấp 2.
-  const agg = new Map<number, { c1: { dt: number; sl: number; kh: Set<number> }; c2: { dt: number; sl: number; kh: Set<number> } }>();
+  const newSide = (): Cap12Acc => ({ dt: 0, sl: 0, kh: new Set(), sp: new Map(), cust: new Map() });
+  const agg = new Map<number, { c1: Cap12Acc; c2: Cap12Acc }>();
   const ensure = (tid: number) => {
     let a = agg.get(tid);
-    if (!a) { a = { c1: { dt: 0, sl: 0, kh: new Set() }, c2: { dt: 0, sl: 0, kh: new Set() } }; agg.set(tid, a); }
+    if (!a) { a = { c1: newSide(), c2: newSide() }; agg.set(tid, a); }
     return a;
   };
 
@@ -537,19 +561,35 @@ export function buildCap12ByMa(
     const isC2 = !isC1 && cap2Set.has(pid);
     if (!isC1 && !isC2) continue;
     const a = ensure(r[C.tid]);
-    const bucket = isC1 ? a.c1 : a.c2;
-    bucket.dt += r[C.dt];
-    bucket.sl += r[C.sl];
-    bucket.kh.add(r[C.cid]);
+    const s = isC1 ? a.c1 : a.c2;
+    const cid = r[C.cid];
+    s.dt += r[C.dt];
+    s.sl += r[C.sl];
+    s.kh.add(cid);
+    let sp = s.sp.get(pid);
+    if (!sp) { sp = { dt: 0, sl: 0, kh: new Set() }; s.sp.set(pid, sp); }
+    sp.dt += r[C.dt]; sp.sl += r[C.sl]; sp.kh.add(cid);
+    let cu = s.cust.get(cid);
+    if (!cu) { cu = { dt: 0, sl: 0 }; s.cust.set(cid, cu); }
+    cu.dt += r[C.dt]; cu.sl += r[C.sl];
   }
+
+  const toMetric = (s: Cap12Acc): Cap12Metric => ({
+    dt: s.dt,
+    sl: s.sl,
+    kh: s.kh.size,
+    sp: [...s.sp.entries()]
+      .map(([pid, v]) => ({ ten: data.prod[pid]?.[1] || data.prod[pid]?.[0] || `SP${pid}`, dt: v.dt, sl: v.sl, kh: v.kh.size }))
+      .sort((a, b) => b.dt - a.dt || b.sl - a.sl),
+    custs: [...s.cust.entries()]
+      .map(([cid, v]) => ({ ten: data.cust[cid]?.[1] || `KH${cid}`, tinh: data.cust[cid]?.[2] || "", dt: v.dt, sl: v.sl }))
+      .sort((a, b) => b.dt - a.dt || b.sl - a.sl),
+  });
 
   for (const [tid, a] of agg) {
     const ma = data.tdvMa[tid];
     if (!ma) continue;
-    out[ma] = {
-      cap1: { dt: a.c1.dt, sl: a.c1.sl, kh: a.c1.kh.size },
-      cap2: { dt: a.c2.dt, sl: a.c2.sl, kh: a.c2.kh.size },
-    };
+    out[ma] = { cap1: toMetric(a.c1), cap2: toMetric(a.c2) };
   }
   return out;
 }
