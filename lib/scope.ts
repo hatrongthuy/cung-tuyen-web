@@ -20,7 +20,7 @@ export const TEN_NHOM: string | string[] =
   APP_SCOPE === "tay-bac" ? ["Hà Trọng Thủy", "Trịnh Xuân Hà", "Lê Công Đức"] : "Hà Trọng Thủy";
 
 export const APP_TITLE =
-  APP_SCOPE === "tay-bac" ? "Cung tuyến tuần — Nhóm Tây Bắc" : "Cung tuyến tuần — Nhóm Hà Trọng Thủy";
+  APP_SCOPE === "tay-bac" ? "Quản lý nhóm — Tây Bắc" : "Quản lý nhóm — Hà Trọng Thủy";
 
 export const APP_SHORT_NAME = APP_SCOPE === "tay-bac" ? "PS Tây Bắc" : "PS Phú Thọ";
 
