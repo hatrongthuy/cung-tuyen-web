@@ -67,6 +67,7 @@ export default function BaoCaoTuanReport({
   careByEmp = {},
   cap12ByMa = {},
   cap12Error,
+  cap12WeekLabel,
   ctx,
 }: {
   teamName: string;
@@ -82,6 +83,7 @@ export default function BaoCaoTuanReport({
   careByEmp?: Record<string, CareItem[]>;
   cap12ByMa?: Record<string, { cap1: { dt: number; sl: number; kh: number }; cap2: { dt: number; sl: number; kh: number } }>;
   cap12Error?: string | null;
+  cap12WeekLabel?: string;
   ctx: DateCtx;
 }) {
   const pctThoiGian = (ctx.ngay / ctx.soNgayThang) * 100;
@@ -510,7 +512,7 @@ export default function BaoCaoTuanReport({
         </div>
 
         {/* ===== Đơn hàng SP cấp 1 / cấp 2 theo nhân viên (trong tuần) ===== */}
-        <Card title="Đơn hàng SP cấp 1 / cấp 2 theo nhân viên" sub={`Trong tuần ${weekRangeLabel} · Cấp 1 = SP trọng tâm, Cấp 2 = SP Cấp 2 · DT = doanh thu, SL = sản lượng, KH = số khách đặt`}>
+        <Card title="Đơn hàng SP cấp 1 / cấp 2 theo nhân viên" sub={`Trong tuần ${cap12WeekLabel ?? weekRangeLabel} (Thứ 2–Chủ nhật) · Cấp 1 = SP trọng tâm, Cấp 2 = SP Cấp 2 · DT = doanh thu, SL = sản lượng, KH = số khách đặt`}>
           {cap12Error ? (
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Không đọc được dữ liệu chi tiết Sale: {cap12Error}</p>
           ) : (
