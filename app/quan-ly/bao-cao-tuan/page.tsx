@@ -21,6 +21,7 @@ function weekRangeLabelOf(label: string | null, fallback: string | null): string
   return `${dd(r.start)}/${mm(r.start)} – ${dd(r.end)}/${mm(r.end)}/${r.end.getFullYear()}`;
 }
 import { getTeamSales } from "@/lib/sales";
+import { getSaleDetailData, buildCap12ByMa } from "@/lib/sale-detail";
 import { getKpiTabData } from "@/lib/kpi";
 import { currentWeekLabel as computeCurrentWeek, todayInVN, buildCareByEmp } from "@/lib/report-utils";
 
@@ -33,12 +34,13 @@ export default async function BaoCaoTuanPage() {
   const session = await auth();
   const user = session!.user!;
 
-  const [danhGia, goiY, xacNhan, lichSu, sales, kpiDoanhSo, chuaVT, khChet, spNghi] = await Promise.all([
+  const [danhGia, goiY, xacNhan, lichSu, sales, saleDetail, kpiDoanhSo, chuaVT, khChet, spNghi] = await Promise.all([
     getDanhGiaCungTuyen(),
     getGoiYTapTrung(),
     getXacNhanGoiY(),
     getLichSuGoiY(),
     getTeamSales(),
+    getSaleDetailData(),
     getKpiTabData("doanh-so", TEN_NHOM),
     getCanhBaoChuaViengTham(),
     getCanhBaoKhachChet(),
@@ -48,6 +50,12 @@ export default async function BaoCaoTuanPage() {
   const tonDongTuanTruoc = buildTonDongTuanTruoc(lichSu, xacNhan);
   const careByEmp = buildCareByEmp(chuaVT, khChet, spNghi);
   const todayWeekLabel = computeCurrentWeek(weekLabel, todayInVN());
+
+  // Đơn SP cấp 1 / cấp 2 theo NV — trong tuần báo cáo hiện tại.
+  const weekRange = getWeekDateRange(todayWeekLabel);
+  const cap12ByMa = weekRange
+    ? buildCap12ByMa(saleDetail, weekRange.start.getTime(), weekRange.end.getTime())
+    : {};
 
   // Bối cảnh ngày (giờ VN) cho báo cáo tiến độ lũy kế tới hôm nay.
   const today = todayInVN();
@@ -81,6 +89,8 @@ export default async function BaoCaoTuanPage() {
           kpiError={kpiDoanhSo.error}
           summaries={summaries}
           careByEmp={careByEmp}
+          cap12ByMa={cap12ByMa}
+          cap12Error={saleDetail.error}
           ctx={ctx}
         />
 
