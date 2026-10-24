@@ -51,11 +51,16 @@ export default async function BaoCaoTuanPage() {
   const careByEmp = buildCareByEmp(chuaVT, khChet, spNghi);
   const todayWeekLabel = computeCurrentWeek(weekLabel, todayInVN());
 
-  // Đơn SP cấp 1 / cấp 2 theo NV — trong tuần báo cáo hiện tại.
-  const weekRange = getWeekDateRange(todayWeekLabel);
-  const cap12ByMa = weekRange
-    ? buildCap12ByMa(saleDetail, weekRange.start.getTime(), weekRange.end.getTime())
-    : {};
+  // Đơn SP cấp 1 / cấp 2 theo NV — tính theo TUẦN LỊCH Thứ 2–Chủ nhật chứa hôm nay
+  // (độc lập với mốc tuần Thứ 7–Thứ 6 của hệ thống chấm cung tuyến).
+  const _td = todayInVN();
+  const _fromMon = (_td.getDay() + 6) % 7; // số ngày kể từ Thứ 2
+  const cap12Start = new Date(_td.getFullYear(), _td.getMonth(), _td.getDate() - _fromMon, 0, 0, 0, 0);
+  const cap12End = new Date(_td.getFullYear(), _td.getMonth(), _td.getDate() - _fromMon + 6, 23, 59, 59, 999);
+  const cap12ByMa = buildCap12ByMa(saleDetail, cap12Start.getTime(), cap12End.getTime());
+  const _dd = (d: Date) => String(d.getDate()).padStart(2, "0");
+  const _mm = (d: Date) => String(d.getMonth() + 1).padStart(2, "0");
+  const cap12WeekLabel = `${_dd(cap12Start)}/${_mm(cap12Start)} – ${_dd(cap12End)}/${_mm(cap12End)}/${cap12End.getFullYear()}`;
 
   // Bối cảnh ngày (giờ VN) cho báo cáo tiến độ lũy kế tới hôm nay.
   const today = todayInVN();
@@ -91,6 +96,7 @@ export default async function BaoCaoTuanPage() {
           careByEmp={careByEmp}
           cap12ByMa={cap12ByMa}
           cap12Error={saleDetail.error}
+          cap12WeekLabel={cap12WeekLabel}
           ctx={ctx}
         />
 
