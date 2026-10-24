@@ -49,7 +49,7 @@ export default async function DangNhapPage({
             alt="CPC1 Hà Nội"
             className="mx-auto mb-3 h-20 w-auto"
           />
-          <h1 className="text-xl font-semibold text-slate-900">Cung tuyến tuần</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Quản lý nhóm</h1>
           <p className="mt-1 text-sm text-slate-500">Nhóm {TEN_NHOM_HIEN_THI}</p>
         </div>
 
