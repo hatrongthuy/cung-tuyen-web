@@ -5,7 +5,7 @@ import { APP_TITLE, APP_SHORT_NAME } from "@/lib/scope";
 
 export const metadata: Metadata = {
   title: APP_TITLE,
-  description: "Ứng dụng quản lý cung tuyến tuần cho trình dược viên",
+  description: "Ứng dụng quản lý nhóm trình dược viên: cung tuyến, doanh số, KPI, thầu",
   applicationName: APP_SHORT_NAME,
   appleWebApp: {
     capable: true,
