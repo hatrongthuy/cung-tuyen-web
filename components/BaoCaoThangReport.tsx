@@ -511,7 +511,12 @@ export default function BaoCaoThangReport({
               <tbody>
                 {emps.map((e) => (
                   <tr key={e.ma} className="border-b border-slate-100">
-                    <td className="py-2 pr-3 font-medium text-slate-800">{e.ten}</td>
+                    <td className="py-2 pr-3 font-medium text-slate-800">
+                      {e.ten}
+                      {e.kdKH === 0 && e.thauKH === 0 && (
+                        <span className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">chưa có chỉ tiêu</span>
+                      )}
+                    </td>
                     <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.doanhThu)}</td>
                     <td className="py-2 pr-3 text-right font-semibold" style={{ color: e.kdPct >= pctThoiGian ? C.cov : C.red }}>{e.kdKH > 0 ? pctStr(e.kdPct) : "—"}</td>
                     <td className="py-2 pr-3 text-right text-slate-600">{e.soTuan}</td>

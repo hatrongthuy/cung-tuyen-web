@@ -107,6 +107,7 @@ export default function DoanhSoView({
       const kdTH = ma && ma in keDonByCode ? keDonByCode[ma] : cols.kdTH ? parseMoney(r[cols.kdTH]) : 0;
       const thauTH = ma && ma in thauByCode ? thauByCode[ma] : cols.thauTH ? parseMoney(r[cols.thauTH]) : 0;
       return {
+        ma,
         ten: (cols.ten ? r[cols.ten] : "") || "(không tên)",
         diaBan: cols.diaBan ? r[cols.diaBan] : "",
         kdKH,
@@ -114,9 +115,40 @@ export default function DoanhSoView({
         thauKH,
         thauTH,
         tyLe: pct(kdTH, kdKH),
+        noPlan: false,
       };
     });
   }, [nvkdRows, cols, keDonByCode, thauByCode]);
+
+  // Thành viên ĐANG làm việc nhưng CHƯA có dòng chỉ tiêu trong file KPI (vd TDV mới nhận địa bàn,
+  // công ty chưa cập nhật mã vào tab "Doanh so"). Vẫn liệt kê để không bị "mất tên", doanh số thực
+  // vẫn tính; khi file KPI thêm mã thì tự có chỉ tiêu.
+  const extraEmps = useMemo(() => {
+    const [mm, yy] = (actualMonthLabel || "").split("/").map(Number);
+    const coMa = new Set(perEmp.map((e) => e.ma).filter(Boolean));
+    return allEmployees()
+      .filter((e) => !(mm && yy) || !isDepartedInMonth(e, yy, mm))
+      .map((e) => ({ ...e, ma: normalizeMaNV(e.maNhanVien) }))
+      .filter((e) => e.ma && !coMa.has(e.ma))
+      .map((e) => {
+        const kdTH = e.ma in keDonByCode ? keDonByCode[e.ma] : 0;
+        const thauTH = e.ma in thauByCode ? thauByCode[e.ma] : 0;
+        return {
+          ma: e.ma,
+          ten: e.hoTen,
+          diaBan: "",
+          kdKH: 0,
+          kdTH,
+          thauKH: 0,
+          thauTH,
+          tyLe: 0,
+          noPlan: true,
+        };
+      });
+  }, [perEmp, actualMonthLabel, keDonByCode, thauByCode]);
+
+  // Danh sách đầy đủ cho bảng chi tiết: người có chỉ tiêu trước, người chưa có chỉ tiêu sau.
+  const rowsAll = useMemo(() => [...perEmp, ...extraEmps], [perEmp, extraEmps]);
 
   // Chỉ tiêu RIÊNG của nhóm (SS) cho tháng đang xem — nếu có khai báo thì tổng nhóm dùng số này
   // thay vì cộng chỉ tiêu từng TDV (chỉ tiêu từng TDV ở các dòng vẫn giữ nguyên).
@@ -127,7 +159,7 @@ export default function DoanhSoView({
   }, [actualMonthLabel]);
 
   const tong = useMemo(() => {
-    const t = perEmp.reduce(
+    const t = rowsAll.reduce(
       (a, e) => ({
         kdKH: a.kdKH + e.kdKH,
         kdTH: a.kdTH + e.kdTH,
@@ -141,7 +173,7 @@ export default function DoanhSoView({
       t.thauKH = groupPlan.thau;
     }
     return t;
-  }, [perEmp, groupPlan]);
+  }, [rowsAll, groupPlan]);
 
   const chartData = perEmp.map((e) => ({
     ten: e.ten,
@@ -153,8 +185,8 @@ export default function DoanhSoView({
 
   function exportCsv() {
     const header = ["Nhân viên", "Địa bàn", "KD kế hoạch", "KD thực hiện", "Tỷ lệ HT (%)", "Thầu kế hoạch", "Thầu thực hiện"];
-    const body = perEmp.map((e) => [
-      e.ten,
+    const body = rowsAll.map((e) => [
+      e.ten + (e.noPlan ? " (chưa có chỉ tiêu)" : ""),
       e.diaBan,
       Math.round(e.kdKH),
       Math.round(e.kdTH),
@@ -186,7 +218,7 @@ export default function DoanhSoView({
         </div>
       )}
 
-      {!error && perEmp.length === 0 && (
+      {!error && rowsAll.length === 0 && (
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <p className="text-sm font-medium text-slate-700">Chưa có dữ liệu doanh số cho nhóm này</p>
           <p className="mt-1 text-xs text-slate-400">
@@ -195,7 +227,7 @@ export default function DoanhSoView({
         </div>
       )}
 
-      {perEmp.length > 0 && (
+      {rowsAll.length > 0 && (
         <>
           <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard label="Kê đơn — Kế hoạch" value={formatShortVnd(tong.kdKH)} hint={`${formatVnd(tong.kdKH)} đ`} accentColor="#2a78d6" />
@@ -272,14 +304,19 @@ export default function DoanhSoView({
                     </tr>
                   </thead>
                   <tbody>
-                    {perEmp.map((e, i) => (
+                    {rowsAll.map((e, i) => (
                       <tr key={i} className="border-b border-slate-100">
-                        <td className="py-2 pr-3 font-medium text-slate-800">{e.ten}</td>
+                        <td className="py-2 pr-3 font-medium text-slate-800">
+                          {e.ten}
+                          {e.noPlan && (
+                            <span className="ml-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">chưa có chỉ tiêu</span>
+                          )}
+                        </td>
                         <td className="py-2 pr-3 text-slate-500">{e.diaBan}</td>
-                        <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.kdKH)}</td>
+                        <td className="py-2 pr-3 text-right text-slate-700">{e.noPlan ? "—" : formatVnd(e.kdKH)}</td>
                         <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.kdTH)}</td>
-                        <td className="py-2 pr-3 text-right text-slate-700">{Math.round(e.tyLe)}%</td>
-                        <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.thauKH)}</td>
+                        <td className="py-2 pr-3 text-right text-slate-700">{e.noPlan ? "—" : `${Math.round(e.tyLe)}%`}</td>
+                        <td className="py-2 pr-3 text-right text-slate-700">{e.noPlan ? "—" : formatVnd(e.thauKH)}</td>
                         <td className="py-2 pr-3 text-right text-slate-700">{formatVnd(e.thauTH)}</td>
                       </tr>
                     ))}

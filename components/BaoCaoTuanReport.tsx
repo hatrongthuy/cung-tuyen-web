@@ -284,6 +284,9 @@ export default function BaoCaoTuanReport({
 
   const covRows = [...emps].filter((e) => e.coverage !== null).sort((a, b) => (b.coverage ?? 0) - (a.coverage ?? 0));
   const kdRows = [...emps].filter((e) => e.kdKH > 0).sort((a, b) => b.kdPct - a.kdPct);
+  // Thành viên đang làm việc nhưng CHƯA có chỉ tiêu KPI (file KPI công ty chưa thêm mã) — vẫn liệt
+  // kê tên để không bị "mất" khỏi báo cáo; doanh số thực vẫn tính vào tổng nhóm.
+  const noPlanRows = [...emps].filter((e) => e.kdKH === 0 && e.thauKH === 0);
 
   // ----- Phân tích AI (Gemini) -----
   const [aiLoading, setAiLoading] = useState(false);
@@ -463,6 +466,18 @@ export default function BaoCaoTuanReport({
               ))}
             </div>
             <p className="mt-3 text-xs text-slate-400">Thanh dài = 130% (mức trần biểu đồ). Vạch dọc = mốc tiến độ thời gian {pctThoiGian.toFixed(0)}%.</p>
+            {noPlanRows.length > 0 && (
+              <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5">
+                <p className="text-[11px] font-semibold text-amber-800">Chưa có chỉ tiêu KPI (chờ công ty cập nhật file KPI)</p>
+                <ul className="mt-1 space-y-0.5">
+                  {noPlanRows.map((e) => (
+                    <li key={e.ma} className="text-xs text-slate-600">
+                      <span className="font-medium text-slate-800">{e.ten}</span> — KĐ thực hiện {formatShortVnd(e.kdTH)}, thầu {formatShortVnd(e.thauTH)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </Card>
 
           <Card title="Tỷ lệ phủ khách hàng (Coverage)" sub="Tỷ lệ khách trong tuyến đã được gặp trong tuần">
