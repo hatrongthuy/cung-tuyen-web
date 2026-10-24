@@ -492,6 +492,69 @@ export function buildSptt(
 }
 
 // ------------------------------------------------------------------
+// ĐƠN HÀNG SP CẤP 1 (trọng tâm) / CẤP 2 theo TỪNG NHÂN VIÊN trong 1 khoảng thời gian.
+// Dùng cho mục mới trong Báo cáo tuần. Cấp 1 = tất cả SP trọng tâm (focus); Cấp 2 = danh mục
+// SP Cấp 2 của nhóm (cap2Cat), loại trừ SP đã nằm trong Cấp 1 để không đếm trùng.
+// ------------------------------------------------------------------
+export interface Cap12Metric {
+  dt: number; // doanh thu
+  sl: number; // sản lượng
+  kh: number; // số khách đặt (điểm bán) — số mã khách khác nhau
+}
+export interface Cap12Nv {
+  cap1: Cap12Metric;
+  cap2: Cap12Metric;
+}
+
+/** Trả về Map mã NV (đã chuẩn hóa) -> { cap1, cap2 } trong khoảng [fromMs, toMs]. */
+export function buildCap12ByMa(
+  data: SaleDetailData,
+  fromMs: number,
+  toMs: number
+): Record<string, Cap12Nv> {
+  const out: Record<string, Cap12Nv> = {};
+  if (data.error) return out;
+  const C = { cid: 0, tid: 1, pid: 2, di: 3, sl: 4, dt: 5 };
+  const f = msToDi(fromMs), t = msToDi(toMs);
+
+  const cap1Set = new Set<number>(Object.values(data.focus).flat());
+  const cap2Set = new Set<number>();
+  for (const pid of data.cap2Cat) if (!cap1Set.has(pid)) cap2Set.add(pid);
+
+  // Theo tid: gom dt/sl + tập khách riêng cho cấp 1 và cấp 2.
+  const agg = new Map<number, { c1: { dt: number; sl: number; kh: Set<number> }; c2: { dt: number; sl: number; kh: Set<number> } }>();
+  const ensure = (tid: number) => {
+    let a = agg.get(tid);
+    if (!a) { a = { c1: { dt: 0, sl: 0, kh: new Set() }, c2: { dt: 0, sl: 0, kh: new Set() } }; agg.set(tid, a); }
+    return a;
+  };
+
+  for (const r of data.rows) {
+    const di = r[C.di];
+    if (di < f || di > t) continue;
+    const pid = r[C.pid];
+    const isC1 = cap1Set.has(pid);
+    const isC2 = !isC1 && cap2Set.has(pid);
+    if (!isC1 && !isC2) continue;
+    const a = ensure(r[C.tid]);
+    const bucket = isC1 ? a.c1 : a.c2;
+    bucket.dt += r[C.dt];
+    bucket.sl += r[C.sl];
+    bucket.kh.add(r[C.cid]);
+  }
+
+  for (const [tid, a] of agg) {
+    const ma = data.tdvMa[tid];
+    if (!ma) continue;
+    out[ma] = {
+      cap1: { dt: a.c1.dt, sl: a.c1.sl, kh: a.c1.kh.size },
+      cap2: { dt: a.c2.dt, sl: a.c2.sl, kh: a.c2.kh.size },
+    };
+  }
+  return out;
+}
+
+// ------------------------------------------------------------------
 // Chọn THÁNG / KHOẢNG THÁNG cho trang SP trọng tâm (đọc từ ?tu=&den=).
 // ------------------------------------------------------------------
 export interface SpttRange {
