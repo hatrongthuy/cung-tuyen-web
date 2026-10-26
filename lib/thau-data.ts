@@ -47,6 +47,7 @@ export interface SanPhamThau {
   slConLai: number;
   tyLeThucHien: number; // 0..1
   doanhSoConLai: number;
+  ngayHetHieuLuc: Date | null; // hạn của gói thầu chứa SP này
 }
 
 export interface KhachThau {
@@ -115,6 +116,7 @@ export function groupByCustomer(rows: ThauRow[]): KhachThau[] {
       slConLai: parseNum(r["SL còn lại (SL chênh lệch)"]),
       tyLeThucHien: parseNum(r["Tỷ lệ phần trăm thực hiện"]),
       doanhSoConLai,
+      ngayHetHieuLuc: hetHan,
     });
   }
 
