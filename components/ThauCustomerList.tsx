@@ -12,6 +12,17 @@ function formatSo(n: number): string {
   return n.toLocaleString("vi-VN");
 }
 
+/** Thời hạn còn lại tới ngày hết hiệu lực: >=1 tháng hiện số tháng, dưới 1 tháng hiện số ngày. */
+function hanConLai(d: Date | null): { text: string; tone: "red" | "amber" | "slate" } {
+  if (!d) return { text: "—", tone: "slate" };
+  const now = new Date();
+  const ngay = Math.ceil((new Date(d).getTime() - now.getTime()) / 86400000);
+  if (ngay <= 0) return { text: "Đã hết hạn", tone: "red" };
+  if (ngay < 30) return { text: `${ngay} ngày`, tone: "amber" };
+  const thang = Math.round(ngay / 30.44);
+  return { text: `${thang} tháng`, tone: thang <= 3 ? "amber" : "slate" };
+}
+
 export default function ThauCustomerList({
   khachs,
   tinhOptions,
@@ -108,26 +119,44 @@ export default function ThauCustomerList({
 
               {isOpen && (
                 <div className="overflow-x-auto border-t border-slate-100 bg-slate-50 px-4 py-3">
-                  <table className="w-full min-w-[520px] text-xs">
+                  <table className="w-full min-w-[600px] text-xs">
                     <thead>
                       <tr className="text-left text-slate-500">
                         <th className="pb-1.5 pr-3 font-medium">Tên sản phẩm</th>
                         <th className="pb-1.5 pr-3 font-medium">SL kế hoạch</th>
                         <th className="pb-1.5 pr-3 font-medium">SL thực hiện</th>
                         <th className="pb-1.5 pr-3 font-medium">SL còn lại</th>
-                        <th className="pb-1.5 font-medium">% thực hiện</th>
+                        <th className="pb-1.5 pr-3 font-medium">% thực hiện</th>
+                        <th className="pb-1.5 font-medium">Hạn còn lại</th>
                       </tr>
                     </thead>
                     <tbody className="text-slate-700">
-                      {kh.sanPham.map((sp, i) => (
-                        <tr key={i} className="border-t border-slate-200/70">
-                          <td className="py-1.5 pr-3">{sp.tenMatHang}</td>
-                          <td className="py-1.5 pr-3">{formatSo(sp.slKeHoach)}</td>
-                          <td className="py-1.5 pr-3">{formatSo(sp.slThucHien)}</td>
-                          <td className="py-1.5 pr-3">{formatSo(sp.slConLai)}</td>
-                          <td className="py-1.5">{Math.round(sp.tyLeThucHien * 100)}%</td>
-                        </tr>
-                      ))}
+                      {kh.sanPham.map((sp, i) => {
+                        const han = hanConLai(sp.ngayHetHieuLuc);
+                        const toneCls =
+                          han.tone === "red"
+                            ? "bg-red-50 text-red-700"
+                            : han.tone === "amber"
+                            ? "bg-amber-50 text-amber-700"
+                            : "text-slate-500";
+                        return (
+                          <tr key={i} className="border-t border-slate-200/70">
+                            <td className="py-1.5 pr-3">{sp.tenMatHang}</td>
+                            <td className="py-1.5 pr-3">{formatSo(sp.slKeHoach)}</td>
+                            <td className="py-1.5 pr-3">{formatSo(sp.slThucHien)}</td>
+                            <td className="py-1.5 pr-3">{formatSo(sp.slConLai)}</td>
+                            <td className="py-1.5 pr-3">{Math.round(sp.tyLeThucHien * 100)}%</td>
+                            <td className="py-1.5">
+                              <span
+                                className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${toneCls}`}
+                                title={sp.ngayHetHieuLuc ? `Hết hiệu lực: ${formatVnDate(sp.ngayHetHieuLuc)}` : undefined}
+                              >
+                                {han.text}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
