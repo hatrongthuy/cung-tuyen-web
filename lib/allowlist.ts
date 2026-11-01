@@ -82,6 +82,7 @@ const ALLOWLIST_PHU_THO: AllowlistEntry[] = [
     hoTen: "Hoàng Văn Cường",
     role: "employee",
     maNhanVien: "020180",
+    nghiTu: "2026-11-01", // ẩn khỏi mọi báo cáo từ tháng 11/2026 trở đi (giữ lịch sử T9, T10)
   },
   {
     // TDV mới, địa bàn Phú Thọ, vào làm 16/10/2026 (thay địa bàn của Vũ Mạnh Chung).
@@ -143,7 +144,7 @@ const ALLOWLIST_TAY_BAC: AllowlistEntry[] = [
   { email: "018468@cung-tuyen.local", hoTen: "Nguyễn Quang Huy", role: "employee", maNhanVien: "018468", nhomSS: "Hà Trọng Thủy" },
   { email: "018757@cung-tuyen.local", hoTen: "Hà Thị Lan Anh", role: "employee", maNhanVien: "018757", nhomSS: "Hà Trọng Thủy" },
   { email: "019484@cung-tuyen.local", hoTen: "Phan Văn Tuyền", role: "employee", maNhanVien: "019484", nhomSS: "Hà Trọng Thủy", nghiTu: "2026-10-01" },
-  { email: "020180@cung-tuyen.local", hoTen: "Hoàng Văn Cường", role: "employee", maNhanVien: "020180", nhomSS: "Hà Trọng Thủy" },
+  { email: "020180@cung-tuyen.local", hoTen: "Hoàng Văn Cường", role: "employee", maNhanVien: "020180", nhomSS: "Hà Trọng Thủy", nghiTu: "2026-11-01" },
   { email: "020548@cung-tuyen.local", hoTen: "Võ Minh Tâm", role: "employee", maNhanVien: "020548", nhomSS: "Hà Trọng Thủy" },
 ];
 
