@@ -610,6 +610,14 @@ export interface SpttRange {
   availableMonths: { key: string; label: string }[];
 }
 
+/** Ngày có dữ liệu Sale MỚI NHẤT (mốc "as of"). Dùng để mặc định trang về tháng gần nhất có số
+ *  liệu thay vì tháng lịch hiện tại (tránh đầu tháng mở ra trống vì chưa phát sinh đơn). */
+export function asofDateOf(data: SaleDetailData): Date | null {
+  if (!data || data.error || !data.asofDi) return null;
+  const base = new Date((data.base || BASE_DATE) + "T00:00:00").getTime();
+  return new Date(base + data.asofDi * 86400000);
+}
+
 /** Tính cửa sổ now/prev + nhãn cho SP trọng tâm theo tháng/khoảng tháng người dùng chọn. */
 export function resolveSpttRange(
   params: { tu?: string; den?: string },
