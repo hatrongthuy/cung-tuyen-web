@@ -13,6 +13,7 @@ import {
 import type { EmployeeWeekSummary } from "@/lib/aggregate";
 import type { Cap12Nv } from "@/lib/sale-detail";
 import { keHoachDsNhom } from "@/lib/scope";
+import { cardGradient } from "@/lib/ui";
 
 interface DateCtx {
   nam: number;
@@ -817,16 +818,16 @@ function Cap12Detail({
 
 function KpiCard({ accent, label, value, sub, tag, tagColor }: { accent: string; label: string; value: string; sub: string; tag: string; tagColor: "green" | "red" | "amber" | "violet" }) {
   const tagCls =
-    tagColor === "green" ? "bg-emerald-50 text-emerald-700"
-    : tagColor === "red" ? "bg-red-50 text-red-700"
-    : tagColor === "amber" ? "bg-amber-50 text-amber-700"
-    : "bg-violet-50 text-violet-700";
+    tagColor === "green" ? "bg-white text-emerald-700"
+    : tagColor === "red" ? "bg-white text-red-600"
+    : tagColor === "amber" ? "bg-white text-amber-700"
+    : "bg-white text-violet-700";
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" style={{ borderLeft: `4px solid ${accent}` }}>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-3xl font-extrabold text-slate-900">{value}</p>
-      <p className="mt-0.5 text-xs text-slate-500">{sub}</p>
-      <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-[11px] font-medium ${tagCls}`}>{tag}</span>
+    <div className="rounded-2xl p-4 shadow-md ring-1 ring-black/5" style={{ background: cardGradient(accent) }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-white/85">{label}</p>
+      <p className="mt-1 text-3xl font-extrabold text-white drop-shadow-sm">{value}</p>
+      <p className="mt-0.5 text-xs font-medium text-white/80">{sub}</p>
+      <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold ${tagCls}`}>{tag}</span>
     </div>
   );
 }

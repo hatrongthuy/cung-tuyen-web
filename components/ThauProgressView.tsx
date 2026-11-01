@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatShortVnd, formatVnd } from "@/lib/format";
+import { cardGradient } from "@/lib/ui";
 import type { ThauBenhVien, ThauNhomStat, ThauTongQuan } from "@/lib/thau-data";
 
 function pctStr(v: number | null) {
@@ -225,10 +226,10 @@ export default function ThauProgressView({
 
 function Tile({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3" style={{ borderTop: `3px solid ${accent}` }}>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-xl font-semibold text-slate-900">{value}</p>
-      <p className="mt-0.5 text-xs text-slate-400">{sub}</p>
+    <div className="rounded-2xl p-3.5 shadow-md ring-1 ring-black/5" style={{ background: cardGradient(accent) }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-white/85">{label}</p>
+      <p className="mt-1 text-2xl font-extrabold text-white drop-shadow-sm">{value}</p>
+      <p className="mt-0.5 text-xs font-medium text-white/80">{sub}</p>
     </div>
   );
 }

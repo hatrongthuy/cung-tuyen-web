@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { formatShortVnd, formatVnd } from "@/lib/format";
+import { cardGradient } from "@/lib/ui";
 import type { SpttResult, SpttProduct, SpttRange } from "@/lib/sale-detail";
 
 function nf(n: number) {
@@ -149,13 +150,13 @@ export default function SpTrongTamView({
 
 function BigTile({ label, now, d, sub, accent }: { label: string; now: string; d: { s: string; c: string }; sub: string; accent: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4" style={{ borderTop: `3px solid ${accent}` }}>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+    <div className="rounded-2xl p-4 shadow-md ring-1 ring-black/5" style={{ background: cardGradient(accent) }}>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-white/85">{label}</p>
       <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-slate-900">{now}</span>
-        <span className={`text-xs font-medium ${d.c}`}>{d.s}</span>
+        <span className="text-2xl font-extrabold text-white drop-shadow-sm">{now}</span>
+        <span className="rounded bg-white/20 px-1.5 py-0.5 text-[11px] font-semibold text-white">{d.s}</span>
       </div>
-      <p className="mt-0.5 text-xs text-slate-400">{sub}</p>
+      <p className="mt-0.5 text-xs font-medium text-white/80">{sub}</p>
     </div>
   );
 }
