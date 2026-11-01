@@ -4,6 +4,7 @@ import ReportDownload from "@/components/ReportDownload";
 import { getSaleDetailData } from "@/lib/sale-detail";
 import { getKpiScorecard, type EmployeeScore, type MetricScore } from "@/lib/kpi-actuals";
 import { TEN_NHOM } from "@/lib/scope";
+import { cardGradient } from "@/lib/ui";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -427,21 +428,21 @@ export default async function BaoCaoChotThangPage({
         </div>
 
         <section className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-xl font-bold text-slate-900">{tr(totLk)}tr</div>
-            <div className="mt-0.5 text-xs text-slate-500">Tổng DS nhóm (DATA SALE)</div>
+          <div className="rounded-2xl p-4 shadow-md ring-1 ring-black/5" style={{ background: cardGradient("#4f46e5") }}>
+            <div className="text-2xl font-extrabold text-white drop-shadow-sm">{tr(totLk)}tr</div>
+            <div className="mt-0.5 text-xs font-medium text-white/80">Tổng DS nhóm (DATA SALE)</div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-xl font-bold" style={{ color: GAM_COLORS["Sản"] }}>{tr(sanLk)}tr</div>
-            <div className="mt-0.5 text-xs text-slate-500">Nhóm Sản · {totLk > 0 ? Math.round((sanLk / totLk) * 100) : 0}%</div>
+          <div className="rounded-2xl p-4 shadow-md ring-1 ring-black/5" style={{ background: cardGradient(GAM_COLORS["Sản"]) }}>
+            <div className="text-2xl font-extrabold text-white drop-shadow-sm">{tr(sanLk)}tr</div>
+            <div className="mt-0.5 text-xs font-medium text-white/80">Nhóm Sản · {totLk > 0 ? Math.round((sanLk / totLk) * 100) : 0}%</div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-xl font-bold" style={{ color: GAM_COLORS["GMHS"] }}>{tr(gmhsLk)}tr</div>
-            <div className="mt-0.5 text-xs text-slate-500">Nhóm GMHS · {totLk > 0 ? Math.round((gmhsLk / totLk) * 100) : 0}%</div>
+          <div className="rounded-2xl p-4 shadow-md ring-1 ring-black/5" style={{ background: cardGradient(GAM_COLORS["GMHS"]) }}>
+            <div className="text-2xl font-extrabold text-white drop-shadow-sm">{tr(gmhsLk)}tr</div>
+            <div className="mt-0.5 text-xs font-medium text-white/80">Nhóm GMHS · {totLk > 0 ? Math.round((gmhsLk / totLk) * 100) : 0}%</div>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-xl font-bold text-emerald-700">{tr(totSptt)}tr</div>
-            <div className="mt-0.5 text-xs text-slate-500">SP trọng tâm · {totLk > 0 ? Math.round((totSptt / totLk) * 100) : 0}% DS</div>
+          <div className="rounded-2xl p-4 shadow-md ring-1 ring-black/5" style={{ background: cardGradient("#1baf7a") }}>
+            <div className="text-2xl font-extrabold text-white drop-shadow-sm">{tr(totSptt)}tr</div>
+            <div className="mt-0.5 text-xs font-medium text-white/80">SP trọng tâm · {totLk > 0 ? Math.round((totSptt / totLk) * 100) : 0}% DS</div>
           </div>
         </section>
 
