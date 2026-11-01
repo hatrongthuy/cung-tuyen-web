@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import SpTrongTamView from "@/components/SpTrongTamView";
-import { getSaleDetailData, buildSptt, resolveSpttRange } from "@/lib/sale-detail";
+import { getSaleDetailData, buildSptt, resolveSpttRange, asofDateOf } from "@/lib/sale-detail";
 import { todayInVN } from "@/lib/report-utils";
 
 import { TEN_NHOM_HIEN_THI } from "@/lib/scope";
@@ -20,7 +20,11 @@ export default async function SpTrongTamNhanVienPage({
   const data = await getSaleDetailData();
   // Chỉ dữ liệu của nhân viên đang đăng nhập.
   const onlyTid = data.tdv.indexOf(user.name ?? "");
-  const range = resolveSpttRange({ tu: sp.tu, den: sp.den }, todayInVN());
+  // Mặc định mở theo MỐC DỮ LIỆU MỚI NHẤT (tránh đầu tháng mở ra trống vì chưa phát sinh đơn).
+  const today = todayInVN();
+  const asof = asofDateOf(data);
+  const eff = asof && asof.getTime() < today.getTime() ? asof : today;
+  const range = resolveSpttRange({ tu: sp.tu, den: sp.den }, eff);
   const sptt = buildSptt(data, range.nowFromMs, range.nowToMs, range.prevFromMs, range.prevToMs, onlyTid >= 0 ? onlyTid : -1);
 
   return (
