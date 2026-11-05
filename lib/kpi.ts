@@ -14,6 +14,9 @@ const KPI_SPREADSHEET_ID =
 // File KPI THÁNG 10 (bản mới) — tên tab & vị trí tiêu đề khác file cũ.
 const KPI_SPREADSHEET_ID_T10 =
   process.env.GOOGLE_SHEETS_KPI_T10_SPREADSHEET_ID || "1yegEG6DkHWG5gPMRjEkFD3RJ1kRUPK5HiMLJMZCDjn0";
+// File KPI THÁNG 11 (bản mới) — cùng cấu trúc tab như file T10.
+const KPI_SPREADSHEET_ID_T11 =
+  process.env.GOOGLE_SHEETS_KPI_T11_SPREADSHEET_ID || "1V9co2oJxLqXknr7FD0cZcMTgkN8PJoQZO0ikJrXzhII";
 
 export function getKpiServiceAccountEmail(): string {
   return process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "(chưa đặt GOOGLE_SERVICE_ACCOUNT_EMAIL)";
@@ -116,10 +119,11 @@ const KPI_TABS_T10: KpiTabConfig[] = [
 
 /** Chọn nguồn KPI theo tháng: từ 10/2026 dùng file mới (tab khác), trước đó dùng file cũ. */
 function pickKpiSource(nam: number, thang: number): { spreadsheetId: string; tabs: KpiTabConfig[] } {
-  const useNew = nam > 2026 || (nam === 2026 && thang >= 10);
-  return useNew
-    ? { spreadsheetId: KPI_SPREADSHEET_ID_T10, tabs: KPI_TABS_T10 }
-    : { spreadsheetId: KPI_SPREADSHEET_ID, tabs: KPI_TABS };
+  const ym = nam * 100 + thang;
+  // Từ 11/2026 dùng file T11; 10/2026 dùng file T10 (cùng cấu trúc tab); trước đó dùng file cũ.
+  if (ym >= 202611) return { spreadsheetId: KPI_SPREADSHEET_ID_T11, tabs: KPI_TABS_T10 };
+  if (ym >= 202610) return { spreadsheetId: KPI_SPREADSHEET_ID_T10, tabs: KPI_TABS_T10 };
+  return { spreadsheetId: KPI_SPREADSHEET_ID, tabs: KPI_TABS };
 }
 
 export interface KpiTabData {

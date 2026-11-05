@@ -39,6 +39,7 @@ export const APP_DESCRIPTION =
  *  Đơn vị: VNĐ. */
 export const KE_HOACH_DS_NHOM: Record<string, { keDon: number; thau: number }> = {
   "2026-10": { keDon: 650_000_000, thau: 200_000_000 },
+  "2026-11": { keDon: 650_000_000, thau: 250_000_000 },
 };
 
 /** Trả về chỉ tiêu DS riêng của nhóm cho tháng (nam, thang), hoặc null nếu tháng đó chưa khai báo
