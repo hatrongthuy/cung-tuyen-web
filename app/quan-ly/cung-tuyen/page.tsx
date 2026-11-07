@@ -5,7 +5,9 @@ import AlertBadge from "@/components/AlertBadge";
 import EmployeeBarChart from "@/components/EmployeeBarChart";
 import EmployeeScoreTable from "@/components/EmployeeScoreTable";
 import GoiYTuDong from "@/components/GoiYTuDong";
+import CungTuyenSSView from "@/components/CungTuyenSSView";
 import {
+  chuanHoaMaNV,
   getCanhBaoChuaViengTham,
   getCanhBaoKhachChet,
   getCanhBaoSanPhamNghi,
@@ -45,6 +47,36 @@ export default async function QuanLyCungTuyenPage() {
   const tongDiem = summaries.reduce((s, x) => s + (x.diemCungTuyen ?? 0), 0);
   const tongCanhBao = chuaVT.length + khChet.length + spNghi.length;
 
+  // ----- Cung tuyến + trạng thái xác nhận từng nhân viên (để SS xem & tải file) -----
+  const xacNhanTrangThai = new Map<string, string>();
+  const xacNhanLyDo = new Map<string, string>();
+  for (const r of xacNhan) {
+    const k = `${chuanHoaMaNV(r["Mã nhân viên"])}|${r["Mã khách hàng"]}`;
+    xacNhanTrangThai.set(k, r["Trạng thái"]);
+    xacNhanLyDo.set(k, r["Lý do"] ?? "");
+  }
+  const cungTuyenNhanVien = employees
+    .filter((e) => e.role === "employee")
+    .map((e) => {
+      const ma = chuanHoaMaNV(e.maNhanVien ?? "");
+      const rows = goiY
+        .filter((r) => chuanHoaMaNV(r["Mã nhân viên"]) === ma)
+        .sort((a, b) => Number(a["Thứ tự ưu tiên"]) - Number(b["Thứ tự ưu tiên"]))
+        .map((r) => {
+          const k = `${ma}|${r["Mã khách hàng"]}`;
+          return {
+            maKH: r["Mã khách hàng"],
+            tenKH: r["Tên khách hàng"],
+            diaChi: r["Địa chỉ"],
+            muc: r["Mục tiêu chuyến thăm"],
+            diem: r["Điểm ưu tiên"],
+            trangThai: xacNhanTrangThai.get(k),
+            lyDo: xacNhanLyDo.get(k) ?? "",
+          };
+        });
+      return { maNV: ma, hoTen: e.hoTen, rows };
+    });
+
   return (
     <>
       <AppHeader hoTen={user.name ?? ""} role="manager" weekLabel={weekLabel} active="cung-tuyen" />
@@ -62,6 +94,18 @@ export default async function QuanLyCungTuyenPage() {
             accentColor="#eda100"
           />
           <StatCard label="Tổng cảnh báo" value={tongCanhBao} accentColor="#e34948" />
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">
+            Cung tuyến tuần &amp; xác nhận của nhân viên
+          </h2>
+          <p className="mt-0.5 mb-3 text-xs text-slate-400">
+            Danh sách khách giao cho từng nhân viên (tab &quot;Gợi ý tập trung&quot;) và trạng thái họ
+            đã xác nhận: đồng ý / không đi (kèm lý do). Bấm tên nhân viên để xem chi tiết và tải file
+            đã xác nhận.
+          </p>
+          <CungTuyenSSView nhanViens={cungTuyenNhanVien} />
         </section>
 
         <section className="mt-6 grid gap-4 lg:grid-cols-2">
