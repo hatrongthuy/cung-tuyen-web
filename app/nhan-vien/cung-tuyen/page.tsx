@@ -4,6 +4,7 @@ import StatCard from "@/components/StatCard";
 import AlertBadge from "@/components/AlertBadge";
 import ScoreTrendChart from "@/components/ScoreTrendChart";
 import ConfirmButtons from "@/components/ConfirmButtons";
+import TaiFileCungTuyen from "@/components/TaiFileCungTuyen";
 import GoiYTuDong from "@/components/GoiYTuDong";
 import ChatBox, { type ChatMessage } from "@/components/ChatBox";
 import GiaoViecNhanVien from "@/components/GiaoViecNhanVien";
@@ -62,9 +63,21 @@ export default async function NhanVienCungTuyenPage() {
     return d && d >= weekRange.start && d <= weekRange.end;
   });
   const xacNhanMap = new Map<string, string>();
+  const xacNhanLyDoMap = new Map<string, string>();
   for (const r of xacNhanTuanNay) {
     xacNhanMap.set(r["Mã khách hàng"], r["Trạng thái"]);
+    xacNhanLyDoMap.set(r["Mã khách hàng"], r["Lý do"] ?? "");
   }
+
+  // Dữ liệu để nút "Tải file đã xác nhận" xuất ra Excel (chỉ khách đã "Đồng ý").
+  const cungTuyenRowsExport = goiYCuaToi.map((r) => ({
+    maKH: r["Mã khách hàng"],
+    tenKH: r["Tên khách hàng"],
+    diaChi: r["Địa chỉ"],
+    muc: r["Mục tiêu chuyến thăm"],
+    diem: r["Điểm ưu tiên"],
+    trangThai: xacNhanMap.get(r["Mã khách hàng"]),
+  }));
 
   const diemLichSu = sortWeeksAscending(
     danhGia.filter((r) => chuanHoaMaNV(r["Mã nhân viên"]) === maNV)
@@ -136,8 +149,14 @@ export default async function NhanVienCungTuyenPage() {
             Danh sách khách cần gặp tuần này
           </h2>
           <p className="mt-0.5 text-xs text-slate-400">
-            Sắp xếp theo thứ tự ưu tiên gợi ý. Bấm &quot;Xác nhận đã gặp&quot; sau khi đến thăm khách.
+            Xác nhận từng khách: bấm &quot;Xác nhận đã gặp&quot;, hoặc &quot;Không đi khách này&quot; và ghi lý do.
+            Xác nhận xong, bấm nút bên dưới để tải file đẩy lên web công ty.
           </p>
+          {goiYCuaToi.length > 0 && (
+            <div className="mt-3 rounded-xl border border-sky-100 bg-sky-50/60 p-3">
+              <TaiFileCungTuyen rows={cungTuyenRowsExport} tenNhanVien={hoTen} />
+            </div>
+          )}
           <div className="mt-4 space-y-3">
             {goiYCuaToi.length === 0 && (
               <p className="text-sm text-slate-400">Không có gợi ý nào cho tuần này.</p>
@@ -168,6 +187,7 @@ export default async function NhanVienCungTuyenPage() {
                     maKH={r["Mã khách hàng"]}
                     tenKH={r["Tên khách hàng"]}
                     daXacNhan={xacNhanMap.get(r["Mã khách hàng"])}
+                    lyDoDaCo={xacNhanLyDoMap.get(r["Mã khách hàng"])}
                   />
                 </div>
               </div>
