@@ -105,6 +105,7 @@ export interface XacNhanGoiYRow {
   "Mã khách hàng": string;
   "Tên khách hàng": string;
   "Trạng thái": string; // "Đồng ý" | "Không đồng ý"
+  "Lý do": string; // lý do khi "Không đồng ý"
 }
 
 // ----- Danh sách nhân viên -----
