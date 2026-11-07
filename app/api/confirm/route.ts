@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
+import { ghiXacNhan } from "@/lib/xac-nhan";
 
-// Gọi webhook n8n "Nhận xác nhận gợi ý" (node webhook, method GET, đọc tham số qua
-// query string — KHÔNG phải POST JSON). Xem docs/data-schema.md mục 1 để biết vì sao.
-// Route này chạy ở server để: (1) không lộ URL webhook thật ra trình duyệt nhân viên,
-// (2) đảm bảo chỉ nhân viên đã đăng nhập đúng của mình mới gửi được xác nhận.
+// Nhận xác nhận gợi ý từ nhân viên và GHI THẲNG vào tab "Xác nhận gợi ý" (Google Sheets,
+// service account có quyền ghi) — ổn định hơn so với webhook n8n. Nếu đã cấu hình
+// N8N_CONFIRM_WEBHOOK_URL thì vẫn gọi thêm (không chặn kết quả) để giữ tương thích luồng cũ.
+//
+// Khi nhân viên chọn "Không đồng ý" (trangThai = "khac") thì BẮT BUỘC có lý do.
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -12,15 +14,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Không có quyền" }, { status: 403 });
   }
 
-  const webhookUrl = process.env.N8N_CONFIRM_WEBHOOK_URL;
-  if (!webhookUrl) {
-    return NextResponse.json(
-      { ok: false, error: "Chưa cấu hình N8N_CONFIRM_WEBHOOK_URL" },
-      { status: 500 }
-    );
-  }
-
-  let body: { maKH?: string; tenKH?: string; trangThai?: "dong-y" | "khac" };
+  let body: { maKH?: string; tenKH?: string; trangThai?: "dong-y" | "khac"; lyDo?: string };
   try {
     body = await req.json();
   } catch {
@@ -28,32 +22,49 @@ export async function POST(req: Request) {
   }
 
   const { maKH, tenKH, trangThai } = body;
+  const lyDo = (body.lyDo ?? "").trim();
   if (!maKH || !tenKH || (trangThai !== "dong-y" && trangThai !== "khac")) {
     return NextResponse.json({ ok: false, error: "Thiếu tham số" }, { status: 400 });
   }
-
-  // Chỉ cho phép nhân viên xác nhận đúng danh tính của chính mình (chống giả mạo mã NV).
-  const params = new URLSearchParams({
-    nv: session.user.maNhanVien,
-    tennv: session.user.name ?? "",
-    kh: maKH,
-    tenkh: tenKH,
-    tt: trangThai,
-  });
-
-  try {
-    const res = await fetch(`${webhookUrl}?${params.toString()}`, { method: "GET" });
-    if (!res.ok) {
-      return NextResponse.json(
-        { ok: false, error: `Webhook n8n trả lỗi (${res.status})` },
-        { status: 502 }
-      );
-    }
-    return NextResponse.json({ ok: true });
-  } catch {
+  // Không đồng ý thì bắt buộc nhập lý do.
+  if (trangThai === "khac" && !lyDo) {
     return NextResponse.json(
-      { ok: false, error: "Không gọi được webhook n8n" },
+      { ok: false, error: "Vui lòng nhập lý do khi không đồng ý" },
+      { status: 400 }
+    );
+  }
+
+  const maNV = session.user.maNhanVien;
+  const tenNV = session.user.name ?? "";
+  const trangThaiLabel = trangThai === "dong-y" ? "Đồng ý" : "Không đồng ý";
+
+  // 1) Ghi thẳng Google Sheet (nguồn chính).
+  try {
+    await ghiXacNhan({ maNV, tenNV, maKH, tenKH, trangThai: trangThaiLabel, lyDo });
+  } catch (e) {
+    return NextResponse.json(
+      { ok: false, error: `Không ghi được xác nhận: ${e instanceof Error ? e.message : "lỗi"}` },
       { status: 502 }
     );
   }
+
+  // 2) Nếu còn cấu hình webhook n8n thì gọi thêm (không chặn, không làm hỏng kết quả).
+  const webhookUrl = process.env.N8N_CONFIRM_WEBHOOK_URL;
+  if (webhookUrl) {
+    const params = new URLSearchParams({
+      nv: maNV,
+      tennv: tenNV,
+      kh: maKH,
+      tenkh: tenKH,
+      tt: trangThai,
+      lydo: lyDo,
+    });
+    try {
+      await fetch(`${webhookUrl}?${params.toString()}`, { method: "GET" });
+    } catch {
+      // Bỏ qua lỗi n8n — nguồn chính đã ghi thành công.
+    }
+  }
+
+  return NextResponse.json({ ok: true });
 }
