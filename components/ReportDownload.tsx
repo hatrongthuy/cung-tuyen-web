@@ -29,26 +29,29 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-// Chụp phần tử thành canvas, có mở rộng các vùng cuộn ngang để không bị cắt cột bảng.
+// Bề rộng cố định khi chụp để báo cáo luôn dàn trang như trên màn hình rộng (~khổ A4 dọc),
+// KHÔNG để một bảng rộng (vd Cảnh báo thầu sớm) kéo cả trang co nhỏ lại.
+const CAPTURE_WIDTH = 1160;
+
+// Chụp phần tử thành canvas ở bề rộng cố định. Bỏ thanh cuộn ngang (overflow:visible) để không
+// mất cột, nhưng GIỮ bề rộng bảng theo khổ trang (không nới max-content) — bảng tự xuống dòng vừa khung.
 async function captureCanvas(el: HTMLElement) {
   await loadScript(H2C);
   const scrollers = Array.from(el.querySelectorAll<HTMLElement>(".overflow-x-auto"));
-  const saved = scrollers.map((s) => ({ el: s, overflow: s.style.overflow, width: s.style.width }));
+  const saved = scrollers.map((s) => ({ el: s, overflow: s.style.overflow }));
   scrollers.forEach((s) => {
     s.style.overflow = "visible";
-    s.style.width = "max-content";
   });
   try {
     return await window.html2canvas(el, {
       scale: 2,
       backgroundColor: "#f8fafc",
       useCORS: true,
-      windowWidth: el.scrollWidth + 40,
+      windowWidth: CAPTURE_WIDTH,
     });
   } finally {
     saved.forEach((x) => {
       x.el.style.overflow = x.overflow;
-      x.el.style.width = x.width;
     });
   }
 }
