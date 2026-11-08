@@ -5,6 +5,7 @@ import ThauCustomerList from "@/components/ThauCustomerList";
 import ThauProgressView from "@/components/ThauProgressView";
 import {
   getBaoCaoThau,
+  locNhomPhuTrach,
   groupByCustomer,
   getCanhBaoHetHanThau,
   getCanhBaoLauChuaGoiThau,
@@ -25,7 +26,8 @@ export default async function BaoCaoThauNhanVienPage() {
   const session = await auth();
   const user = session!.user!;
 
-  const rows = await getBaoCaoThau();
+  // Chỉ giữ sản phẩm nhóm PS phụ trách (loại ETC, GP, Chung... của nhóm khác).
+  const rows = locNhomPhuTrach(await getBaoCaoThau());
   const khachs = groupByCustomer(rows);
   const tinhOptions = distinctTinh(rows);
   const canhBaoHetHan = getCanhBaoHetHanThau(rows, NGUONG_SAP_HET_HAN_THANG);
