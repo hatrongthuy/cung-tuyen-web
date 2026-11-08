@@ -8,6 +8,15 @@ export async function getBaoCaoThau(): Promise<ThauRow[]> {
   });
 }
 
+// ---------- Lọc theo nhóm phụ trách ----------
+// Sheet "báo cáo thầu" gộp thầu của NHIỀU nhóm (cột "Nhóm phụ trách": PS, ETC, GP, Chung...).
+// Nhóm PS Phú Thọ chỉ phụ trách các sản phẩm "PS" (Sản + GMHS). Hàm này loại sản phẩm của nhóm
+// khác để báo cáo/cảnh báo thầu chỉ còn phần nhóm mình phụ trách.
+export function locNhomPhuTrach(rows: ThauRow[], nhom = "PS"): ThauRow[] {
+  const target = nhom.trim().toLowerCase();
+  return rows.filter((r) => (r["Nhóm phụ trách"] ?? "").trim().toLowerCase() === target);
+}
+
 // ---------- Tiện ích parse dữ liệu thô từ Sheets ----------
 
 /** Google Sheets lưu ngày dạng "serial number" (số ngày kể từ 30/12/1899). */
