@@ -6,7 +6,7 @@ import { getKpiScorecard, type EmployeeScore, type MetricScore } from "@/lib/kpi
 import { TEN_NHOM } from "@/lib/scope";
 import { cardGradient } from "@/lib/ui";
 import { chuanHoaMaNV, getDanhGiaCungTuyen, parseWeekStart } from "@/lib/data";
-import { activeEmployees } from "@/lib/allowlist";
+import { activeEmployees, maAnBaoCao } from "@/lib/allowlist";
 import { getBaoCaoThau, locNhomPhuTrach, canhBaoThauGap, type CanhBaoThauGap } from "@/lib/thau-data";
 
 export const runtime = "nodejs";
@@ -225,11 +225,15 @@ export default async function BaoCaoChotThangPage({
     r.diemFinal = rnd(es.diemTHFinal ?? es.diemTHCore ?? es.diemDat ?? null);
   }
 
+  // NV bị ẩn khỏi báo cáo (vd đã nghỉ): KHÔNG hiện cột, nhưng doanh số VẪN tính vào các "tot..." (dùng `all`).
+  const maAn = maAnBaoCao();
+  const anCot = (r: { tid: number }) => maAn.has(normMa(d.tdvMa[r.tid] ?? ""));
+
   const order = ["Sản", "GMHS", ""];
   const groups = order
     .map((g) => ({
       gam: g,
-      rows: [...byNV.values()].filter((r) => (r.gam || "") === g && r.lk > 0).sort((a, b) => b.lk - a.lk),
+      rows: [...byNV.values()].filter((r) => (r.gam || "") === g && r.lk > 0 && !anCot(r)).sort((a, b) => b.lk - a.lk),
     }))
     .filter((grp) => grp.rows.length > 0);
 
