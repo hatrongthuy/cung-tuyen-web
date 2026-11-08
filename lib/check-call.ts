@@ -52,6 +52,8 @@ export interface NVTuanCungTuyen {
   raDon: number; // lượt có phát sinh đơn (ghi "lặp đơn")
   ngoaiTuyen: number; // lượt gặp khách KHÔNG nằm trong kế hoạch tuyến ngày đó
   daily: Array<{ thu: number; dung: number; tong: number }>; // thu: 2..8 (T2..CN)
+  /** Danh sách khách CUNG TUYẾN đã lập trong tuần, theo ngày, kèm đã ghé hay chưa. */
+  khach: Array<{ thu: number; ngay: string; maTC: string; ten: string; daGhe: boolean }>;
 }
 
 export interface TuanCungTuyen {
@@ -127,8 +129,8 @@ export async function getTuanCungTuyen(asof: Date = new Date()): Promise<TuanCun
     return base;
   }
 
-  // ----- Kế hoạch (planned): nv -> ngày(ymd) -> Set(mã tổ chức) -----
-  const planned = new Map<string, Map<string, Set<string>>>();
+  // ----- Kế hoạch (planned): nv -> ngày(ymd) -> Map(mã tổ chức -> tên) -----
+  const planned = new Map<string, Map<string, Map<string, string>>>();
   for (const r of planRows) {
     const ma = normMa(r["Mã nhân viên"]);
     if (!wantSet.has(ma)) continue;
@@ -136,10 +138,12 @@ export async function getTuanCungTuyen(asof: Date = new Date()): Promise<TuanCun
     if (!inWeek(d)) continue;
     const tc = String(r["Mã tổ chức"] ?? "").trim();
     if (!tc) continue;
-    const byDay = planned.get(ma) ?? new Map<string, Set<string>>();
+    const ten = String(r["Tên tổ chức"] ?? "").trim();
+    const byDay = planned.get(ma) ?? new Map<string, Map<string, string>>();
     planned.set(ma, byDay);
     const key = ymd(d!);
-    (byDay.get(key) ?? byDay.set(key, new Set()).get(key)!).add(tc);
+    const m = byDay.get(key) ?? byDay.set(key, new Map()).get(key)!;
+    if (!m.has(tc)) m.set(tc, ten);
   }
 
   // ----- Thực tế (actual) -----
@@ -195,19 +199,24 @@ export async function getTuanCungTuyen(asof: Date = new Date()): Promise<TuanCun
   // ----- Gộp theo NV -----
   const tung: NVTuanCungTuyen[] = [];
   for (const [ma, hoTen] of maToTen) {
-    const pl = planned.get(ma) ?? new Map<string, Set<string>>();
+    const pl = planned.get(ma) ?? new Map<string, Map<string, string>>();
     const a = acc.get(ma);
     let planKH = 0;
     let daGhe = 0;
+    const khach: NVTuanCungTuyen["khach"] = [];
     // daily T2..CN (thu 2..8)
     const dailyMap = new Map<number, { dung: number; tong: number }>();
-    for (const [dayKey, planSet] of pl) {
+    const dayKeys = [...pl.keys()].sort();
+    for (const dayKey of dayKeys) {
+      const planSet = pl.get(dayKey)!;
       const [y, m, dd] = dayKey.split("-").map(Number);
       const thu = (new Date(y, m - 1, dd).getDay() + 6) % 7 + 2; // 2..8
       const vis = a?.visited.get(dayKey) ?? new Set<string>();
       let hit = 0;
-      planSet.forEach((tc) => {
-        if (vis.has(tc)) hit++;
+      planSet.forEach((ten, tc) => {
+        const daGheKH = vis.has(tc);
+        if (daGheKH) hit++;
+        khach.push({ thu, ngay: `${pad2(dd)}/${pad2(m)}`, maTC: tc, ten, daGhe: daGheKH });
       });
       planKH += planSet.size;
       daGhe += hit;
@@ -234,6 +243,7 @@ export async function getTuanCungTuyen(asof: Date = new Date()): Promise<TuanCun
       raDon: a?.raDon ?? 0,
       ngoaiTuyen: a?.ngoai ?? 0,
       daily,
+      khach,
     });
   }
   // sắp theo tỷ lệ tuân thủ giảm dần
