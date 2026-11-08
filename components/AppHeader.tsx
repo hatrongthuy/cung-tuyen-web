@@ -42,6 +42,7 @@ const NAV_ITEMS: NavEntry[] = [
     label: "Báo cáo",
     icon: "📊",
     children: [
+      { key: "bao-cao-tuan", label: "Báo cáo tuần", href: "/quan-ly/bao-cao-tuan", icon: "📅" },
       { key: "chot-thang", label: "Báo cáo chốt tháng", href: "/quan-ly/bao-cao-chot-thang", icon: "📊" },
       { key: "bao-cao-thang", label: "Báo cáo tháng", href: "/quan-ly/bao-cao-thang", icon: "🗓️" },
       { key: "tang-truong-sp", label: "Tăng trưởng sản phẩm", href: "/quan-ly/bao-cao-tang-truong-sp", icon: "📈" },
