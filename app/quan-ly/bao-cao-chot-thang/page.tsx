@@ -69,17 +69,15 @@ export default async function BaoCaoChotThangPage({
     ty = y;
     tmonth = m - 1;
   } else {
+    // Mặc định: chốt THÁNG HIỆN TẠI (tới ngày có dữ liệu mới nhất) — "từ 1/<tháng> tới nay".
+    // Muốn xem tháng khác (vd đã chốt xong T10) thì thêm ?thang=2026-10 vào URL.
     ty = asof.getFullYear();
     tmonth = asof.getMonth();
-    if (asof.getDate() <= 8) {
-      tmonth -= 1;
-      if (tmonth < 0) {
-        tmonth = 11;
-        ty -= 1;
-      }
-    }
   }
   const thangLabel = `T${tmonth + 1}/${ty}`;
+  // Có đang xem tháng hiện tại (chốt tới nay) không — để ghi rõ mốc "01/MM → ngày dữ liệu".
+  const laThangHienTai = ty === asof.getFullYear() && tmonth === asof.getMonth();
+  const tuNgayLabel = `01/${String(tmonth + 1).padStart(2, "0")}/${ty}`;
 
   // ----- Đánh giá cung tuyến tháng: gộp điểm cung tuyến các tuần trong tháng theo nhân viên -----
   const danhGiaCT = await getDanhGiaCungTuyen().catch(() => []);
@@ -445,9 +443,15 @@ export default async function BaoCaoChotThangPage({
         <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-[#0b3b40] to-[#0b6e75] p-6 text-white shadow-sm sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold sm:text-2xl">📊 Báo cáo chốt tháng — {thangLabel}</h1>
+              <h1 className="text-xl font-bold sm:text-2xl">
+                📊 Báo cáo chốt tháng — {thangLabel}
+                {laThangHienTai && <span className="font-semibold"> (tới nay)</span>}
+              </h1>
               <p className="mt-1 text-sm text-white/80">
-                Nhóm PS Phú Thọ · SS Hà Trọng Thủy · DATA SALE {thangLabel} · cập nhật {asof.toLocaleDateString("vi-VN")}
+                Nhóm PS Phú Thọ · SS Hà Trọng Thủy ·{" "}
+                {laThangHienTai
+                  ? `chốt từ ${tuNgayLabel} đến ${asof.toLocaleDateString("vi-VN")}`
+                  : `DATA SALE ${thangLabel} · cập nhật ${asof.toLocaleDateString("vi-VN")}`}
               </p>
             </div>
             <div className="flex gap-3">
