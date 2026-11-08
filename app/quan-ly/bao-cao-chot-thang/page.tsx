@@ -109,7 +109,17 @@ export default async function BaoCaoChotThangPage({
   let thauErr: string | null = null;
   try {
     // Chỉ cảnh báo thầu cho sản phẩm nhóm PS phụ trách (loại ETC, GP, Chung... của nhóm khác).
-    thauCanhBao = canhBaoThauGap(locNhomPhuTrach(await getBaoCaoThau()));
+    // Cửa sổ ≤6 tháng: chu kỳ thầu 3 tỉnh nhóm (Phú Thọ) hết hạn ~4,5 tháng tới nên ngưỡng 3
+    // tháng mặc định sẽ bỏ sót; nới lên 6 tháng để "cảnh báo sớm" đúng địa bàn nhóm.
+    thauCanhBao = canhBaoThauGap(locNhomPhuTrach(await getBaoCaoThau()), { maxThang: 6 });
+    // Chỉ lấy 3 tỉnh nhóm đi cung tuyến (Phú Thọ, Vĩnh Phúc, Hoà Bình) — bỏ Thái Nguyên;
+    // và bỏ khách "Lạc Việt" (là áp thầu, không phải khách cần đẩy đơn).
+    const boDau = (s: string) =>
+      String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase().trim();
+    const TINH_CUNG_TUYEN = new Set(["phu tho", "vinh phuc", "hoa binh"]);
+    thauCanhBao = thauCanhBao.filter(
+      (k) => TINH_CUNG_TUYEN.has(boDau(k.tinh)) && !boDau(k.tenKhach).includes("lac viet")
+    );
   } catch (e) {
     thauErr = e instanceof Error ? e.message : String(e);
   }
@@ -776,7 +786,7 @@ export default async function BaoCaoChotThangPage({
         <section className="mt-5 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-900">🏛️ Cảnh báo thầu sớm — còn nhiều hàng, sắp hết hạn</h2>
           <p className="mt-0.5 text-xs text-slate-500">
-            Khách có gói thầu <b>thời gian còn ngắn</b> nhưng <b>tỷ lệ thực hiện thấp</b>, còn tồn nhiều hàng — cần đẩy gọi đơn gấp kẻo mất thầu.
+            Khách có gói thầu <b>thời gian còn ngắn</b> nhưng <b>tỷ lệ thực hiện thấp</b>, còn tồn nhiều hàng — cần đẩy gọi đơn gấp kẻo mất thầu. Chỉ địa bàn nhóm: <b>Phú Thọ · Vĩnh Phúc · Hoà Bình</b>.
           </p>
           {thauErr ? (
             <p className="mt-3 text-xs text-amber-600">Chưa đọc được dữ liệu thầu: {thauErr}</p>
@@ -829,7 +839,7 @@ export default async function BaoCaoChotThangPage({
             </div>
           )}
           <p className="mt-2 text-[11px] text-slate-400">
-            Điều kiện cảnh báo: gói thầu còn ≤ 3 tháng · tỷ lệ thực hiện &lt; 85% · doanh số còn lại ≥ 5tr. Xếp theo mức &quot;cần gọi/tháng&quot; giảm dần.
+            Điều kiện cảnh báo: gói thầu còn ≤ 6 tháng · tỷ lệ thực hiện &lt; 85% · doanh số còn lại ≥ 5tr · thuộc Phú Thọ/Vĩnh Phúc/Hoà Bình (đã loại Thái Nguyên và khách áp thầu Lạc Việt). Xếp theo mức &quot;cần gọi/tháng&quot; giảm dần.
           </p>
         </section>
 
