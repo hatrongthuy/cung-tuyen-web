@@ -226,7 +226,7 @@ export function buildProductGrowth(data: SaleDetailData, today: Date): ProductGr
   const nowMonth = new Date(quarter.nowToMs);
   const depMaSet = new Set<string>();
   for (const e of allEmployees() as AllowlistEntry[]) {
-    if (isDepartedInMonth(e, nowMonth.getFullYear(), nowMonth.getMonth() + 1)) {
+    if (e.anBaoCao || isDepartedInMonth(e, nowMonth.getFullYear(), nowMonth.getMonth() + 1)) {
       depMaSet.add(String(e.maNhanVien ?? "").trim().replace(/^0+(?=\d)/, ""));
     }
   }

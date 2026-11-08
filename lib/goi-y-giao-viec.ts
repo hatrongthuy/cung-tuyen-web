@@ -86,6 +86,7 @@ export async function buildGoiYGiaoViec(tuan: string): Promise<{ goiY: GoiYViec[
   // Map TÊN nhân viên -> mã (chỉ nhận nhân viên trong nhóm).
   const byName = new Map<string, { ma: string; ten: string }>();
   for (const e of allEmployees()) {
+    if (e.anBaoCao) continue; // NV ẩn khỏi báo cáo: không gợi ý giao việc mới
     if (e.maNhanVien) byName.set(normName(e.hoTen), { ma: e.maNhanVien, ten: e.hoTen });
   }
 

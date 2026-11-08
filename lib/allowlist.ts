@@ -28,6 +28,17 @@ export interface AllowlistEntry {
   /** Ngày nghỉ việc (YYYY-MM-DD). Nếu có: ẨN mọi giao dịch của NV từ ngày này trở đi
    *  (giữ nguyên lịch sử trước đó), để từ tháng nghỉ không còn hiện tên trong báo cáo. */
   nghiTu?: string;
+  /** Ẩn HẲN khỏi mọi báo cáo, mọi tháng (kể cả lịch sử): không hiện dòng/tên NV này ở bất kỳ
+   *  bảng/biểu đồ nào. KHÁC với nghiTu (chỉ ẩn từ tháng nghỉ). Doanh số của NV VẪN được tính
+   *  vào tổng nhóm (vì team/data vẫn giữ mã này) — chỉ ẩn dòng hiển thị. */
+  anBaoCao?: boolean;
+}
+
+/** Mã NV (đã chuẩn hoá, bỏ số 0 đầu) bị ẩn khỏi mọi báo cáo — tiện lọc nhanh ở component. */
+export function maAnBaoCao(): Set<string> {
+  return new Set(
+    ALLOWLIST.filter((e) => e.anBaoCao).map((e) => (e.maNhanVien ?? "").replace(/^0+/, ""))
+  );
 }
 
 export const COMPANY_DOMAIN = "cpc1hn.com.vn";
@@ -82,7 +93,8 @@ const ALLOWLIST_PHU_THO: AllowlistEntry[] = [
     hoTen: "Hoàng Văn Cường",
     role: "employee",
     maNhanVien: "020180",
-    nghiTu: "2026-11-01", // ẩn khỏi mọi báo cáo từ tháng 11/2026 trở đi (giữ lịch sử T9, T10)
+    nghiTu: "2026-11-01",
+    anBaoCao: true, // ẩn HẲN khỏi mọi báo cáo, mọi tháng (doanh số vẫn tính vào tổng nhóm)
   },
   {
     // TDV mới, địa bàn Phú Thọ, vào làm 16/10/2026 (thay địa bàn của Vũ Mạnh Chung).
@@ -144,7 +156,7 @@ const ALLOWLIST_TAY_BAC: AllowlistEntry[] = [
   { email: "018468@cung-tuyen.local", hoTen: "Nguyễn Quang Huy", role: "employee", maNhanVien: "018468", nhomSS: "Hà Trọng Thủy" },
   { email: "018757@cung-tuyen.local", hoTen: "Hà Thị Lan Anh", role: "employee", maNhanVien: "018757", nhomSS: "Hà Trọng Thủy" },
   { email: "019484@cung-tuyen.local", hoTen: "Phan Văn Tuyền", role: "employee", maNhanVien: "019484", nhomSS: "Hà Trọng Thủy", nghiTu: "2026-10-01" },
-  { email: "020180@cung-tuyen.local", hoTen: "Hoàng Văn Cường", role: "employee", maNhanVien: "020180", nhomSS: "Hà Trọng Thủy", nghiTu: "2026-11-01" },
+  { email: "020180@cung-tuyen.local", hoTen: "Hoàng Văn Cường", role: "employee", maNhanVien: "020180", nhomSS: "Hà Trọng Thủy", nghiTu: "2026-11-01", anBaoCao: true },
   { email: "020548@cung-tuyen.local", hoTen: "Võ Minh Tâm", role: "employee", maNhanVien: "020548", nhomSS: "Hà Trọng Thủy" },
 ];
 
@@ -195,7 +207,8 @@ export function activeEmployees(nam?: number, thang?: number): AllowlistEntry[] 
   const now = new Date();
   const y = nam ?? now.getFullYear();
   const m = thang ?? now.getMonth() + 1;
-  return allEmployees().filter((e) => !isDepartedInMonth(e, y, m));
+  // Loại NV đã nghỉ trong tháng xem + NV bị ẩn hẳn khỏi báo cáo (anBaoCao).
+  return allEmployees().filter((e) => !isDepartedInMonth(e, y, m) && !e.anBaoCao);
 }
 
 /** Chuẩn hoá tên để so khớp: bỏ dấu, thường hoá, gộp khoảng trắng. */
