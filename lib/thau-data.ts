@@ -224,6 +224,68 @@ export function distinctTinh(rows: ThauRow[]): string[] {
   return [...set].sort();
 }
 
+// ---------- Cảnh báo thầu SỚM: KH chưa gọi đủ hàng, thời gian ngắn mà CÒN NHIỀU HÀNG ----------
+// Điều kiện: gói thầu còn ít tháng (maxThang) + tỷ lệ thực hiện còn thấp (maxTyLe) + doanh số
+// còn lại đáng kể (minDoanhSoConLai). Xếp theo "cần gọi mỗi tháng" (doanh số còn lại / số tháng
+// còn lại) giảm dần — càng cao càng gấp.
+export interface CanhBaoThauGap {
+  maKhach: string;
+  tenKhach: string;
+  tinh: string;
+  soThangConLai: number; // tháng còn lại của gói gần hết hạn nhất (có thể lẻ)
+  tyLeThucHien: number; // 0..1 — SL thực hiện / SL kế hoạch (toàn bộ SP của KH)
+  doanhSoConLai: number; // tổng doanh số còn lại (đồng)
+  canMoiThang: number; // doanh số cần gọi mỗi tháng để kịp (đồng)
+  mucDo: "Rất gấp" | "Gấp" | "Cảnh báo";
+  sanPhamConNhieu: { ten: string; slConLai: number; doanhSoConLai: number }[];
+}
+
+export function canhBaoThauGap(
+  rows: ThauRow[],
+  opts: { maxThang?: number; minDoanhSoConLai?: number; maxTyLe?: number } = {}
+): CanhBaoThauGap[] {
+  const maxThang = opts.maxThang ?? 3;
+  const minDs = opts.minDoanhSoConLai ?? 5_000_000;
+  const maxTyLe = opts.maxTyLe ?? 0.85;
+  const now = new Date();
+  const out: CanhBaoThauGap[] = [];
+
+  for (const kh of groupByCustomer(rows)) {
+    const tongKH = kh.sanPham.reduce((s, p) => s + p.slKeHoach, 0);
+    const tongTH = kh.sanPham.reduce((s, p) => s + p.slThucHien, 0);
+    const tyLe = tongKH > 0 ? tongTH / tongKH : 1;
+    const monthsLeft = kh.ngayHetHanGanNhat
+      ? monthsBetween(now, kh.ngayHetHanGanNhat)
+      : kh.soThangConLaiMin ?? Infinity;
+    const dsConLai = kh.tongDoanhSoConLai;
+
+    if (!(monthsLeft <= maxThang && monthsLeft > -1 && dsConLai >= minDs && tyLe < maxTyLe)) {
+      continue;
+    }
+    const ml = Math.max(monthsLeft, 0.5);
+    const mucDo: CanhBaoThauGap["mucDo"] =
+      monthsLeft <= 1 ? "Rất gấp" : monthsLeft <= 2 ? "Gấp" : "Cảnh báo";
+    const sanPhamConNhieu = kh.sanPham
+      .filter((p) => p.slConLai > 0)
+      .sort((a, b) => b.doanhSoConLai - a.doanhSoConLai)
+      .slice(0, 3)
+      .map((p) => ({ ten: p.tenMatHang, slConLai: p.slConLai, doanhSoConLai: p.doanhSoConLai }));
+
+    out.push({
+      maKhach: kh.maKhach,
+      tenKhach: kh.tenKhach,
+      tinh: kh.tinh,
+      soThangConLai: monthsLeft,
+      tyLeThucHien: tyLe,
+      doanhSoConLai: dsConLai,
+      canMoiThang: dsConLai / ml,
+      mucDo,
+      sanPhamConNhieu,
+    });
+  }
+  return out.sort((a, b) => b.canMoiThang - a.canMoiThang);
+}
+
 // ---------- Bài 2: Tiến độ thầu theo BỆNH VIỆN và theo NHÓM phụ trách ----------
 // Đề bài yêu cầu tách tiến độ theo nhân sự – bệnh viện. Sheet nguồn hiện có cột "Nhóm phụ trách"
 // (theo nhóm SS) + "Tên khách" (bệnh viện). Ta gom tiến độ theo từng bệnh viện, rồi tổng hợp
