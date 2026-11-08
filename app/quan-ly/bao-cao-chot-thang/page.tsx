@@ -255,8 +255,10 @@ export default async function BaoCaoChotThangPage({
   }
   const sanLk = all.filter((r) => r.gam === "Sản").reduce((s, r) => s + r.lk, 0);
   const gmhsLk = all.filter((r) => r.gam === "GMHS").reduce((s, r) => s + r.lk, 0);
-  const topNV = [...all].sort((a, b) => b.lk - a.lk)[0];
-  const lowNV = [...all].sort((a, b) => a.lk - b.lk)[0];
+  // Xếp hạng cá nhân (dẫn đầu/thấp nhất) chỉ tính NV hiển thị — KHÔNG nêu tên NV bị ẩn báo cáo.
+  const visibleNV = all.filter((r) => !anCot(r));
+  const topNV = [...visibleNV].sort((a, b) => b.lk - a.lk)[0];
+  const lowNV = [...visibleNV].sort((a, b) => a.lk - b.lk)[0];
   const pctKh = totKh > 0 ? Math.round((totTh / totKh) * 100) : null;
 
   // ---- Ma trận SP × nhân viên ----
