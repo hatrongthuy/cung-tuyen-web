@@ -43,7 +43,6 @@ const NAV_ITEMS: NavEntry[] = [
     icon: "📊",
     children: [
       { key: "chot-thang", label: "Báo cáo chốt tháng", href: "/quan-ly/bao-cao-chot-thang", icon: "📊" },
-      { key: "bao-cao-tuan", label: "Báo cáo tuần", href: "/quan-ly/bao-cao-tuan", icon: "📅" },
       { key: "bao-cao-thang", label: "Báo cáo tháng", href: "/quan-ly/bao-cao-thang", icon: "🗓️" },
       { key: "tang-truong-sp", label: "Tăng trưởng sản phẩm", href: "/quan-ly/bao-cao-tang-truong-sp", icon: "📈" },
     ],
@@ -77,7 +76,6 @@ const EMP_NAV_ITEMS: NavEntry[] = [
     label: "Báo cáo",
     icon: "📊",
     children: [
-      { key: "bao-cao-tuan", label: "Báo cáo tuần", href: "/nhan-vien/bao-cao-tuan", icon: "📅" },
       { key: "bao-cao-thang", label: "Báo cáo tháng", href: "/nhan-vien/bao-cao-thang", icon: "🗓️" },
       { key: "tang-truong-sp", label: "Tăng trưởng sản phẩm", href: "/nhan-vien/bao-cao-tang-truong-sp", icon: "📈" },
     ],
