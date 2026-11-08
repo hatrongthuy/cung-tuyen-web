@@ -5,6 +5,9 @@ import { getSaleDetailData } from "@/lib/sale-detail";
 import { getKpiScorecard, type EmployeeScore, type MetricScore } from "@/lib/kpi-actuals";
 import { TEN_NHOM } from "@/lib/scope";
 import { cardGradient } from "@/lib/ui";
+import { chuanHoaMaNV, getDanhGiaCungTuyen, parseWeekStart } from "@/lib/data";
+import { activeEmployees } from "@/lib/allowlist";
+import { getBaoCaoThau, canhBaoThauGap, type CanhBaoThauGap } from "@/lib/thau-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -77,6 +80,40 @@ export default async function BaoCaoChotThangPage({
     }
   }
   const thangLabel = `T${tmonth + 1}/${ty}`;
+
+  // ----- Đánh giá cung tuyến tháng: gộp điểm cung tuyến các tuần trong tháng theo nhân viên -----
+  const danhGiaCT = await getDanhGiaCungTuyen().catch(() => []);
+  const cungTuyenThang = activeEmployees()
+    .filter((e) => e.role === "employee")
+    .map((e) => {
+      const ma = chuanHoaMaNV(e.maNhanVien ?? "");
+      const rows = danhGiaCT.filter((r) => {
+        if (chuanHoaMaNV(r["Mã nhân viên"]) !== ma) return false;
+        const ws = parseWeekStart(r["Tuần"]);
+        return !!ws && ws.getFullYear() === ty && ws.getMonth() === tmonth;
+      });
+      const sum = (k: string) => rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+      const diem = sum("Tổng điểm cung tuyến");
+      return {
+        ten: e.hoTen,
+        soTuan: rows.length,
+        gap: sum("Số lượt gặp khách"),
+        phanHoi: sum("Số lượt phản hồi thông tin hàng hóa"),
+        sale: sum("Số lượt phát sinh sale"),
+        diem,
+        tbTuan: rows.length ? Math.round(diem / rows.length) : 0,
+      };
+    });
+  const coCungTuyen = cungTuyenThang.some((x) => x.soTuan > 0);
+
+  // ----- Cảnh báo thầu sớm: KH chưa gọi đủ hàng, thời gian ngắn mà còn nhiều hàng -----
+  let thauCanhBao: CanhBaoThauGap[] = [];
+  let thauErr: string | null = null;
+  try {
+    thauCanhBao = canhBaoThauGap(await getBaoCaoThau());
+  } catch (e) {
+    thauErr = e instanceof Error ? e.message : String(e);
+  }
 
   // KPI chính thức (điểm, KH/TH) từ file KPI công ty.
   let scoreByMa = new Map<string, EmployeeScore>();
@@ -682,8 +719,111 @@ export default async function BaoCaoChotThangPage({
           </p>
         </section>
 
+        <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">🧭 Đánh giá cung tuyến — {thangLabel}</h2>
+          <p className="mt-0.5 text-xs text-slate-400">
+            Gộp các tuần trong tháng: lượt gặp khách, phản hồi hàng hóa, phát sinh sale và điểm cung tuyến từng nhân viên.
+          </p>
+          {!coCungTuyen ? (
+            <p className="mt-3 text-sm text-slate-400">Chưa có dữ liệu đánh giá cung tuyến cho tháng này.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[640px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b-2 border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-3">Nhân viên</th>
+                    <th className="px-3 py-2 text-center">Số tuần</th>
+                    <th className="px-3 py-2 text-center">Lượt gặp</th>
+                    <th className="px-3 py-2 text-center">Phản hồi HH</th>
+                    <th className="px-3 py-2 text-center">Phát sinh sale</th>
+                    <th className="px-3 py-2 text-center">Tổng điểm</th>
+                    <th className="px-3 py-2 text-center">TB điểm/tuần</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cungTuyenThang.map((r) => (
+                    <tr key={r.ten} className="border-b border-slate-100">
+                      <td className="py-2 pr-3 font-medium text-slate-800">{r.ten}</td>
+                      <td className="px-3 py-2 text-center text-slate-600">{r.soTuan}</td>
+                      <td className="px-3 py-2 text-center text-slate-600">{r.gap}</td>
+                      <td className="px-3 py-2 text-center text-slate-600">{r.phanHoi}</td>
+                      <td className="px-3 py-2 text-center text-slate-600">{r.sale}</td>
+                      <td className="px-3 py-2 text-center font-semibold text-emerald-700">{r.diem}</td>
+                      <td className="px-3 py-2 text-center text-slate-600">{r.tbTuan}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-2 text-[11px] text-slate-400">
+            Điểm: gặp khách (có call) 7đ · có phản hồi hàng hóa 8đ · có phát sinh sale 10đ (mỗi lượt lấy mức cao nhất).
+            Chi tiết check‑call theo ngày/nhiệm vụ xem ở mục Cung tuyến.
+          </p>
+        </section>
+
+        <section className="mt-5 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-900">🏛️ Cảnh báo thầu sớm — còn nhiều hàng, sắp hết hạn</h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Khách có gói thầu <b>thời gian còn ngắn</b> nhưng <b>tỷ lệ thực hiện thấp</b>, còn tồn nhiều hàng — cần đẩy gọi đơn gấp kẻo mất thầu.
+          </p>
+          {thauErr ? (
+            <p className="mt-3 text-xs text-amber-600">Chưa đọc được dữ liệu thầu: {thauErr}</p>
+          ) : thauCanhBao.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-400">Không có khách thầu nào ở mức cảnh báo.</p>
+          ) : (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[820px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b-2 border-rose-200 text-left text-[11px] uppercase tracking-wide text-slate-500">
+                    <th className="py-2 pr-3">Khách hàng</th>
+                    <th className="px-2 py-2">Tỉnh</th>
+                    <th className="px-2 py-2 text-center">Còn (tháng)</th>
+                    <th className="px-2 py-2 text-center">% thực hiện</th>
+                    <th className="px-2 py-2 text-right">DS còn lại</th>
+                    <th className="px-2 py-2 text-right">Cần gọi/tháng</th>
+                    <th className="px-2 py-2">SP tồn nhiều</th>
+                    <th className="px-2 py-2 text-center">Mức độ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {thauCanhBao.slice(0, 25).map((k) => (
+                    <tr key={k.maKhach} className="border-b border-rose-100 align-top">
+                      <td className="py-2 pr-3 font-medium text-slate-800">{k.tenKhach}</td>
+                      <td className="px-2 py-2 text-slate-500">{k.tinh}</td>
+                      <td className="px-2 py-2 text-center text-slate-700">{k.soThangConLai.toFixed(1)}</td>
+                      <td className="px-2 py-2 text-center text-slate-700">{Math.round(k.tyLeThucHien * 100)}%</td>
+                      <td className="px-2 py-2 text-right font-semibold text-rose-700">{tr(k.doanhSoConLai)}tr</td>
+                      <td className="px-2 py-2 text-right text-slate-700">{tr(k.canMoiThang)}tr</td>
+                      <td className="px-2 py-2 text-[11px] text-slate-500">
+                        {k.sanPhamConNhieu.map((p) => p.ten).join(", ") || "—"}
+                      </td>
+                      <td className="px-2 py-2 text-center">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            k.mucDo === "Rất gấp"
+                              ? "bg-red-100 text-red-700"
+                              : k.mucDo === "Gấp"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {k.mucDo}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          <p className="mt-2 text-[11px] text-slate-400">
+            Điều kiện cảnh báo: gói thầu còn ≤ 3 tháng · tỷ lệ thực hiện &lt; 85% · doanh số còn lại ≥ 5tr. Xếp theo mức &quot;cần gọi/tháng&quot; giảm dần.
+          </p>
+        </section>
+
         <section className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
-          Nhấp vào <b className="text-teal-700">tên nhân viên</b> ở bảng tổng quan để xem trang chi tiết (biểu đồ tuần · kế hoạch → kết quả · nhận xét). Nguồn: DATA SALE (Sale sạch) + file KPI công ty (tháng {tmonth + 1}/{ty}).
+          Nhấp vào <b className="text-teal-700">tên nhân viên</b> ở bảng tổng quan để xem trang chi tiết (biểu đồ tuần · kế hoạch → kết quả · nhận xét). Nguồn: DATA SALE (Sale sạch) + file KPI công ty (tháng {tmonth + 1}/{ty}) + sheet Báo cáo thầu.
         </section>
         </div>
       </main>
