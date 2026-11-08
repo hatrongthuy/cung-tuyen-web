@@ -5,6 +5,7 @@ import ThauCustomerList from "@/components/ThauCustomerList";
 import ThauProgressView from "@/components/ThauProgressView";
 import {
   getBaoCaoThau,
+  locNhomPhuTrach,
   groupByCustomer,
   getCanhBaoHetHanThau,
   getCanhBaoLauChuaGoiThau,
@@ -27,7 +28,8 @@ export default async function BaoCaoThauPage() {
 
   let rows: Awaited<ReturnType<typeof getBaoCaoThau>>;
   try {
-    rows = await getBaoCaoThau();
+    // Chỉ giữ sản phẩm nhóm PS phụ trách (loại ETC, GP, Chung... của nhóm khác).
+    rows = locNhomPhuTrach(await getBaoCaoThau());
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return (
@@ -70,7 +72,8 @@ export default async function BaoCaoThauPage() {
         <div>
           <h1 className="text-base font-semibold text-slate-900">Báo cáo thầu</h1>
           <p className="mt-0.5 text-xs text-slate-500">
-            Dữ liệu đọc trực tiếp từ Google Sheet &quot;báo cáo thầu&quot; mỗi lần tải trang.
+            Dữ liệu đọc trực tiếp từ Google Sheet &quot;báo cáo thầu&quot; mỗi lần tải trang · chỉ
+            tính sản phẩm nhóm PS phụ trách (Sản &amp; GMHS).
           </p>
         </div>
 
