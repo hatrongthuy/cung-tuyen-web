@@ -156,7 +156,8 @@ export default function ThauProgressView({
         </ul>
       </section>
 
-      {/* Theo nhóm phụ trách */}
+      {/* Theo nhóm phụ trách — chỉ hiện khi có từ 2 nhóm trở lên (báo cáo đã lọc về nhóm PS nên ẩn) */}
+      {nhomStats.length > 1 && (
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-900">Tổng hợp theo nhóm phụ trách</h3>
         <div className="mt-3 space-y-3">
@@ -182,6 +183,7 @@ export default function ThauProgressView({
           ))}
         </div>
       </section>
+      )}
 
       {/* Danh sách bệnh viện */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
