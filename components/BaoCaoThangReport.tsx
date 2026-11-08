@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { allEmployees, isDepartedInMonth } from "@/lib/allowlist";
+import { allEmployees, isDepartedInMonth, maAnBaoCao } from "@/lib/allowlist";
 import { keHoachDsNhom } from "@/lib/scope";
 import { cardGradient } from "@/lib/ui";
 import { formatVnd, formatShortVnd, pct, parseMoney } from "@/lib/format";
@@ -159,7 +159,7 @@ export default function BaoCaoThangReport({
   const kdPrev = useMemo(() => salesByMonth(salesTxns, namT, thangT, "keDon"), [salesTxns, namT, thangT]);
   const dsPrevByMa = useMemo(() => salesByMonth(salesTxns, namT, thangT), [salesTxns, namT, thangT]);
 
-  const emps = useMemo<EmpMonth[]>(() => {
+  const empsFull = useMemo<EmpMonth[]>(() => {
     // Ẩn NV đã nghỉ kể từ tháng nghỉ; tháng trước đó (vd T9) vẫn giữ nguyên tên.
     return allEmployees()
       .filter((e) => !(nam && thang) || !isDepartedInMonth(e, nam, thang))
@@ -194,12 +194,16 @@ export default function BaoCaoThangReport({
     }).sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem);
   }, [planByMa, kdNow, thauNow, kdPrev, dsPrevByMa, ctByMonth, nam, thang]);
 
+  // NV bị ẩn khỏi báo cáo (vd đã nghỉ): bỏ khỏi DÒNG hiển thị, nhưng "g" (tổng nhóm) vẫn tính.
+  const maAn = useMemo(() => maAnBaoCao(), []);
+  const emps = useMemo<EmpMonth[]>(() => empsFull.filter((e) => !maAn.has(e.ma)), [empsFull, maAn]);
+
   // Chỉ tiêu RIÊNG của nhóm (SS) cho tháng đang xem — nếu có khai báo thì tổng nhóm dùng số này
   // thay vì cộng chỉ tiêu từng TDV. Chỉ tiêu từng TDV (ở các dòng) giữ nguyên.
   const groupPlan = useMemo(() => (nam && thang ? keHoachDsNhom(nam, thang) : null), [nam, thang]);
 
   const g = useMemo(() => {
-    const sum = (f: (e: EmpMonth) => number) => emps.reduce((a, e) => a + f(e), 0);
+    const sum = (f: (e: EmpMonth) => number) => empsFull.reduce((a, e) => a + f(e), 0);
     const kdTH = sum((e) => e.kdTH);
     const thauTH = sum((e) => e.thauTH);
     const kdKH = groupPlan ? groupPlan.keDon : sum((e) => e.kdKH);
@@ -212,7 +216,7 @@ export default function BaoCaoThangReport({
       diem: sum((e) => e.diem), diemTruoc: sum((e) => e.diemTruoc),
       doanhThu: kdTH + thauTH, doanhThuTruoc: sumValues(dsPrevByMa),
     };
-  }, [emps, kdPrev, dsPrevByMa, groupPlan]);
+  }, [empsFull, kdPrev, dsPrevByMa, groupPlan]);
 
   const hasEval = useMemo(() => emps.some((e) => e.soTuan > 0), [emps]);
 
@@ -264,7 +268,7 @@ export default function BaoCaoThangReport({
     const diemTH = findColumn(cols, ["tổng điểm kpis th"]) ?? findColumn(cols, ["tổng điểm kpis"]);
     const departedNames = new Set(
       allEmployees()
-        .filter((e) => nam && thang && isDepartedInMonth(e, nam, thang))
+        .filter((e) => e.anBaoCao || (nam && thang && isDepartedInMonth(e, nam, thang)))
         .map((e) => e.hoTen.trim().toLowerCase())
     );
     return kpis.rows

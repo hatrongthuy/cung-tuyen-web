@@ -102,7 +102,7 @@ export default function DailyProgressView({
     const covByMa = new Map<string, EmployeeWeekSummary>();
     for (const s of summaries) covByMa.set(normalizeMaNV(s.maNhanVien), s);
 
-    const out: EmpRow[] = allEmployees().map((e) => {
+    const out: EmpRow[] = allEmployees().filter((e) => !e.anBaoCao).map((e) => {
       const ma = normalizeMaNV(e.maNhanVien);
       const plan = planByMa.get(ma) ?? { kd: 0, thau: 0, dia: "" };
       const kdTH = kdNow[ma] ?? 0;

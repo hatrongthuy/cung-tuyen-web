@@ -17,7 +17,7 @@ import {
   deltaLabel,
   type SaleTxnLite,
 } from "@/lib/report-utils";
-import { allEmployees } from "@/lib/allowlist";
+import { allEmployees, maAnBaoCao } from "@/lib/allowlist";
 
 const C = {
   tuan: "Tuần",
@@ -90,7 +90,7 @@ export default function MonthlyReportView({
   // ----- Cung tuyến trong tháng: gộp các tuần thuộc tháng đã chọn theo nhân viên -----
   // Danh sách = HỢP bảng lương 5 TDV + mã lạ xuất hiện trong đánh giá (nhân viên cũ). Nhờ vậy
   // tháng hiện tại dù chưa chấm điểm vẫn hiện đủ người kèm doanh số cập nhật tới hôm nay.
-  const cungTuyen = useMemo(() => {
+  const cungTuyenFull = useMemo(() => {
     const agg = new Map<string, { ma: string; ten: string; gap: number; phanHoi: number; sale: number; diem: number; soTuan: number }>();
     for (const r of inMonthRows) {
       const ma = normalizeMaNV(r[C.ma]);
@@ -119,9 +119,13 @@ export default function MonthlyReportView({
     return out.sort((a, b) => b.doanhThu - a.doanhThu || b.diem - a.diem);
   }, [inMonthRows, actualByMa]);
 
+  // NV bị ẩn khỏi báo cáo (vd đã nghỉ): bỏ khỏi DÒNG hiển thị, nhưng tổng "tongCT" vẫn tính.
+  const maAn = useMemo(() => maAnBaoCao(), []);
+  const cungTuyen = useMemo(() => cungTuyenFull.filter((e) => !maAn.has(e.ma)), [cungTuyenFull, maAn]);
+
   const tongCT = useMemo(
-    () => cungTuyen.reduce((a, e) => ({ gap: a.gap + e.gap, phanHoi: a.phanHoi + e.phanHoi, sale: a.sale + e.sale, diem: a.diem + e.diem }), { gap: 0, phanHoi: 0, sale: 0, diem: 0 }),
-    [cungTuyen]
+    () => cungTuyenFull.reduce((a, e) => ({ gap: a.gap + e.gap, phanHoi: a.phanHoi + e.phanHoi, sale: a.sale + e.sale, diem: a.diem + e.diem }), { gap: 0, phanHoi: 0, sale: 0, diem: 0 }),
+    [cungTuyenFull]
   );
 
   // ----- Tháng liền trước (để so sánh) -----

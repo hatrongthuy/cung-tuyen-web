@@ -16,7 +16,7 @@ import ReportToolbar from "@/components/ReportToolbar";
 import { formatVnd, formatShortVnd, parseMoney, pct } from "@/lib/format";
 import { normalizeMaNV } from "@/lib/report-utils";
 import { downloadCsv } from "@/lib/csv";
-import { allEmployees, isDepartedInMonth } from "@/lib/allowlist";
+import { allEmployees, isDepartedInMonth, maAnBaoCao } from "@/lib/allowlist";
 import { keHoachDsNhom } from "@/lib/scope";
 
 interface Props {
@@ -150,6 +150,10 @@ export default function DoanhSoView({
   // Danh sách đầy đủ cho bảng chi tiết: người có chỉ tiêu trước, người chưa có chỉ tiêu sau.
   const rowsAll = useMemo(() => [...perEmp, ...extraEmps], [perEmp, extraEmps]);
 
+  // NV bị ẩn khỏi báo cáo (vd đã nghỉ): KHÔNG hiện dòng, nhưng doanh số VẪN tính vào "tong".
+  const maAn = useMemo(() => maAnBaoCao(), []);
+  const rowsHienThi = useMemo(() => rowsAll.filter((e) => !maAn.has(e.ma)), [rowsAll, maAn]);
+
   // Chỉ tiêu RIÊNG của nhóm (SS) cho tháng đang xem — nếu có khai báo thì tổng nhóm dùng số này
   // thay vì cộng chỉ tiêu từng TDV (chỉ tiêu từng TDV ở các dòng vẫn giữ nguyên).
   const groupPlan = useMemo(() => {
@@ -175,17 +179,19 @@ export default function DoanhSoView({
     return t;
   }, [rowsAll, groupPlan]);
 
-  const chartData = perEmp.map((e) => ({
-    ten: e.ten,
-    "Kế hoạch": Math.round(e.kdKH),
-    "Thực hiện": Math.round(e.kdTH),
-  }));
+  const chartData = perEmp
+    .filter((e) => !maAn.has(e.ma))
+    .map((e) => ({
+      ten: e.ten,
+      "Kế hoạch": Math.round(e.kdKH),
+      "Thực hiện": Math.round(e.kdTH),
+    }));
 
   const chuaCoThucHien = tong.kdTH === 0 && tong.thauTH === 0;
 
   function exportCsv() {
     const header = ["Nhân viên", "Địa bàn", "KD kế hoạch", "KD thực hiện", "Tỷ lệ HT (%)", "Thầu kế hoạch", "Thầu thực hiện"];
-    const body = rowsAll.map((e) => [
+    const body = rowsHienThi.map((e) => [
       e.ten + (e.noPlan ? " (chưa có chỉ tiêu)" : ""),
       e.diaBan,
       Math.round(e.kdKH),
@@ -304,7 +310,7 @@ export default function DoanhSoView({
                     </tr>
                   </thead>
                   <tbody>
-                    {rowsAll.map((e, i) => (
+                    {rowsHienThi.map((e, i) => (
                       <tr key={i} className="border-b border-slate-100">
                         <td className="py-2 pr-3 font-medium text-slate-800">
                           {e.ten}
@@ -343,7 +349,9 @@ export default function DoanhSoView({
                     </tr>
                   </thead>
                   <tbody>
-                    {activeRows.map((r, i) => (
+                    {activeRows
+                      .filter((r) => !(cols.maNV && maAn.has(normalizeMaNV(r[cols.maNV]))))
+                      .map((r, i) => (
                       <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/60"}>
                         {columns.map((c) => (
                           <td key={c} className="whitespace-nowrap px-3 py-2 text-slate-700">{r[c] ?? ""}</td>

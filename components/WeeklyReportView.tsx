@@ -16,7 +16,7 @@ import {
   deltaLabel,
   type SaleTxnLite,
 } from "@/lib/report-utils";
-import { allEmployees } from "@/lib/allowlist";
+import { allEmployees, maAnBaoCao } from "@/lib/allowlist";
 import type { EmployeeWeekSummary, TonDongTuanTruoc } from "@/lib/aggregate";
 
 // Tên cột trong tab "Đánh giá cung tuyến tuần".
@@ -89,6 +89,7 @@ export default function WeeklyReportView({
     const m = now.getMonth() + 1;
     const s = new Set<string>();
     for (const e of allEmployees()) {
+      if (e.anBaoCao) { s.add(normalizeMaNV(e.maNhanVien)); continue; } // ẩn hẳn khỏi mọi tuần
       if (!e.nghiTu) continue;
       const [dy, dm] = e.nghiTu.split("-").map(Number);
       if (dy < y || (dy === y && dm <= m)) s.add(normalizeMaNV(e.maNhanVien));
@@ -125,7 +126,9 @@ export default function WeeklyReportView({
     // NV đã nghỉ chỉ loại khỏi danh sách cố định nếu tuần đang xem bắt đầu từ ngày nghỉ trở đi;
     // các tuần cũ (trước ngày nghỉ) vẫn giữ tên qua dữ liệu đánh giá của chính tuần đó.
     const weekStart = parseWeekStart(week);
+    const maAn = maAnBaoCao();
     for (const emp of allEmployees()) {
+      if (emp.anBaoCao) continue; // ẩn hẳn khỏi mọi tuần
       if (emp.nghiTu && weekStart) {
         const dep = new Date(emp.nghiTu + "T00:00:00").getTime();
         if (!Number.isNaN(dep) && weekStart.getTime() >= dep) continue;
@@ -135,7 +138,7 @@ export default function WeeklyReportView({
       seen.add(ma);
     }
     for (const [ma, r] of byMa) {
-      if (!seen.has(ma)) order.push({ ma, ten: r[C.ten] || r[C.ma] || "(không tên)" });
+      if (!seen.has(ma) && !maAn.has(ma)) order.push({ ma, ten: r[C.ten] || r[C.ma] || "(không tên)" });
     }
     return order
       .map(({ ma, ten }) => {

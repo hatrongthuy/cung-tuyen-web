@@ -113,7 +113,7 @@ export default function DoiNhomView({
 
     const onlyMaN = onlyMa ? normalizeMaNV(onlyMa) : null;
     return allEmployees()
-      .filter((e) => (onlyMaN ? normalizeMaNV(e.maNhanVien) === onlyMaN : !isDeparted(e.nghiTu, ctx.nam, ctx.thang)))
+      .filter((e) => !e.anBaoCao && (onlyMaN ? normalizeMaNV(e.maNhanVien) === onlyMaN : !isDeparted(e.nghiTu, ctx.nam, ctx.thang)))
       .map((e) => {
         const ma = normalizeMaNV(e.maNhanVien);
         const sm = sumByMa.get(ma);

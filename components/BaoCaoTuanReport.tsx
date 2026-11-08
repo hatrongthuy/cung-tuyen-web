@@ -116,6 +116,7 @@ export default function BaoCaoTuanReport({
 
     return allEmployees()
       .filter((e) => {
+        if (e.anBaoCao) return false; // ẩn hẳn khỏi mọi báo cáo
         if (!e.nghiTu) return true;
         const [y, m] = e.nghiTu.split("-").map(Number);
         return ctx.nam < y || (ctx.nam === y && ctx.thang < m);
