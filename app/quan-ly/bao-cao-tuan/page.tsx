@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import AppHeader from "@/components/AppHeader";
 import StatCard from "@/components/StatCard";
 import ReportDownload from "@/components/ReportDownload";
+import CungTuyenTuanChiTiet from "@/components/CungTuyenTuanChiTiet";
 import { TEN_NHOM } from "@/lib/scope";
 import { getKpiScorecard, type EmployeeScore } from "@/lib/kpi-actuals";
 import { getTuanCungTuyen } from "@/lib/check-call";
@@ -227,6 +228,22 @@ export default async function BaoCaoTuanPage({
                 <p className="mt-2 text-[11px] text-slate-400">
                   Ô ngày = KH ghé đúng tuyến / KH có trong kế hoạch tuyến ngày đó. Call chuẩn = check‑in ≥ 5 phút &amp; lệch ≤ 100m. Nguồn: file check‑call ({ct.weekLabel}).
                 </p>
+              </div>
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-slate-900">🗺️ Cung tuyến đã lập — danh sách khách theo ngày</h3>
+                <p className="mt-0.5 mb-3 text-xs text-slate-400">
+                  Bấm tên NVKD để xem khách cung tuyến từng ngày. ✓ = đã ghé (có check‑in đúng khách, đúng ngày); ○ = chưa ghé.
+                </p>
+                <CungTuyenTuanChiTiet
+                  nhanViens={ct.tungNV.map((e) => ({
+                    maNV: e.maNV,
+                    hoTen: e.hoTen,
+                    planKH: e.planKH,
+                    daGhe: e.daGhe,
+                    tyLe: e.tyLe,
+                    khach: e.khach,
+                  }))}
+                />
               </div>
             </>
           )}
