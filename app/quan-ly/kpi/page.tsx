@@ -45,6 +45,7 @@ export default async function KpiPage() {
     error: sales.error,
     rows: allEmployees()
       .filter((e) => {
+        if (e.anBaoCao) return false; // ẩn hẳn khỏi mọi báo cáo
         if (!e.nghiTu) return true;
         const [y, m] = e.nghiTu.split("-").map(Number);
         return latest.nam < y || (latest.nam === y && latest.thang < m);
