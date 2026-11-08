@@ -12,7 +12,7 @@ import {
   type CanhBaoThauGap,
 } from "@/lib/thau-data";
 import { getCanhBaoKhachChet, getCanhBaoSanPhamNghi } from "@/lib/data";
-import { maAnBaoCao, allEmployees } from "@/lib/allowlist";
+import { maAnBaoCao, allEmployees, activeEmployees } from "@/lib/allowlist";
 import { todayInVN } from "@/lib/report-utils";
 
 export const dynamic = "force-dynamic";
@@ -71,15 +71,22 @@ export default async function BaoCaoTuanPage({
     getCanhBaoSanPhamNghi().catch(() => []),
   ]);
 
-  // Phần 1: KPI — tổng quan nhóm
-  const kpiRows = kpi.rows.filter((r) => !maAn.has(normMa(r.ma)));
+  // Phần 1: KPI — CHỈ nhân viên kinh doanh (loại SS/ASM và NV ẩn báo cáo)
+  const empMa = new Set(
+    activeEmployees(ty, tmonth + 1)
+      .filter((e) => e.role === "employee")
+      .map((e) => normMa(e.maNhanVien ?? ""))
+  );
+  const kpiRows = kpi.rows.filter((r) => empMa.has(normMa(r.ma)) && !maAn.has(normMa(r.ma)));
   const sumTH = (key: string) => kpiRows.reduce((s, r) => s + (metric(r, key)?.thucHien ?? 0), 0);
   const sumKH = (key: string) => kpiRows.reduce((s, r) => s + (metric(r, key)?.keHoach ?? 0), 0);
   const keDonTH = sumTH("keDon");
   const keDonKH = sumKH("keDon");
   const thauTH = sumTH("thau");
   const thauKH = sumKH("thau");
-  const diemNhom = kpiRows.reduce((s, r) => s + (r.diemTHFinal ?? r.diemDat ?? 0), 0);
+  const diemTB = kpiRows.length
+    ? Math.round(kpiRows.reduce((s, r) => s + (r.diemTHFinal ?? r.diemDat ?? 0), 0) / kpiRows.length)
+    : 0;
   const tienDo = Math.round((today.getDate() / 30) * 100);
 
   // Phần 3: thầu báo động (nhóm PS, 3 tỉnh, bỏ Lạc Việt), cửa sổ 6 tháng
@@ -136,7 +143,7 @@ export default async function BaoCaoTuanPage({
           {/* ===== PHẦN 1: KPI THÁNG ===== */}
           <SectionTitle n={1} t={`Thực hiện KPI tháng ${thangLabel}`} />
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard label="Điểm KPI nhóm" value={`${Math.round(diemNhom)}/1000`} accentColor="#2a78d6" />
+            <StatCard label="Điểm TB NVKD" value={`${diemTB}/1000`} accentColor="#2a78d6" />
             <StatCard label="DS kê đơn (tr)" value={`${tr(keDonTH)} / ${tr(keDonKH)}`} accentColor="#1baf7a" />
             <StatCard label="DS thầu (tr)" value={`${tr(thauTH)} / ${tr(thauKH)}`} accentColor="#eb6834" />
             <StatCard label="Tiến độ thời gian" value={`${tienDo}%`} accentColor="#eda100" />
