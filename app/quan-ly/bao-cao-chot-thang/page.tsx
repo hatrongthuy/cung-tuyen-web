@@ -7,7 +7,7 @@ import { TEN_NHOM } from "@/lib/scope";
 import { cardGradient } from "@/lib/ui";
 import { chuanHoaMaNV, getDanhGiaCungTuyen, parseWeekStart } from "@/lib/data";
 import { activeEmployees } from "@/lib/allowlist";
-import { getBaoCaoThau, canhBaoThauGap, type CanhBaoThauGap } from "@/lib/thau-data";
+import { getBaoCaoThau, locNhomPhuTrach, canhBaoThauGap, type CanhBaoThauGap } from "@/lib/thau-data";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -110,7 +110,8 @@ export default async function BaoCaoChotThangPage({
   let thauCanhBao: CanhBaoThauGap[] = [];
   let thauErr: string | null = null;
   try {
-    thauCanhBao = canhBaoThauGap(await getBaoCaoThau());
+    // Chỉ cảnh báo thầu cho sản phẩm nhóm PS phụ trách (loại ETC, GP, Chung... của nhóm khác).
+    thauCanhBao = canhBaoThauGap(locNhomPhuTrach(await getBaoCaoThau()));
   } catch (e) {
     thauErr = e instanceof Error ? e.message : String(e);
   }
